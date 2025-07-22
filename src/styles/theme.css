@@ -1,0 +1,86 @@
+/* Theme CSS - Contract Crown PWA */
+:root {
+  /* Color Palette */
+  --primary-color: #4a90e2;
+  --primary-hover: #357abd;
+  --primary-light: #6ba3e8;
+  --secondary-color: #16213e;
+  --secondary-light: #1a1a2e;
+  
+  /* Background Colors */
+  --bg-primary: linear-gradient(135deg, #1a1a2e, #16213e);
+  --bg-secondary: #2c3e50;
+  --bg-card: rgba(255, 255, 255, 0.1);
+  --bg-input: rgba(255, 255, 255, 0.05);
+  
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #b8c6db;
+  --text-muted: #8a9ba8;
+  --text-error: #e74c3c;
+  --text-success: #27ae60;
+  
+  /* Border Colors */
+  --border-color: rgba(255, 255, 255, 0.2);
+  --border-focus: var(--primary-color);
+  --border-error: var(--text-error);
+  
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 3rem;
+  
+  /* Typography */
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-xxl: 1.5rem;
+  --font-size-title: 2rem;
+  
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.2);
+  
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+  
+  /* Z-index */
+  --z-dropdown: 1000;
+  --z-modal: 1050;
+  --z-tooltip: 1100;
+  
+  /* Connection Status Colors */
+  --status-connected: #27ae60;
+  --status-connecting: #f39c12;
+  --status-disconnected: #e74c3c;
+}
+
+/* Mobile-first responsive breakpoints */
+@media (min-width: 768px) {
+  :root {
+    --font-size-title: 2.5rem;
+    --spacing-xxl: 4rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --font-size-title: 3rem;
+    --spacing-xxl: 5rem;
+  }
+}
