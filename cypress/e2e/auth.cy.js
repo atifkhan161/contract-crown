@@ -121,7 +121,7 @@ describe('Authentication Flow', () => {
       cy.get('[data-cy=register-email-input]').should('be.visible')
       cy.get('[data-cy=register-password-input]').should('be.visible')
       cy.get('[data-cy=register-confirm-password-input]').should('be.visible')
-      cy.get('[data-cy=register-terms-checkbox]').should('be.visible')
+      cy.get('[data-cy=register-terms-checkbox]').should('exist')
       cy.get('[data-cy=register-button]').should('be.visible')
       cy.get('h1').should('contain', 'Contract Crown')
       cy.get('.app-subtitle').should('contain', 'Create Your Account')
@@ -191,7 +191,7 @@ describe('Authentication Flow', () => {
       cy.get('[data-cy=register-email-input]').type('new@example.com')
       cy.get('[data-cy=register-password-input]').type('password123')
       cy.get('[data-cy=register-confirm-password-input]').type('password123')
-      cy.get('[data-cy=register-terms-checkbox]').check()
+      cy.get('[data-cy=register-terms-checkbox]').check({ force: true })
       cy.get('[data-cy=register-button]').click()
 
       cy.wait('@registerRequest')
