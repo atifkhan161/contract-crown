@@ -1,0 +1,22 @@
+{
+  "testUser1": {
+    "username": "player1",
+    "email": "player1@test.com",
+    "password": "testpass123"
+  },
+  "testUser2": {
+    "username": "player2",
+    "email": "player2@test.com",
+    "password": "testpass123"
+  },
+  "testUser3": {
+    "username": "player3",
+    "email": "player3@test.com",
+    "password": "testpass123"
+  },
+  "testUser4": {
+    "username": "player4",
+    "email": "player4@test.com",
+    "password": "testpass123"
+  }
+}

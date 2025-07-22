@@ -1,0 +1,22 @@
+{
+  "sampleGameRoom": {
+    "gameCode": "ABC123",
+    "maxPlayers": 4,
+    "currentPlayers": 2,
+    "status": "waiting"
+  },
+  "sampleCards": {
+    "hearts": ["7H", "8H", "9H", "10H", "JH", "QH", "KH", "AH"],
+    "diamonds": ["7D", "8D", "9D", "10D", "JD", "QD", "KD", "AD"],
+    "clubs": ["7C", "8C", "9C", "10C", "JC", "QC", "KC", "AC"],
+    "spades": ["7S", "8S", "9S", "10S", "JS", "QS", "KS", "AS"]
+  },
+  "sampleHand": ["7H", "9D", "JC", "AS"],
+  "gameStates": {
+    "waiting": "waiting_for_players",
+    "ready": "all_players_ready",
+    "trump": "declaring_trump",
+    "playing": "playing_tricks",
+    "finished": "game_finished"
+  }
+}
