@@ -100,35 +100,55 @@
   - Create MariaDB database schema and user management
   - _Requirements: 1.3, 1.4, 12.5_
 
-- [ ] 3.1 Initialize Node.js server with Express.js
+- [x] 3.1 Initialize Node.js server with Express.js
+
+
   - Create server.js with Express.js setup and middleware configuration
   - Set up CORS, body parsing, and security middleware
   - Configure environment variables and server configuration
   - Add basic error handling and logging
   - _Requirements: 12.5_
 
-- [ ] 3.2 Set up MariaDB database and user schema
+
+- [x] 3.2 Set up MariaDB database and user schema
+
+
   - Create database connection module with connection pooling
   - Implement users table schema with required fields
   - Create database initialization and migration scripts
   - Add database error handling and transaction support
   - _Requirements: 12.5_
 
-- [ ] 3.3 Implement user registration API endpoint
+- [x] 3.3 Implement user registration API endpoint
+
+
+
   - Create POST /api/auth/register endpoint
   - Add password hashing with bcrypt
   - Implement user data validation and duplicate checking
   - Add proper error responses and status codes
   - _Requirements: 1.3_
 
-- [ ] 3.4 Implement user login API endpoint
+- [x] 3.4 Implement user login API endpoint
+
+
+
+
+
+
   - Create POST /api/auth/login endpoint
   - Add password verification and JWT token generation
   - Implement login attempt tracking and security measures
   - Add authentication middleware for protected routes
   - _Requirements: 1.4_
 
-- [ ] 3.5 Write backend tests for authentication APIs
+- [x] 3.5 Write backend tests for authentication APIs
+
+
+
+
+
+
   - Test user registration with valid and invalid data
   - Test user login with correct and incorrect credentials
   - Test JWT token generation and validation
