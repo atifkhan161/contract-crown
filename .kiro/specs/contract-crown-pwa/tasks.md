@@ -39,7 +39,9 @@
   - Set up test data and fixtures for game testing
   - _Requirements: 12.4_
 
-- [-] 2. Authentication System Implementation
+- [ ] 2. Authentication System Implementation
+
+
 
 
 
@@ -155,7 +157,9 @@
   - Test authentication middleware functionality
   - _Requirements: 12.4_
 
-- [ ] 4. Dashboard and Room Management
+- [-] 4. Dashboard and Room Management
+
+
   - Create dashboard page with room creation and joining functionality
   - Implement game room management API endpoints
   - Add real-time room updates and user interface

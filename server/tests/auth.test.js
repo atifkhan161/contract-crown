@@ -10,11 +10,11 @@ describe('Authentication API', () => {
   beforeAll(async () => {
     // Set test environment
     process.env.NODE_ENV = 'test';
-    
+
     // Initialize database for testing
     const dbInitializer = new DatabaseInitializer();
     await dbInitializer.reset(); // Clean slate for tests
-    
+
     // Create server instance without starting it
     const gameServer = new GameServer();
     app = gameServer.app;

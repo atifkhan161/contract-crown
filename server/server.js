@@ -2,26 +2,30 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import compression from 'compression';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
 import authRoutes from './routes/auth.js';
 import DatabaseInitializer from './database/init.js';
 
 // Load environment variables
 dotenv.config();
 
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 class GameServer {
   constructor() {
     this.app = express();
     this.server = createServer(this.app);
-    this.io = new Server(this.server, {
-      cors: {
-        origin: process.env.CLIENT_URL || "http://localhost:5173",
-        methods: ["GET", "POST"]
-      }
-    });
-    this.port = process.env.PORT || 3000;
+    this.io = new Server(this.server);
+    this.port = process.env.PORT || 3030;
     
     this.setupMiddleware();
     this.setupRoutes();
@@ -30,18 +34,32 @@ class GameServer {
   }
 
   setupMiddleware() {
+    // Compression middleware for production static assets
+    if (process.env.NODE_ENV === 'production') {
+      this.app.use(compression({
+        filter: (req, res) => {
+          // Don't compress responses with this request header
+          if (req.headers['x-no-compression']) {
+            return false;
+          }
+          // Use compression filter function
+          return compression.filter(req, res);
+        },
+        level: 6, // Compression level (1-9, 6 is default)
+        threshold: 1024, // Only compress responses larger than 1KB
+      }));
+    }
+
     // Security middleware
     this.app.use(helmet({
       contentSecurityPolicy: false, // Allow for development
       crossOriginEmbedderPolicy: false
     }));
 
-    // CORS configuration
+    // CORS configuration - simplified since frontend and backend are on same origin
     this.app.use(cors({
-      origin: process.env.CLIENT_URL || "http://localhost:5173",
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization']
+      origin: true, // Allow same origin
+      credentials: true
     }));
 
     // Rate limiting
@@ -67,6 +85,34 @@ class GameServer {
   }
 
   setupRoutes() {
+    // Development mode proxy to Vite dev server
+    if (process.env.NODE_ENV === 'development' && process.env.VITE_DEV_SERVER_URL) {
+      console.log(`[Proxy] Setting up development proxy to ${process.env.VITE_DEV_SERVER_URL}`);
+      
+      // Proxy non-API requests to Vite dev server
+      this.app.use('/', createProxyMiddleware({
+        target: process.env.VITE_DEV_SERVER_URL,
+        changeOrigin: true,
+        ws: true, // Enable WebSocket proxying for HMR
+        pathFilter: (pathname) => {
+          // Don't proxy API routes, health check, or socket.io
+          return !pathname.startsWith('/api') && 
+                 !pathname.startsWith('/health') && 
+                 !pathname.startsWith('/socket.io');
+        },
+        onError: (err, req, res) => {
+          console.error('[Proxy] Error:', err.message);
+          res.status(500).json({
+            error: 'Proxy error',
+            message: 'Failed to proxy request to Vite dev server'
+          });
+        },
+        onProxyReq: (proxyReq, req) => {
+          console.log(`[Proxy] ${req.method} ${req.path} -> ${process.env.VITE_DEV_SERVER_URL}${req.path}`);
+        }
+      }));
+    }
+
     // Health check endpoint
     this.app.get('/health', (req, res) => {
       res.status(200).json({
@@ -88,15 +134,76 @@ class GameServer {
       });
     });
 
-    // Serve static files in production
-    if (process.env.NODE_ENV === 'production') {
-      this.app.use(express.static('public'));
-      
-      // Handle client-side routing
-      this.app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
-      });
+    // Serve static files from Vite build output
+    const staticPath = path.join(__dirname, '..', 'dist');
+    
+    // Check if dist directory exists in production
+    if (process.env.NODE_ENV === 'production' && !existsSync(staticPath)) {
+      console.error('[Static Files] Production build directory not found at:', staticPath);
+      console.error('[Static Files] Run "npm run build" to create the production build');
     }
+    
+    // Configure static file serving with production optimizations
+    this.app.use(express.static(staticPath, {
+      // Cache static assets for 1 year in production, no cache in development
+      maxAge: process.env.NODE_ENV === 'production' ? '365d' : 0,
+      // Enable ETag generation for cache validation
+      etag: true,
+      // Enable Last-Modified header
+      lastModified: true,
+      // Set immutable cache for hashed assets in production
+      immutable: process.env.NODE_ENV === 'production',
+      // Custom cache control for different file types
+      setHeaders: (res, filePath) => {
+        const ext = path.extname(filePath).toLowerCase();
+        
+        if (process.env.NODE_ENV === 'production') {
+          // Cache hashed assets (JS, CSS with hash) for 1 year
+          if (ext === '.js' || ext === '.css') {
+            const filename = path.basename(filePath);
+            // Check if filename contains hash (common pattern: name-[hash].ext)
+            if (filename.match(/\-[a-f0-9]{8,}\./)) {
+              res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            } else {
+              // Non-hashed JS/CSS files get shorter cache
+              res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+            }
+          }
+          // Cache images and fonts for 30 days
+          else if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot'].includes(ext)) {
+            res.setHeader('Cache-Control', 'public, max-age=2592000'); // 30 days
+          }
+          // Cache manifest and other files for 1 day
+          else if (['.json', '.xml', '.txt'].includes(ext)) {
+            res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+          }
+        } else {
+          // Development: no cache
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+      }
+    }));
+    
+    // Handle client-side routing - serve index.html for non-API routes
+    this.app.get('*', (req, res) => {
+      // Don't serve index.html for API routes
+      if (req.path.startsWith('/api/')) {
+        return res.status(404).json({
+          error: 'API endpoint not found',
+          path: req.path
+        });
+      }
+      
+      res.sendFile(path.join(staticPath, 'index.html'), (err) => {
+        if (err) {
+          console.error('Error serving index.html:', err);
+          res.status(500).json({
+            error: 'Failed to serve application',
+            message: 'Build files not found. Run "npm run build" first.'
+          });
+        }
+      });
+    });
   }
 
   setupSocketIO() {
@@ -165,7 +272,6 @@ class GameServer {
       this.server.listen(this.port, () => {
         console.log(`[Server] Contract Crown server running on port ${this.port}`);
         console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
-        console.log(`[Server] Client URL: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
       });
     } catch (error) {
       console.error('[Server] Failed to start server:', error.message);

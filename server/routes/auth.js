@@ -81,6 +81,7 @@ router.post('/register',
             console.log(`[Auth] User registered successfully: ${username}`);
 
             res.status(201).json({
+                success: true,
                 message: 'User registered successfully',
                 user: user
             });
@@ -167,8 +168,10 @@ router.post('/login',
             console.log(`[Auth] User logged in successfully: ${user.username}`);
 
             res.status(200).json({
+                success: true,
                 message: 'Login successful',
-                user: user.toSafeObject()
+                user: user.toSafeObject(),
+                token: 'placeholder_jwt_token' // TODO: Implement JWT token generation
             });
 
         } catch (error) {

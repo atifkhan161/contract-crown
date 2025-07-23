@@ -1,18 +1,15 @@
 /**
  * WebSocket Manager
- * Handles real-time communication with the server
+ * Handles real-time communication with the server using Socket.IO
  */
 
 class WebSocketManager {
     constructor() {
-        this.ws = null;
-        this.url = this.getWebSocketURL();
+        this.socket = null;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 1000; // Start with 1 second
         this.maxReconnectDelay = 30000; // Max 30 seconds
-        this.heartbeatInterval = null;
-        this.heartbeatTimeout = null;
         this.isConnecting = false;
         this.isManualClose = false;
         
@@ -25,20 +22,21 @@ class WebSocketManager {
     }
 
     /**
-     * Get WebSocket URL based on current location
-     * @returns {string} WebSocket URL
+     * Get Socket.IO connection options
+     * @returns {Object} Socket.IO options
      */
-    getWebSocketURL() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    getSocketOptions() {
+        // Use same host and port as the current page
+        const protocol = window.location.protocol;
         const host = window.location.host;
         
-        // In development, use localhost
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return `${protocol}//localhost:3000/ws`;
-        }
-        
-        // In production, use same host
-        return `${protocol}//${host}/ws`;
+        return {
+            // Let Socket.IO handle the URL automatically based on current location
+            forceNew: false,
+            reconnection: false, // We'll handle reconnection manually
+            timeout: 10000,
+            transports: ['websocket', 'polling']
+        };
     }
 
     /**
@@ -46,7 +44,7 @@ class WebSocketManager {
      * @returns {Promise<void>}
      */
     async connect() {
-        if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
+        if (this.socket && this.socket.connected) {
             return;
         }
 
@@ -55,24 +53,31 @@ class WebSocketManager {
         this.emit('connectionChange', 'connecting');
 
         try {
-            this.ws = new WebSocket(this.url);
+            // Check if Socket.IO client is available
+            if (typeof io === 'undefined') {
+                throw new Error('Socket.IO client library not loaded');
+            }
+
+            // Create Socket.IO connection with dynamic options
+            const options = this.getSocketOptions();
+            this.socket = io(options);
             this.setupEventHandlers();
             
-            // Wait for connection to open or fail
+            // Wait for connection to establish
             await new Promise((resolve, reject) => {
                 const timeout = setTimeout(() => {
                     reject(new Error('Connection timeout'));
                 }, 10000);
 
-                this.ws.onopen = () => {
+                this.socket.on('connect', () => {
                     clearTimeout(timeout);
                     resolve();
-                };
+                });
 
-                this.ws.onerror = (error) => {
+                this.socket.on('connect_error', (error) => {
                     clearTimeout(timeout);
                     reject(error);
-                };
+                });
             });
         } catch (error) {
             this.isConnecting = false;
@@ -82,11 +87,11 @@ class WebSocketManager {
     }
 
     /**
-     * Setup WebSocket event handlers
+     * Setup Socket.IO event handlers
      */
     setupEventHandlers() {
-        this.ws.onopen = () => {
-            console.log('WebSocket connected');
+        this.socket.on('connect', () => {
+            console.log('Socket.IO connected');
             this.isConnecting = false;
             this.reconnectAttempts = 0;
             this.reconnectDelay = 1000;
@@ -94,40 +99,63 @@ class WebSocketManager {
             this.emit('connectionChange', 'connected');
             this.emit('connect');
             
-            // Start heartbeat
-            this.startHeartbeat();
-            
             // Send queued messages
             this.flushMessageQueue();
-        };
+        });
 
-        this.ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                this.handleMessage(data);
-            } catch (error) {
-                console.error('Error parsing WebSocket message:', error);
-            }
-        };
-
-        this.ws.onclose = (event) => {
-            console.log('WebSocket disconnected:', event.code, event.reason);
+        this.socket.on('disconnect', (reason) => {
+            console.log('Socket.IO disconnected:', reason);
             this.isConnecting = false;
             
-            this.stopHeartbeat();
             this.emit('connectionChange', 'disconnected');
-            this.emit('disconnect', { code: event.code, reason: event.reason });
+            this.emit('disconnect', { reason });
             
             // Attempt reconnection if not manually closed
-            if (!this.isManualClose && event.code !== 1000) {
+            if (!this.isManualClose && reason !== 'io client disconnect') {
                 this.scheduleReconnect();
             }
-        };
+        });
 
-        this.ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
+        this.socket.on('connect_error', (error) => {
+            console.error('Socket.IO connection error:', error);
             this.emit('error', error);
-        };
+            this.handleConnectionError(error);
+        });
+
+        // Handle custom message events
+        this.socket.on('message', (data) => {
+            this.handleMessage(data);
+        });
+
+        // Handle authentication events
+        this.socket.on('auth_required', () => {
+            this.handleAuthRequired();
+        });
+
+        this.socket.on('auth_success', (payload) => {
+            this.emit('authenticated', payload);
+        });
+
+        this.socket.on('auth_error', (payload) => {
+            this.emit('authError', payload);
+        });
+
+        // Handle game-specific events
+        this.socket.on('game_update', (data) => {
+            this.emit('gameUpdate', data);
+        });
+
+        this.socket.on('room_update', (data) => {
+            this.emit('roomUpdate', data);
+        });
+
+        this.socket.on('player_joined', (data) => {
+            this.emit('playerJoined', data);
+        });
+
+        this.socket.on('player_left', (data) => {
+            this.emit('playerLeft', data);
+        });
     }
 
     /**
@@ -222,50 +250,16 @@ class WebSocketManager {
     }
 
     /**
-     * Start heartbeat mechanism
-     */
-    startHeartbeat() {
-        this.heartbeatInterval = setInterval(() => {
-            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-                this.send('ping');
-                
-                // Set timeout for pong response
-                this.heartbeatTimeout = setTimeout(() => {
-                    console.log('Heartbeat timeout, closing connection');
-                    this.ws.close();
-                }, 5000);
-            }
-        }, 30000); // Send ping every 30 seconds
-    }
-
-    /**
-     * Stop heartbeat mechanism
-     */
-    stopHeartbeat() {
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-            this.heartbeatInterval = null;
-        }
-        
-        if (this.heartbeatTimeout) {
-            clearTimeout(this.heartbeatTimeout);
-            this.heartbeatTimeout = null;
-        }
-    }
-
-    /**
      * Send message to server
      * @param {string} type - Message type
      * @param {Object} payload - Message payload
      */
     send(type, payload = {}) {
-        const message = { type, payload };
-        
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify(message));
+        if (this.socket && this.socket.connected) {
+            this.socket.emit(type, payload);
         } else {
             // Queue message for later sending
-            this.queueMessage(message);
+            this.queueMessage({ type, payload });
         }
     }
 
@@ -285,9 +279,9 @@ class WebSocketManager {
      * Send all queued messages
      */
     flushMessageQueue() {
-        while (this.messageQueue.length > 0 && this.ws && this.ws.readyState === WebSocket.OPEN) {
+        while (this.messageQueue.length > 0 && this.socket && this.socket.connected) {
             const message = this.messageQueue.shift();
-            this.ws.send(JSON.stringify(message));
+            this.socket.emit(message.type, message.payload);
         }
     }
 
@@ -296,10 +290,9 @@ class WebSocketManager {
      */
     disconnect() {
         this.isManualClose = true;
-        this.stopHeartbeat();
         
-        if (this.ws) {
-            this.ws.close(1000, 'Manual disconnect');
+        if (this.socket) {
+            this.socket.disconnect();
         }
     }
 
@@ -308,19 +301,16 @@ class WebSocketManager {
      * @returns {string} Connection status
      */
     getConnectionStatus() {
-        if (!this.ws) {
+        if (!this.socket) {
             return 'disconnected';
         }
         
-        switch (this.ws.readyState) {
-            case WebSocket.CONNECTING:
-                return 'connecting';
-            case WebSocket.OPEN:
-                return 'connected';
-            case WebSocket.CLOSING:
-            case WebSocket.CLOSED:
-            default:
-                return 'disconnected';
+        if (this.socket.connected) {
+            return 'connected';
+        } else if (this.isConnecting) {
+            return 'connecting';
+        } else {
+            return 'disconnected';
         }
     }
 

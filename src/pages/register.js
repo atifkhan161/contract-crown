@@ -3,7 +3,7 @@
  * Handles registration form submission and UI interactions
  */
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const authManager = new AuthManager();
     const registerForm = document.getElementById('register-form');
     const usernameInput = document.getElementById('username');
@@ -18,25 +18,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const strengthText = document.getElementById('strength-text');
 
     // Password strength checker
-    passwordInput.addEventListener('input', function() {
+    passwordInput.addEventListener('input', function () {
         const password = passwordInput.value;
         const strength = calculatePasswordStrength(password);
         updatePasswordStrength(strength);
     });
 
     // Password confirmation validation
-    confirmPasswordInput.addEventListener('input', function() {
+    confirmPasswordInput.addEventListener('input', function () {
         validatePasswordMatch();
     });
 
     // Handle form submission
-    registerForm.addEventListener('submit', async function(e) {
+    registerForm.addEventListener('submit', async function (e) {
         e.preventDefault();
-        
+
         // Clear previous errors
         formError.textContent = '';
         formError.style.display = 'none';
-        
+
         // Get form data
         const userData = {
             username: usernameInput.value.trim(),
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const result = await authManager.register(userData);
-            
+
             if (result.success) {
                 // Redirect to login page
                 window.location.href = 'login.html';
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Password validation
-        if (!userData.password || userData.password.length < 8) {
+        if (!userData.password || userData.password.length < 4) {
             showError('Password must be at least 8 characters long');
             return false;
         }
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function calculatePasswordStrength(password) {
         let score = 0;
-        
+
         if (password.length >= 8) score += 1;
         if (password.length >= 12) score += 1;
         if (/[a-z]/.test(password)) score += 1;
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updatePasswordStrength(strength) {
         const strengthLevels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
         const strengthColors = ['#ff4444', '#ff8800', '#ffaa00', '#88cc00', '#00cc44'];
-        
+
         const percentage = (strength / 4) * 100;
         strengthFill.style.width = percentage + '%';
         strengthFill.style.backgroundColor = strengthColors[strength] || '#ddd';

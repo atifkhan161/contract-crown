@@ -28,12 +28,12 @@ class AuthManager {
      * @returns {string} Base URL
      */
     getBaseURL() {
-        // In development, use localhost
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return 'http://localhost:3000/api';
-        }
-        // In production, use relative path
-        return '/api';
+        // Use the same protocol, host, and port as the current page
+        const protocol = window.location.protocol;
+        const host = window.location.host; // includes port if present
+        
+        // Always use relative path to ensure same port usage
+        return `${protocol}//${host}/api`;
     }
 
     /**
