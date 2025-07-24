@@ -8,8 +8,8 @@ A Progressive Web App for the Contract Crown strategic card game, featuring real
 - **User Authentication**: Secure JWT-based login and registration system
 - **Game Dashboard**: Centralized hub for room management and user statistics
 - **Room Management**: Create, join, and manage game rooms with real-time updates
-- **Waiting Lobby**: *(In Development)* Player status management and team formation interface
-- **Real-time Communication**: Socket.io integration for live gameplay
+- **Waiting Lobby**: Complete player status management and team formation interface with real-time updates
+- **Real-time Communication**: Complete Socket.IO integration with WebSocket server for live gameplay and lobby updates
 - **Progressive Web App**: Offline capabilities and mobile-friendly design
 - **Responsive Design**: Works seamlessly across desktop and mobile devices
 
@@ -58,6 +58,17 @@ A Progressive Web App for the Contract Crown strategic card game, featuring real
 - **Ready Status Validation**: Game start validation ensuring all players are ready before proceeding
 - **Dynamic UI Updates**: Real-time visual feedback for team assignments and player status changes
 
+### Real-time WebSocket Communication
+- **Socket.IO Integration**: Complete client-server WebSocket communication with automatic fallback to polling
+- **Authentication**: JWT-based WebSocket authentication with automatic token validation
+- **Connection Management**: Automatic reconnection with exponential backoff and connection status monitoring
+- **Room-based Events**: Real-time events for player joining/leaving, ready status changes, and team formation
+- **Event Broadcasting**: Server-side event broadcasting to all players in a room
+- **Error Handling**: Comprehensive WebSocket error handling with graceful degradation
+- **Development Proxy**: Vite development server proxy configuration for WebSocket connections
+- **Client Example**: Complete WebSocket client example with multiplayer simulation and testing utilities
+- **Connection Health Monitoring**: Real-time connection status tracking and ping/pong functionality
+
 
 ## Project Structure
 
@@ -67,7 +78,7 @@ contract-crown-pwa/
 │   ├── core/              # Core application modules
 │   │   ├── auth.js        # Authentication manager
 │   │   ├── RoomManager.js # Room management functionality
-│   │   ├── SocketManager.js # WebSocket connection management
+│   │   ├── SocketManager.js # WebSocket connection management with Socket.IO
 │   │   └── websocket.js   # WebSocket utilities
 │   ├── pages/             # Page-specific components
 │   │   ├── dashboard.js   # Dashboard page functionality
@@ -84,8 +95,15 @@ contract-crown-pwa/
 │   ├── routes/            # API route handlers
 │   ├── models/            # Database models
 │   ├── middleware/        # Express middleware
+│   │   └── socketAuth.js  # WebSocket authentication middleware
 │   ├── database/          # Database configuration
+│   ├── websocket/         # WebSocket server components
+│   │   ├── socketManager.js      # Socket.IO connection and room management
+│   │   └── connectionStatus.js   # Connection monitoring and status tracking
+│   ├── examples/          # Example implementations and demos
+│   │   └── websocket-client-example.js # Complete WebSocket client example
 │   └── tests/             # Server-side tests
+│       └── websocket.test.js      # WebSocket functionality tests
 ├── cypress/               # End-to-end testing
 │   ├── e2e/              # E2E test specifications
 │   │   └── auth.cy.js    # Authentication flow tests
@@ -159,6 +177,35 @@ npm run dev:frontend
 Start only the backend:
 ```bash
 npm run dev:backend
+```
+
+### WebSocket Development and Testing
+
+The project includes a comprehensive WebSocket client example for development and testing:
+
+#### Running the WebSocket Client Example
+```bash
+cd server
+node examples/websocket-client-example.js
+```
+
+This example demonstrates:
+- **Multi-client Simulation**: Creates 4 simulated players to test multiplayer functionality
+- **Complete Game Flow**: Simulates joining rooms, ready status, game start, trump declaration, and card play
+- **Connection Management**: Tests authentication, reconnection, and error handling
+- **Real-time Events**: Demonstrates all WebSocket events used in the game
+- **Development Testing**: Perfect for testing WebSocket functionality during development
+
+#### WebSocket Client Usage
+The example client can also be imported and used in other testing scenarios:
+
+```javascript
+import ContractCrownWebSocketClient from './server/examples/websocket-client-example.js';
+
+const client = new ContractCrownWebSocketClient('http://localhost:3030');
+await client.connect('user-123', 'TestPlayer', 'test@example.com');
+client.joinGameRoom('game-456');
+client.setReady('game-456', true);
 ```
 
 ### Development Environment
@@ -275,6 +322,31 @@ npm start
 ### Users
 - `GET /api/users/stats` - Get user statistics
 
+### WebSocket Events
+
+#### Client to Server Events
+- `join-game-room` - Join a game room
+- `leave-game-room` - Leave a game room
+- `player-ready` - Set player ready status
+- `start-game` - Start game (host only)
+- `declare-trump` - Declare trump suit
+- `play-card` - Play a card
+- `ping` - Connection health check
+- `test` - Test event for debugging
+
+#### Server to Client Events
+- `connection-confirmed` - Connection authentication confirmed
+- `room-joined` - Successfully joined a room
+- `player-joined` - Another player joined the room
+- `player-left` - Player left the room
+- `player-ready-changed` - Player ready status changed
+- `game-starting` - Game is starting
+- `trump-declared` - Trump suit declared
+- `card-played` - Card was played
+- `pong` - Response to ping
+- `error` - Error message
+- `test-response` - Response to test event
+
 ## Configuration
 
 ### Environment Variables
@@ -293,28 +365,31 @@ The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) f
 
 ## Development Status
 
+**Current Phase**: Waiting Lobby Implementation (Tasks 5.1-5.5)  
+**Overall Progress**: ~50% Complete (Tasks 1.1-5.3 finished, 5.4-5.5 in progress)
+
 ### Completed Features ✅
-- User authentication system with JWT tokens
-- User registration and login pages
-- Game dashboard with room management
-- Room creation and joining functionality
-- Waiting lobby with player management and ready status system
-- Team formation interface with host controls
-- Real-time WebSocket communication foundation
-- Comprehensive E2E testing suite
-- PWA foundation with service worker
+- **Authentication System**: Complete JWT-based authentication with login/register pages and backend API
+- **Dashboard & Room Management**: Full room creation, joining, and management functionality with API endpoints
+- **Waiting Lobby**: Complete player management interface with ready status and team formation
+- **WebSocket Server Integration**: Socket.IO server fully integrated with Express.js for real-time communication
+- **WebSocket Client Example**: Comprehensive client example with multi-player simulation and testing utilities
+- **Backend Infrastructure**: Node.js/Express server with MariaDB integration and authentication middleware
+- **Testing Foundation**: Comprehensive Cypress test suite for authentication and dashboard flows
+- **PWA Foundation**: Service worker, manifest, and basic PWA capabilities
+- **Project Structure**: Organized codebase with separate frontend/backend and proper development environment
 
 ### In Progress 🚧
-- **WebSocket Server Integration**: Socket.IO server setup for real-time communication
-- **Real-time Lobby Synchronization**: Complete WebSocket event handling for lobby updates
-- **Lobby Testing Suite**: Comprehensive Cypress tests for ready status and team formation
+- **Real-time Lobby Updates**: WebSocket events for player joining/leaving and ready status synchronization (Task 5.4)
+- **Lobby Testing Suite**: Comprehensive Cypress tests for lobby functionality (Task 5.5)
 
 ### Upcoming Features 📋
-- Game page with card display and table layout
-- Core game logic engine for Contract Crown
-- Complete trick-taking gameplay
-- Scoring system and Crown Rule implementation
-- Mobile optimization and PWA enhancements
+- **Game Page Foundation**: Card display, game table layout, and trump declaration interface (Tasks 6.1-6.4)
+- **Game Logic Engine**: Core Contract Crown game mechanics, card dealing, and trick-taking rules (Tasks 7.1-7.5)
+- **Real-time Game Communication**: Complete WebSocket integration for live gameplay (Tasks 8.1-8.4)
+- **Complete Game Flow**: Full gameplay integration with scoring and Crown Rule implementation (Tasks 9.1-9.4)
+- **PWA Enhancement**: Advanced mobile optimization, offline support, and installation features (Tasks 10.1-10.4)
+- **Final Polish**: Performance optimization, theme customization, and production deployment (Tasks 11.1-11.4)
 
 ## Contributing
 
@@ -335,16 +410,17 @@ The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) f
 ### Frontend
 - **Vite** - Build tool and development server
 - **Vanilla JavaScript** - Core application logic
-- **Socket.io Client** - Real-time communication
+- **Socket.IO Client** - Real-time WebSocket communication with automatic reconnection
 - **CSS3** - Styling and responsive design
 - **Service Worker** - PWA functionality
 
 ### Backend
 - **Node.js** - Runtime environment
 - **Express.js** - Web framework
-- **Socket.io** - Real-time communication
+- **Socket.IO** - Real-time WebSocket communication with automatic reconnection
 - **JWT** - Authentication tokens
 - **bcrypt** - Password hashing
+- **MariaDB/MySQL2** - Database integration
 
 ### Testing
 - **Vitest** - Unit testing framework

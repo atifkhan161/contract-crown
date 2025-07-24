@@ -14,6 +14,8 @@ import authRoutes from './routes/auth.js';
 import roomsRoutes from './routes/rooms.js';
 import usersRoutes from './routes/users.js';
 import DatabaseInitializer from './database/init.js';
+import SocketManager from './websocket/socketManager.js';
+import ConnectionStatusManager from './websocket/connectionStatus.js';
 
 // Load environment variables
 dotenv.config();
@@ -26,7 +28,13 @@ class GameServer {
   constructor() {
     this.app = express();
     this.server = createServer(this.app);
-    this.io = new Server(this.server);
+    this.io = new Server(this.server, {
+      cors: {
+        origin: true,
+        credentials: true
+      },
+      transports: ['websocket', 'polling']
+    });
     this.port = process.env.PORT || 3030;
     
     this.setupMiddleware();
@@ -130,6 +138,52 @@ class GameServer {
       });
     });
 
+    // WebSocket status endpoint
+    this.app.get('/api/websocket/status', (req, res) => {
+      try {
+        const stats = req.connectionStatusManager ? 
+          req.connectionStatusManager.getPublicStats() : 
+          { error: 'Connection status manager not available' };
+        
+        res.status(200).json({
+          websocket: {
+            enabled: true,
+            ...stats
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('[API] WebSocket status error:', error);
+        res.status(500).json({
+          error: 'Failed to get WebSocket status',
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    // WebSocket detailed status endpoint (for admin/monitoring)
+    this.app.get('/api/websocket/detailed-status', (req, res) => {
+      try {
+        const stats = req.connectionStatusManager ? 
+          req.connectionStatusManager.getDetailedStats() : 
+          { error: 'Connection status manager not available' };
+        
+        res.status(200).json({
+          websocket: {
+            enabled: true,
+            ...stats
+          },
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('[API] WebSocket detailed status error:', error);
+        res.status(500).json({
+          error: 'Failed to get detailed WebSocket status',
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
     // Authentication routes
     this.app.use('/api/auth', authRoutes);
     
@@ -221,19 +275,20 @@ class GameServer {
   }
 
   setupSocketIO() {
-    this.io.on('connection', (socket) => {
-      console.log(`[WebSocket] Client connected: ${socket.id}`);
-
-      socket.on('disconnect', (reason) => {
-        console.log(`[WebSocket] Client disconnected: ${socket.id}, reason: ${reason}`);
-      });
-
-      // Placeholder for game-specific socket events
-      socket.on('test', (data) => {
-        console.log('[WebSocket] Test event received:', data);
-        socket.emit('test-response', { message: 'Server received test event' });
-      });
+    // Initialize the Socket Manager with enhanced functionality
+    this.socketManager = new SocketManager(this.io);
+    
+    // Initialize Connection Status Manager
+    this.connectionStatusManager = new ConnectionStatusManager(this.socketManager);
+    
+    // Make socket manager and connection status available to routes
+    this.app.use((req, res, next) => {
+      req.socketManager = this.socketManager;
+      req.connectionStatusManager = this.connectionStatusManager;
+      next();
     });
+    
+    console.log('[WebSocket] Enhanced Socket.IO setup complete with authentication and room management');
   }
 
   setupErrorHandling() {

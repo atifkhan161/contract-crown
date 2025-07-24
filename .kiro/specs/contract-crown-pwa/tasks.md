@@ -240,7 +240,16 @@
   - Add visual feedback for team assignments and ready states
   - _Requirements: 3.2, 3.3, 3.4_
 
-- [ ] 5.3 Set up WebSocket server with Socket.IO
+- [x] 5.3 Set up WebSocket server with Socket.IO
+
+
+
+
+
+
+
+
+
   - Initialize Socket.IO server integration with Express.js
   - Create WebSocket room management for game sessions
   - Implement connection/disconnection handling
@@ -270,7 +279,7 @@
 - [ ] 6.1 Create game page with table layout
   - Build game.html with game table, player positions, and card areas
   - Implement game.css with mobile-optimized card game interface
-  - Create game.js with basic game state management (max 300 lines)
+  - Create game.js with basic game state management (max 500 lines)
   - Add score display, trump indicator, and turn highlighting
   - _Requirements: 4.1, 4.2, 10.1, 10.2_
 
