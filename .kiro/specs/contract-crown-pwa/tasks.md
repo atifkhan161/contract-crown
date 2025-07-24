@@ -223,7 +223,17 @@
   - Add connection status widget and WebSocket integration
   - _Requirements: 3.1, 3.2, 10.1, 10.2, 11.3, 11.4_
 
-- [ ] 5.2 Implement ready status and team formation
+- [x] 5.2 Implement ready status and team formation
+
+
+
+
+
+
+
+
+
+
   - Add ready/unready toggle functionality for players
   - Implement automatic team formation algorithm (2 teams of 2 players)
   - Create host-only controls for team formation and game start

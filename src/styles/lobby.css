@@ -364,6 +364,19 @@ body {
     font-weight: 600;
 }
 
+.team-player-slot.assigned {
+    background: rgba(39, 174, 96, 0.15);
+    border-color: var(--status-connected);
+    box-shadow: 0 0 10px rgba(39, 174, 96, 0.2);
+}
+
+.team-player-slot.preview {
+    background: rgba(74, 144, 226, 0.05);
+    border-color: var(--border-color);
+    border-style: dashed;
+    opacity: 0.7;
+}
+
 /* Controls Section */
 .controls-section {
     display: flex;

@@ -1,12 +1,3 @@
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" class="logo" width="120"/>
-
-# Help me create a consolidated doc MD file for both the research that we did for the best folder structure and the deployment steps as a docker container
-
-Certainly! Below is a ready-to-use Markdown doc (`README.md` style) that consolidates both:
-
-- The recommended folder structure for an Express.js + Vite (Vanilla JS) app
-- End-to-end steps for deploying as a single Docker container (with Raspberry Pi 4/ARM64 compatibility)
-
 ```markdown
 # Full Stack Express + Vite (Vanilla JS) App: Project Structure & Docker Deployment
 
@@ -175,13 +166,4 @@ CMD ["node", "dist/server.js"]
 - [x] Pass secrets/configs as runtime env variables, not baked into image
 
 ---
-
-Happy hacking! 🚀
-```
-
-**Instructions:**
-
-- Save this block as `README.md` or your preferred filename.
-- Adjust paths and scripts as needed for your project.
-- You now have a professional, up-to-date consolidation of the architectural and deployment steps for your stack!
 

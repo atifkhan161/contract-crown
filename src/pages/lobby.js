@@ -100,7 +100,7 @@ class LobbyManager {
         const events = [['copycodebtn', 'click', () => this.copyGameCode()], ['leaveroombtn', 'click', () => this.leaveRoom()], ['readytogglebtn', 'click', () => this.toggleReady()], ['startgamebtn', 'click', () => this.startGame()], ['shuffleteamsbtn', 'click', () => this.shuffleTeams()], ['closeerrorbtn', 'click', () => this.hideError()], ['errorokbtn', 'click', () => this.hideError()]];
         events.forEach(([element, event, handler]) => this.elements[element]?.addEventListener(event, handler));
         document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && this.socketManager.isConnected()) {
+            if (!document.hidden && this.socketManager.isSocketConnected()) {
                 this.loadRoomData(); // Refresh room data when page becomes visible
             }
         });
@@ -142,12 +142,16 @@ class LobbyManager {
         this.socketManager.on('roomUpdated', (data) => this.handleRoomUpdated(data));
         this.socketManager.on('gameStarting', (data) => this.handleGameStarting(data));
         this.socketManager.on('roomError', (data) => this.handleRoomError(data));
+        
+        // Ready status and team events
+        this.socketManager.on('playerReadyStatusChanged', (data) => this.handlePlayerReadyStatusChanged(data));
+        this.socketManager.on('teamsFormed', (data) => this.handleTeamsFormed(data));
     }
 
     joinRoom() {
-        if (this.socketManager.isConnected()) {
+        if (this.socketManager.isSocketConnected()) {
             // Join the room's socket channel
-            this.socketManager.emit('joinRoom', { roomId: this.roomId });
+            this.socketManager.emitToServer('joinRoom', { roomId: this.roomId });
         }
     }
 
@@ -231,6 +235,28 @@ class LobbyManager {
         this.showError(data.message || 'An error occurred in the room');
     }
 
+    handlePlayerReadyStatusChanged(data) {
+        if (data.roomId === this.roomId) {
+            this.players = data.players || [];
+            this.updatePlayersDisplay();
+            this.updateReadyStatus();
+            
+            const player = this.players.find(p => p.id === data.playerId);
+            const playerName = player ? player.username : 'A player';
+            const status = data.isReady ? 'ready' : 'not ready';
+            this.addMessage(`${playerName} is now ${status}`, 'info');
+        }
+    }
+
+    handleTeamsFormed(data) {
+        if (data.roomId === this.roomId) {
+            this.players = data.players || [];
+            this.updatePlayersDisplay();
+            this.updateTeamsDisplay();
+            this.addMessage('Teams have been formed!', 'success');
+        }
+    }
+
     updateRoomDisplay() {
         if (this.elements.gamecode && this.room) {
             // Show room ID instead of game code for now
@@ -276,12 +302,12 @@ class LobbyManager {
         this.updateReadyStatus();
     }
 
-    updatePlayerSlot(slot, player, index) {
+    updatePlayerSlot(slot, player) {
         if (!slot) return;
 
         const isCurrentUser = player.id === this.currentUser.id;
         const isHost = this.room && player.id === this.room.owner;
-        const isReady = player.isReady || false; // Default to false for now
+        const isReady = player.isReady || false;
 
         slot.className = `player-slot occupied${isReady ? ' ready' : ''}${isCurrentUser ? ' current-user' : ''}`;
 
@@ -314,22 +340,28 @@ class LobbyManager {
     }
 
     updateTeamsDisplay() {
-        // For now, just auto-assign players to teams
-        const team1Players = this.players.slice(0, 2);
-        const team2Players = this.players.slice(2, 4);
+        // Get players assigned to each team
+        const team1Players = this.players.filter(p => p.teamAssignment === 1);
+        const team2Players = this.players.filter(p => p.teamAssignment === 2);
+        
+        // If no team assignments yet, show players in order for preview
+        const unassignedPlayers = this.players.filter(p => !p.teamAssignment);
+        const previewTeam1 = team1Players.length > 0 ? team1Players : unassignedPlayers.slice(0, 2);
+        const previewTeam2 = team2Players.length > 0 ? team2Players : unassignedPlayers.slice(2, 4);
 
         ['team1', 'team2'].forEach((teamKey, teamIndex) => {
             const teamElement = this.elements[teamKey];
             if (!teamElement) return;
 
-            const teamPlayers = teamIndex === 0 ? team1Players : team2Players;
+            const teamPlayers = teamIndex === 0 ? previewTeam1 : previewTeam2;
             const slots = teamElement.querySelectorAll('.team-player-slot');
+            const isAssigned = teamIndex === 0 ? team1Players.length > 0 : team2Players.length > 0;
 
             slots.forEach((slot, index) => {
                 const player = teamPlayers[index];
 
                 if (player) {
-                    slot.className = 'team-player-slot filled';
+                    slot.className = `team-player-slot filled${isAssigned ? ' assigned' : ' preview'}`;
                     slot.innerHTML = `<span class="slot-text">${player.username}</span>`;
                 } else {
                     slot.className = 'team-player-slot empty';
@@ -337,6 +369,26 @@ class LobbyManager {
                 }
             });
         });
+
+        // Show/hide shuffle button based on whether teams are formed and user is host
+        if (this.elements.shuffleteamsbtn) {
+            const hasAssignedTeams = team1Players.length > 0 || team2Players.length > 0;
+            const canFormTeams = this.players.length === 4;
+            this.elements.shuffleteamsbtn.classList.toggle('hidden', !this.isHost || !canFormTeams);
+            
+            // Update button text based on state
+            const buttonText = hasAssignedTeams ? 'Shuffle Teams' : 'Form Teams';
+            const buttonIcon = this.elements.shuffleteamsbtn.querySelector('.btn-icon');
+            const buttonTextSpan = this.elements.shuffleteamsbtn.querySelector('.btn-text');
+            if (buttonTextSpan) {
+                buttonTextSpan.textContent = buttonText;
+            } else {
+                // If no text span, update the whole button text after the icon
+                if (buttonIcon) {
+                    this.elements.shuffleteamsbtn.innerHTML = `<span class="btn-icon">🔀</span> ${buttonText}`;
+                }
+            }
+        }
     }
 
     updateControlsDisplay() {
@@ -370,56 +422,120 @@ class LobbyManager {
         }
     }
 
-    toggleReady() {
-        // For now, just toggle locally - this would need server-side implementation
-        this.isReady = !this.isReady;
-        const currentPlayer = this.players.find(p => p.id === this.currentUser.id);
-        if (currentPlayer) {
-            currentPlayer.isReady = this.isReady;
-        }
-        this.updatePlayersDisplay();
-        this.updateReadyStatus();
-        this.updateTeamsDisplay();
+    async toggleReady() {
+        try {
+            const newReadyStatus = !this.isReady;
+            
+            // Disable button while processing
+            if (this.elements.readytogglebtn) {
+                this.elements.readytogglebtn.disabled = true;
+            }
 
-        const status = this.isReady ? 'ready' : 'not ready';
-        this.addMessage(`You are now ${status}`, 'info');
+            const response = await fetch(`/api/rooms/${this.roomId}/ready`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authManager.getToken()}`
+                },
+                body: JSON.stringify({ isReady: newReadyStatus })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to update ready status');
+            }
+
+            // The socket event will handle updating the UI
+            // No need to update locally here as the server will broadcast the change
+            
+        } catch (error) {
+            console.error('Error toggling ready status:', error);
+            this.showError(error.message || 'Failed to update ready status');
+        } finally {
+            // Re-enable button
+            if (this.elements.readytogglebtn) {
+                this.elements.readytogglebtn.disabled = false;
+            }
+        }
     }
 
-    shuffleTeams() {
+    async shuffleTeams() {
         if (!this.isHost) return;
 
-        // Simple shuffle - randomize player order
-        for (let i = this.players.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [this.players[i], this.players[j]] = [this.players[j], this.players[i]];
-        }
+        try {
+            // Disable button while processing
+            if (this.elements.shuffleteamsbtn) {
+                this.elements.shuffleteamsbtn.disabled = true;
+            }
 
-        this.updatePlayersDisplay();
-        this.updateTeamsDisplay();
-        this.addMessage('Teams have been shuffled', 'info');
+            const response = await fetch(`/api/rooms/${this.roomId}/form-teams`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.authManager.getToken()}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to form teams');
+            }
+
+            // The socket event will handle updating the UI
+            
+        } catch (error) {
+            console.error('Error forming teams:', error);
+            this.showError(error.message || 'Failed to form teams');
+        } finally {
+            // Re-enable button
+            if (this.elements.shuffleteamsbtn) {
+                this.elements.shuffleteamsbtn.disabled = false;
+            }
+        }
     }
 
-    startGame() {
+    async startGame() {
         if (!this.isHost) return;
 
-        const readyCount = this.players.filter(p => p.isReady).length;
-        const totalPlayers = this.players.length;
+        try {
+            const readyCount = this.players.filter(p => p.isReady).length;
+            const totalPlayers = this.players.length;
 
-        if (totalPlayers < 2) {
-            this.showError('At least 2 players are required to start the game.');
-            return;
+            if (totalPlayers < 2) {
+                this.showError('At least 2 players are required to start the game.');
+                return;
+            }
+
+            if (readyCount !== totalPlayers) {
+                this.showError('All players must be ready to start the game.');
+                return;
+            }
+
+            // Show loading state
+            if (this.elements.startspinner) this.elements.startspinner.classList.remove('hidden');
+            if (this.elements.startgamebtn) this.elements.startgamebtn.disabled = true;
+
+            const response = await fetch(`/api/rooms/${this.roomId}/start`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.authManager.getToken()}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to start game');
+            }
+
+            // The socket event will handle the game starting process
+            
+        } catch (error) {
+            console.error('Error starting game:', error);
+            this.showError(error.message || 'Failed to start game');
+            
+            // Hide loading state on error
+            if (this.elements.startspinner) this.elements.startspinner.classList.add('hidden');
+            if (this.elements.startgamebtn) this.elements.startgamebtn.disabled = false;
         }
-
-        if (readyCount !== totalPlayers) {
-            this.showError('All players must be ready to start the game.');
-            return;
-        }
-
-        if (this.elements.startspinner) this.elements.startspinner.classList.remove('hidden');
-        if (this.elements.startgamebtn) this.elements.startgamebtn.disabled = true;
-
-        // For now, just redirect to game page
-        this.handleGameStarting({ roomId: this.roomId });
     }
 
     async copyGameCode() {

@@ -271,4 +271,157 @@ router.get('/:roomId', auth, async (req, res) => {
     }
 });
 
+// Set player ready status
+router.post('/:roomId/ready', auth, async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const { isReady } = req.body;
+        const userId = req.user.id;
+
+        const room = await Room.findById(roomId);
+
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                message: 'Room not found'
+            });
+        }
+
+        // Check if user is in room
+        if (!room.players.some(p => p.id === userId)) {
+            return res.status(403).json({
+                success: false,
+                message: 'You are not in this room'
+            });
+        }
+
+        // Update ready status
+        await room.setPlayerReady(userId, !!isReady);
+
+        // Emit ready status update to all players in room
+        req.io.to(`room_${roomId}`).emit('playerReadyStatusChanged', {
+            roomId: room.room_id,
+            playerId: userId,
+            isReady: !!isReady,
+            players: room.players,
+            canStartGame: room.canStartGame()
+        });
+
+        res.json({
+            success: true,
+            message: `Ready status updated to ${!!isReady}`,
+            room: room.toApiResponse()
+        });
+    } catch (error) {
+        console.error('Error updating ready status:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to update ready status'
+        });
+    }
+});
+
+// Form teams (host only)
+router.post('/:roomId/form-teams', auth, async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const userId = req.user.id;
+
+        const room = await Room.findById(roomId);
+
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                message: 'Room not found'
+            });
+        }
+
+        // Check if user is the room owner
+        if (room.owner_id !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Only the room host can form teams'
+            });
+        }
+
+        // Form teams
+        const teams = await room.formTeams();
+
+        // Emit team formation update to all players in room
+        req.io.to(`room_${roomId}`).emit('teamsFormed', {
+            roomId: room.room_id,
+            teams: teams,
+            players: room.players
+        });
+
+        res.json({
+            success: true,
+            message: 'Teams formed successfully',
+            teams: teams,
+            room: room.toApiResponse()
+        });
+    } catch (error) {
+        console.error('Error forming teams:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to form teams'
+        });
+    }
+});
+
+// Start game (host only)
+router.post('/:roomId/start', auth, async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const userId = req.user.id;
+
+        const room = await Room.findById(roomId);
+
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                message: 'Room not found'
+            });
+        }
+
+        // Check if user is the room owner
+        if (room.owner_id !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Only the room host can start the game'
+            });
+        }
+
+        // Check if game can be started
+        if (!room.canStartGame()) {
+            return res.status(400).json({
+                success: false,
+                message: 'All players must be ready to start the game'
+            });
+        }
+
+        // Update room status to playing
+        await room.updateStatus('playing');
+
+        // Emit game starting event to all players in room
+        req.io.to(`room_${roomId}`).emit('gameStarting', {
+            roomId: room.room_id,
+            message: 'Game is starting!',
+            teams: room.getTeams()
+        });
+
+        res.json({
+            success: true,
+            message: 'Game started successfully',
+            room: room.toApiResponse()
+        });
+    } catch (error) {
+        console.error('Error starting game:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to start game'
+        });
+    }
+});
+
 export default router;

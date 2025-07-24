@@ -41,12 +41,11 @@ A Progressive Web App for the Contract Crown strategic card game, featuring real
 - Seamless navigation flow from dashboard to waiting lobby
 
 ### Waiting Lobby
-- **Player Status Management**: Real-time display of connected players and their ready status
-- **Automatic Team Formation**: Smart team assignment that automatically distributes players into balanced teams
-- **Team Visualization**: Clear visual representation of Team 1 (Blue) and Team 2 (Red) with player assignments
-- **Host Controls**: Room host can manage teams and start games when all players are ready
+- **Complete Player Management**: Real-time display of connected players with 4-slot layout and status indicators
+- **Ready Status System**: Players can toggle ready/unready status with real-time synchronization across all clients
+- **Team Formation Interface**: Visual representation of Team 1 (Blue) and Team 2 (Red) with automatic team assignment
+- **Host Controls**: Room host can shuffle teams and start games when all players are ready
 - **Connection Monitoring**: Visual indicators for player connection status and WebSocket health
-- **Ready System**: Players can toggle ready/unready status with real-time synchronization
 - **Game Code Sharing**: Easy-to-copy game codes for inviting other players
 - **Real-time Updates**: Live synchronization of player joins, leaves, and status changes
 - **Session Management**: Automatic room data refresh when returning to the page and proper cleanup on page exit
@@ -55,6 +54,9 @@ A Progressive Web App for the Contract Crown strategic card game, featuring real
 - **Enhanced Error Handling**: Comprehensive error handling with fallback mechanisms and detailed logging
 - **Robust Initialization**: Step-by-step initialization process with error recovery and user feedback
 - **Debug Logging**: Detailed console logging for development and troubleshooting support
+- **Team Formation Algorithm**: Automatic random team assignment for 4 players with shuffle functionality
+- **Ready Status Validation**: Game start validation ensuring all players are ready before proceeding
+- **Dynamic UI Updates**: Real-time visual feedback for team assignments and player status changes
 
 
 ## Project Structure
@@ -69,11 +71,13 @@ contract-crown-pwa/
 │   │   └── websocket.js   # WebSocket utilities
 │   ├── pages/             # Page-specific components
 │   │   ├── dashboard.js   # Dashboard page functionality
+│   │   ├── lobby.js       # Lobby page functionality
 │   │   ├── login.js       # Login page functionality
 │   │   └── register.js    # Registration page functionality
 │   └── styles/            # CSS and styling
 │       ├── theme.css      # Global theme variables
 │       ├── dashboard.css  # Dashboard styling
+│       ├── lobby.css      # Lobby page styling
 │       ├── login.css      # Login page styling
 │       └── register.css   # Registration styling
 ├── server/                # Backend Node.js server
@@ -264,6 +268,9 @@ npm start
 - `POST /api/rooms/:id/join` - Join room
 - `POST /api/rooms/:id/leave` - Leave room
 - `DELETE /api/rooms/:id` - Delete room (owner only)
+- `POST /api/rooms/:id/ready` - Set player ready status
+- `POST /api/rooms/:id/form-teams` - Form teams (host only)
+- `POST /api/rooms/:id/start` - Start game (host only)
 
 ### Users
 - `GET /api/users/stats` - Get user statistics
@@ -291,14 +298,16 @@ The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) f
 - User registration and login pages
 - Game dashboard with room management
 - Room creation and joining functionality
+- Waiting lobby with player management and ready status system
+- Team formation interface with host controls
 - Real-time WebSocket communication foundation
 - Comprehensive E2E testing suite
 - PWA foundation with service worker
 
 ### In Progress 🚧
-- **Waiting Lobby Implementation**: Ready system and host controls for game starting
-- WebSocket server integration with Socket.IO
-- Real-time lobby updates and synchronization
+- **WebSocket Server Integration**: Socket.IO server setup for real-time communication
+- **Real-time Lobby Synchronization**: Complete WebSocket event handling for lobby updates
+- **Lobby Testing Suite**: Comprehensive Cypress tests for ready status and team formation
 
 ### Upcoming Features 📋
 - Game page with card display and table layout

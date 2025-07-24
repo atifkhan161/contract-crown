@@ -149,6 +149,8 @@ CREATE TABLE IF NOT EXISTS rooms (
 CREATE TABLE IF NOT EXISTS room_players (
     room_id VARCHAR(36) NOT NULL,
     user_id VARCHAR(36) NOT NULL,
+    is_ready BOOLEAN DEFAULT FALSE,
+    team_assignment INT NULL CHECK (team_assignment IN (1, 2)),
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     PRIMARY KEY (room_id, user_id),

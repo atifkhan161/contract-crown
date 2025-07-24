@@ -155,18 +155,34 @@ class Room {
 
     async loadPlayers() {
         try {
-            const rows = await dbConnection.query(`
-                SELECT u.user_id, u.username, rp.joined_at
-                FROM room_players rp
-                JOIN users u ON rp.user_id = u.user_id
-                WHERE rp.room_id = ?
-                ORDER BY rp.joined_at ASC
-            `, [this.room_id]);
+            // Try to load with new columns first, fallback to old structure if columns don't exist
+            let rows;
+            try {
+                rows = await dbConnection.query(`
+                    SELECT u.user_id, u.username, rp.joined_at, rp.is_ready, rp.team_assignment
+                    FROM room_players rp
+                    JOIN users u ON rp.user_id = u.user_id
+                    WHERE rp.room_id = ?
+                    ORDER BY rp.joined_at ASC
+                `, [this.room_id]);
+            } catch (columnError) {
+                // Fallback to old structure if new columns don't exist
+                console.log('[Room] New columns not found, using fallback query');
+                rows = await dbConnection.query(`
+                    SELECT u.user_id, u.username, rp.joined_at
+                    FROM room_players rp
+                    JOIN users u ON rp.user_id = u.user_id
+                    WHERE rp.room_id = ?
+                    ORDER BY rp.joined_at ASC
+                `, [this.room_id]);
+            }
 
             this.players = rows.map(row => ({
                 id: row.user_id,
                 username: row.username,
-                joinedAt: row.joined_at
+                joinedAt: row.joined_at,
+                isReady: !!row.is_ready || false, // Default to false if column doesn't exist
+                teamAssignment: row.team_assignment || null
             }));
 
             // Load owner details
@@ -311,6 +327,123 @@ class Room {
             gameState: this.game_state,
             settings: this.settings
         };
+    }
+
+    async setPlayerReady(userId, isReady) {
+        try {
+            // Check if user is in room
+            if (!this.players.some(p => p.id === userId)) {
+                throw new Error('User is not in this room');
+            }
+
+            // Try to update ready status, add column if it doesn't exist
+            try {
+                await dbConnection.query(`
+                    UPDATE room_players SET is_ready = ? WHERE room_id = ? AND user_id = ?
+                `, [isReady, this.room_id, userId]);
+            } catch (columnError) {
+                // Add column if it doesn't exist and retry
+                console.log('[Room] Adding is_ready column to room_players table');
+                await dbConnection.query(`
+                    ALTER TABLE room_players ADD COLUMN is_ready BOOLEAN DEFAULT FALSE
+                `);
+                await dbConnection.query(`
+                    UPDATE room_players SET is_ready = ? WHERE room_id = ? AND user_id = ?
+                `, [isReady, this.room_id, userId]);
+            }
+
+            // Reload players to get updated status
+            await this.loadPlayers();
+
+            console.log(`[Room] User ${userId} ready status set to ${isReady} in room ${this.room_id}`);
+            return this;
+        } catch (error) {
+            console.error('[Room] SetPlayerReady error:', error.message);
+            throw error;
+        }
+    }
+
+    async formTeams() {
+        try {
+            // Only allow team formation if we have 4 players
+            if (this.players.length !== 4) {
+                throw new Error('Team formation requires exactly 4 players');
+            }
+
+            // Shuffle players for random team assignment
+            const shuffledPlayers = [...this.players];
+            for (let i = shuffledPlayers.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
+            }
+
+            // Assign teams: first 2 players to team 1, last 2 to team 2
+            const team1Players = shuffledPlayers.slice(0, 2);
+            const team2Players = shuffledPlayers.slice(2, 4);
+
+            // Try to update team assignments, add column if it doesn't exist
+            try {
+                // Update team assignments in database
+                for (const player of team1Players) {
+                    await dbConnection.query(`
+                        UPDATE room_players SET team_assignment = 1 WHERE room_id = ? AND user_id = ?
+                    `, [this.room_id, player.id]);
+                }
+
+                for (const player of team2Players) {
+                    await dbConnection.query(`
+                        UPDATE room_players SET team_assignment = 2 WHERE room_id = ? AND user_id = ?
+                    `, [this.room_id, player.id]);
+                }
+            } catch (columnError) {
+                // Add column if it doesn't exist and retry
+                console.log('[Room] Adding team_assignment column to room_players table');
+                await dbConnection.query(`
+                    ALTER TABLE room_players ADD COLUMN team_assignment INT NULL CHECK (team_assignment IN (1, 2))
+                `);
+                
+                // Retry team assignments
+                for (const player of team1Players) {
+                    await dbConnection.query(`
+                        UPDATE room_players SET team_assignment = 1 WHERE room_id = ? AND user_id = ?
+                    `, [this.room_id, player.id]);
+                }
+
+                for (const player of team2Players) {
+                    await dbConnection.query(`
+                        UPDATE room_players SET team_assignment = 2 WHERE room_id = ? AND user_id = ?
+                    `, [this.room_id, player.id]);
+                }
+            }
+
+            // Reload players to get updated team assignments
+            await this.loadPlayers();
+
+            console.log(`[Room] Teams formed in room ${this.room_id}`);
+            return {
+                team1: team1Players.map(p => ({ id: p.id, username: p.username })),
+                team2: team2Players.map(p => ({ id: p.id, username: p.username }))
+            };
+        } catch (error) {
+            console.error('[Room] FormTeams error:', error.message);
+            throw error;
+        }
+    }
+
+    getTeams() {
+        const team1 = this.players.filter(p => p.teamAssignment === 1);
+        const team2 = this.players.filter(p => p.teamAssignment === 2);
+        
+        return {
+            team1: team1.map(p => ({ id: p.id, username: p.username })),
+            team2: team2.map(p => ({ id: p.id, username: p.username }))
+        };
+    }
+
+    canStartGame() {
+        // Check if all players are ready and we have at least 2 players
+        const readyPlayers = this.players.filter(p => p.isReady);
+        return this.players.length >= 2 && readyPlayers.length === this.players.length;
     }
 
     // Validation methods

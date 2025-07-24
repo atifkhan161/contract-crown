@@ -131,11 +131,15 @@ export class SocketManager {
         // Player events
         this.socket.on('playerJoined', (data) => this.emit('playerJoined', data));
         this.socket.on('playerLeft', (data) => this.emit('playerLeft', data));
+        this.socket.on('playerReadyStatusChanged', (data) => this.emit('playerReadyStatusChanged', data));
+        this.socket.on('teamsFormed', (data) => this.emit('teamsFormed', data));
         
         // Game events
         this.socket.on('gameStarted', (data) => this.emit('gameStarted', data));
+        this.socket.on('gameStarting', (data) => this.emit('gameStarting', data));
         this.socket.on('gameEnded', (data) => this.emit('gameEnded', data));
         this.socket.on('gameStateUpdated', (data) => this.emit('gameStateUpdated', data));
+        this.socket.on('roomUpdated', (data) => this.emit('roomUpdated', data));
         
         // User events
         this.socket.on('userStatsUpdated', (data) => this.emit('userStatsUpdated', data));
