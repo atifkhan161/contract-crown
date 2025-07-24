@@ -23,6 +23,22 @@
         <div id="loading">Loading Contract Crown...</div>
     </div>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/src/core/auth.js"></script>
+    <script>
+        // Authentication check on app startup
+        document.addEventListener('DOMContentLoaded', function() {
+            const authManager = new window.AuthManager();
+            
+            // Check if user is already authenticated
+            if (authManager.isAuthenticated()) {
+                // User is authenticated, redirect to dashboard
+                window.location.href = 'dashboard.html';
+            } else {
+                // User is not authenticated, redirect to login
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
     <script type="module" src="/src/main.js"></script>
 </body>
 </html>

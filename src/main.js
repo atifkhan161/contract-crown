@@ -1,10 +1,7 @@
 import { GameApp } from './core/GameApp.js';
 
-// Initialize the application
-document.addEventListener('DOMContentLoaded', () => {
-    const app = new GameApp();
-    app.initialize();
-});
+// Main application initialization
+// Note: Authentication check is handled in index.html before this script loads
 
 // Service Worker registration for PWA
 if ('serviceWorker' in navigator) {

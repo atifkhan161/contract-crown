@@ -122,6 +122,42 @@ CREATE TABLE IF NOT EXISTS game_tricks (
     INDEX idx_round_id (round_id)
 ) ENGINE=InnoDB;
 
+-- Rooms table (for room-based game lobbies)
+CREATE TABLE IF NOT EXISTS rooms (
+    room_id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    max_players INT NOT NULL DEFAULT 4 CHECK (max_players BETWEEN 2 AND 6),
+    owner_id VARCHAR(36) NOT NULL,
+    status ENUM('waiting', 'playing', 'finished') NOT NULL DEFAULT 'waiting',
+    is_private BOOLEAN DEFAULT FALSE,
+    invite_code VARCHAR(10) NULL,
+    game_state JSON NULL,
+    settings JSON NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    started_at TIMESTAMP NULL,
+    finished_at TIMESTAMP NULL,
+    
+    FOREIGN KEY (owner_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_invite_code (invite_code),
+    INDEX idx_status (status),
+    INDEX idx_owner_id (owner_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB;
+
+-- Room Players table (for tracking players in rooms)
+CREATE TABLE IF NOT EXISTS room_players (
+    room_id VARCHAR(36) NOT NULL,
+    user_id VARCHAR(36) NOT NULL,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    PRIMARY KEY (room_id, user_id),
+    FOREIGN KEY (room_id) REFERENCES rooms(room_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    INDEX idx_room_id (room_id),
+    INDEX idx_user_id (user_id)
+) ENGINE=InnoDB;
+
 -- User Sessions table (for JWT token management)
 CREATE TABLE IF NOT EXISTS user_sessions (
     session_id VARCHAR(36) PRIMARY KEY,

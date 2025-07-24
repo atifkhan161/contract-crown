@@ -339,10 +339,65 @@ body {
     /* Already using dark theme by default */
 }
 
+/* Checkbox Styles */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    user-select: none;
+}
+
+.checkbox-input {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    cursor: pointer;
+    position: relative;
+    transition: all var(--transition-fast);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+.checkbox-input:checked {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.checkbox-input:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.checkbox-input:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.checkbox-input:hover {
+    border-color: var(--primary-color);
+}
+
+.checkbox-text {
+    font-weight: 500;
+}
+
 /* Focus styles for accessibility */
 .btn:focus-visible,
 .form-input:focus-visible,
-.link:focus-visible {
+.link:focus-visible,
+.checkbox-input:focus-visible {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
 }

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Contract Crown</title>
+    <meta name="description" content="Contract Crown game dashboard - manage rooms and join games">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- Apple PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Contract Crown">
+    
+    <link rel="stylesheet" href="/src/styles/main.css">
+    <link rel="stylesheet" href="/src/styles/dashboard.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h1 class="app-title">Contract Crown</h1>
+                <div class="user-info">
+                    <span id="username-display" class="username"></span>
+                    <button id="logout-btn" class="btn btn-secondary btn-sm">Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Content -->
+        <main class="dashboard-main">
+            <div class="dashboard-container">
+                <!-- Connection Status -->
+                <div id="connection-status" class="connection-status">
+                    <span class="status-indicator" id="status-indicator"></span>
+                    <span class="status-text" id="status-text">Connecting...</span>
+                </div>
+
+                <!-- Room Management Section -->
+                <section class="room-section">
+                    <div class="section-header">
+                        <h2>Game Rooms</h2>
+                        <button id="create-room-btn" class="btn btn-primary">
+                            <span class="btn-icon">+</span>
+                            Create Room
+                        </button>
+                    </div>
+
+                    <!-- Available Rooms List -->
+                    <div class="rooms-container">
+                        <div id="rooms-list" class="rooms-list">
+                            <!-- Rooms will be populated dynamically -->
+                        </div>
+                        
+                        <div id="no-rooms" class="no-rooms hidden">
+                            <div class="no-rooms-content">
+                                <h3>No active rooms</h3>
+                                <p>Create a new room to start playing with friends!</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- User Stats Section -->
+                <section class="stats-section">
+                    <h2>Your Stats</h2>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="games-played">0</div>
+                            <div class="stat-label">Games Played</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="games-won">0</div>
+                            <div class="stat-label">Games Won</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="win-rate">0%</div>
+                            <div class="stat-label">Win Rate</div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Create Room Modal -->
+        <div id="create-room-modal" class="modal hidden">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Create New Room</h3>
+                    <button id="close-modal-btn" class="modal-close">&times;</button>
+                </div>
+                <form id="create-room-form" class="modal-body">
+                    <div class="form-group">
+                        <label for="room-name">Room Name</label>
+                        <input type="text" id="room-name" name="roomName" required 
+                               placeholder="Enter room name" maxlength="50">
+                    </div>
+                    <div class="form-group">
+                        <label for="max-players">Max Players</label>
+                        <select id="max-players" name="maxPlayers" required>
+                            <option value="2">2 Players</option>
+                            <option value="3">3 Players</option>
+                            <option value="4" selected>4 Players</option>
+                            <option value="5">5 Players</option>
+                            <option value="6">6 Players</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="private-room" name="isPrivate">
+                            Private Room (requires invite code)
+                        </label>
+                    </div>
+                    <div id="form-error" class="form-error hidden"></div>
+                </form>
+                <div class="modal-footer">
+                    <button type="button" id="cancel-create-btn" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" form="create-room-form" id="create-room-submit" class="btn btn-primary">
+                        <span class="btn-text">Create Room</span>
+                        <span id="create-spinner" class="spinner hidden"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p>Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/src/core/auth.js"></script>
+    <script type="module" src="/src/pages/dashboard.js"></script>
+</body>
+</html>

@@ -11,6 +11,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 import authRoutes from './routes/auth.js';
+import roomsRoutes from './routes/rooms.js';
+import usersRoutes from './routes/users.js';
 import DatabaseInitializer from './database/init.js';
 
 // Load environment variables
@@ -85,6 +87,12 @@ class GameServer {
   }
 
   setupRoutes() {
+    // Make io instance available to routes
+    this.app.use((req, res, next) => {
+      req.io = this.io;
+      next();
+    });
+
     // Development mode proxy to Vite dev server
     if (process.env.NODE_ENV === 'development' && process.env.VITE_DEV_SERVER_URL) {
       console.log(`[Proxy] Setting up development proxy to ${process.env.VITE_DEV_SERVER_URL}`);
@@ -124,6 +132,12 @@ class GameServer {
 
     // Authentication routes
     this.app.use('/api/auth', authRoutes);
+    
+    // Rooms routes
+    this.app.use('/api/rooms', roomsRoutes);
+    
+    // Users routes
+    this.app.use('/api/users', usersRoutes);
 
     // API routes placeholder for other endpoints
     this.app.use('/api', (req, res, next) => {

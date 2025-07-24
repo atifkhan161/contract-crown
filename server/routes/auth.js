@@ -6,7 +6,7 @@ import User from '../models/User.js';
 const router = express.Router();
 
 // Rate limiting for auth endpoints (disabled in test environment)
-const authLimiter = process.env.NODE_ENV === 'test' 
+const authLimiter = process.env.NODE_ENV === 'test'
     ? (req, res, next) => next() // Skip rate limiting in tests
     : rateLimit({
         windowMs: 15 * 60 * 1000, // 15 minutes
@@ -116,9 +116,9 @@ router.post('/register',
 router.post('/login',
     authLimiter,
     [
-        body('identifier')
-            .trim()
+        body('username')
             .notEmpty()
+            .trim()
             .withMessage('Username or email is required'),
         body('password')
             .notEmpty()
@@ -126,11 +126,14 @@ router.post('/login',
     ],
     async (req, res) => {
         try {
+
             // Check for validation errors
             const errors = validationResult(req);
             if (!errors.isEmpty()) {
+                console.log('[Auth] Validation errors:', errors.array());
                 return res.status(400).json({
-                    error: 'Validation failed',
+                    success: false,
+                    message: 'Validation failed',
                     details: errors.array().map(err => ({
                         field: err.path,
                         message: err.msg
@@ -138,27 +141,43 @@ router.post('/login',
                 });
             }
 
-            const { identifier, password } = req.body;
+            const { username, password } = req.body;
+
+            if (!username || !password) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Username and password are required'
+                });
+            }
+
+            console.log('[Auth] Login attempt for:', username);
 
             // Find user by email or username
             let user;
-            if (User.validateEmail(identifier)) {
-                user = await User.findByEmail(identifier);
+            if (User.validateEmail(username)) {
+                console.log('[Auth] Looking up user by email');
+                user = await User.findByEmail(username);
             } else {
-                user = await User.findByUsername(identifier);
+                console.log('[Auth] Looking up user by username');
+                user = await User.findByUsername(username);
             }
 
             if (!user) {
+                console.log('[Auth] User not found');
                 return res.status(401).json({
-                    error: 'Invalid credentials'
+                    success: false,
+                    message: 'Invalid credentials'
                 });
             }
 
             // Verify password
+            console.log('[Auth] Verifying password');
             const isValidPassword = await user.verifyPassword(password);
             if (!isValidPassword) {
+                console.log('[Auth] Invalid password');
                 return res.status(401).json({
-                    error: 'Invalid credentials'
+                    success: false,
+                    message: 'Invalid credentials'
                 });
             }
 
@@ -176,10 +195,37 @@ router.post('/login',
 
         } catch (error) {
             console.error('[Auth] Login error:', error.message);
+            console.error('[Auth] Login error stack:', error.stack);
+
+            // Check for specific database errors
+            if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
+                console.error('[Auth] Database connection failed');
+                return res.status(500).json({
+                    success: false,
+                    message: 'Database connection failed. Please check your database configuration.'
+                });
+            }
+
+            if (error.message.includes('Unknown database')) {
+                console.error('[Auth] Database does not exist');
+                return res.status(500).json({
+                    success: false,
+                    message: 'Database not found. Please run database initialization.'
+                });
+            }
+
+            if (error.message.includes("Table") && error.message.includes("doesn't exist")) {
+                console.error('[Auth] Database tables not found');
+                return res.status(500).json({
+                    success: false,
+                    message: 'Database tables not found. Please run database initialization.'
+                });
+            }
 
             // Generic error response for security
             res.status(500).json({
-                error: 'Login failed. Please try again.'
+                success: false,
+                message: 'Login failed. Please try again.'
             });
         }
     }
