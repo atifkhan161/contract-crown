@@ -58,8 +58,8 @@ describe('Authentication Integration Tests', () => {
 
       // Verify authentication state
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.equal('mock-jwt-token')
-        const userData = JSON.parse(win.localStorage.getItem('contract_crown_user'))
+        expect(win.localStorage.getItem('auth_token')).to.equal('mock-jwt-token')
+        const userData = JSON.parse(win.localStorage.getItem('auth_user'))
         expect(userData.username).to.equal(testUser.username)
         expect(userData.email).to.equal(testUser.email)
       })
@@ -74,8 +74,8 @@ describe('Authentication Integration Tests', () => {
 
       // Set valid token
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'valid-jwt-token')
-        win.localStorage.setItem('contract_crown_user', JSON.stringify({
+        win.localStorage.setItem('auth_token', 'valid-jwt-token')
+        win.localStorage.setItem('auth_user', JSON.stringify({
           id: 1,
           username: 'testuser'
         }))
@@ -100,8 +100,8 @@ describe('Authentication Integration Tests', () => {
 
       // Set tokens that need refresh
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'expiring-token')
-        win.localStorage.setItem('contract_crown_refresh_token', 'refresh-token')
+        win.localStorage.setItem('auth_token', 'expiring-token')
+        win.localStorage.setItem('auth_refresh_token', 'refresh-token')
       })
 
       cy.visit('/login.html')
@@ -116,8 +116,8 @@ describe('Authentication Integration Tests', () => {
 
       // Verify new tokens are stored
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.equal('new-jwt-token')
-        expect(win.localStorage.getItem('contract_crown_refresh_token')).to.equal('new-refresh-token')
+        expect(win.localStorage.getItem('auth_token')).to.equal('new-jwt-token')
+        expect(win.localStorage.getItem('auth_refresh_token')).to.equal('new-refresh-token')
       })
     })
   })
@@ -165,7 +165,7 @@ describe('Authentication Integration Tests', () => {
 
       // Set invalid token
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'invalid-token')
+        win.localStorage.setItem('auth_token', 'invalid-token')
       })
 
       cy.visit('/login.html')
@@ -180,7 +180,7 @@ describe('Authentication Integration Tests', () => {
 
       // Should clear invalid token and redirect to login
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.be.null
+        expect(win.localStorage.getItem('auth_token')).to.be.null
       })
     })
   })
@@ -208,7 +208,7 @@ describe('Authentication Integration Tests', () => {
       // Simulate storage event from another tab
       cy.window().then((win) => {
         const storageEvent = new win.StorageEvent('storage', {
-          key: 'contract_crown_token',
+          key: 'auth_token',
           newValue: 'updated-token',
           oldValue: 'mock-jwt-token'
         })
@@ -217,15 +217,15 @@ describe('Authentication Integration Tests', () => {
 
       // Verify token was updated
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.equal('updated-token')
+        expect(win.localStorage.getItem('auth_token')).to.equal('updated-token')
       })
     })
 
     it('should handle logout across tabs', () => {
       // Set authenticated state
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'mock-jwt-token')
-        win.localStorage.setItem('contract_crown_user', JSON.stringify({ id: 1, username: 'testuser' }))
+        win.localStorage.setItem('auth_token', 'mock-jwt-token')
+        win.localStorage.setItem('auth_user', JSON.stringify({ id: 1, username: 'testuser' }))
       })
 
       cy.visit('/login.html')
@@ -233,7 +233,7 @@ describe('Authentication Integration Tests', () => {
       // Simulate logout from another tab
       cy.window().then((win) => {
         const storageEvent = new win.StorageEvent('storage', {
-          key: 'contract_crown_token',
+          key: 'auth_token',
           newValue: null,
           oldValue: 'mock-jwt-token'
         })
@@ -242,7 +242,7 @@ describe('Authentication Integration Tests', () => {
 
       // Should handle logout state change
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.be.null
+        expect(win.localStorage.getItem('auth_token')).to.be.null
       })
     })
   })
@@ -275,9 +275,9 @@ describe('Authentication Integration Tests', () => {
     it('should clear sensitive data on logout', () => {
       // Set authenticated state
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'mock-jwt-token')
-        win.localStorage.setItem('contract_crown_user', JSON.stringify({ id: 1, username: 'testuser' }))
-        win.localStorage.setItem('contract_crown_refresh_token', 'refresh-token')
+        win.localStorage.setItem('auth_token', 'mock-jwt-token')
+        win.localStorage.setItem('auth_user', JSON.stringify({ id: 1, username: 'testuser' }))
+        win.localStorage.setItem('auth_refresh_token', 'refresh-token')
       })
 
       cy.intercept('POST', '/api/auth/logout', {
@@ -297,9 +297,9 @@ describe('Authentication Integration Tests', () => {
 
       // Verify all auth data is cleared
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.be.null
-        expect(win.localStorage.getItem('contract_crown_user')).to.be.null
-        expect(win.localStorage.getItem('contract_crown_refresh_token')).to.be.null
+        expect(win.localStorage.getItem('auth_token')).to.be.null
+        expect(win.localStorage.getItem('auth_user')).to.be.null
+        expect(win.localStorage.getItem('auth_refresh_token')).to.be.null
       })
     })
 

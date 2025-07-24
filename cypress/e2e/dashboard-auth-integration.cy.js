@@ -12,8 +12,8 @@ describe('Dashboard Authentication Integration', () => {
       // Set expired token
       const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6InRlc3QtdXNlci1pZCIsImV4cCI6MTYwMDAwMDAwMH0.invalid';
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', expiredToken);
-        win.localStorage.setItem('contract_crown_user', JSON.stringify({
+        win.localStorage.setItem('auth_token', expiredToken);
+        win.localStorage.setItem('auth_user', JSON.stringify({
           id: 'test-user-id',
           username: 'testuser'
         }));
@@ -27,8 +27,8 @@ describe('Dashboard Authentication Integration', () => {
 
     it('should redirect to login when token is invalid', () => {
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'invalid-token');
-        win.localStorage.setItem('contract_crown_user', JSON.stringify({
+        win.localStorage.setItem('auth_token', 'invalid-token');
+        win.localStorage.setItem('auth_user', JSON.stringify({
           id: 'test-user-id',
           username: 'testuser'
         }));
@@ -92,8 +92,8 @@ describe('Dashboard Authentication Integration', () => {
     it('should maintain authentication state across page reloads', () => {
       // Set valid authentication state
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'valid-jwt-token');
-        win.localStorage.setItem('contract_crown_user', JSON.stringify({
+        win.localStorage.setItem('auth_token', 'valid-jwt-token');
+        win.localStorage.setItem('auth_user', JSON.stringify({
           user_id: 'test-user-id',
           username: 'testuser',
           email: 'test@example.com'
@@ -117,8 +117,8 @@ describe('Dashboard Authentication Integration', () => {
     beforeEach(() => {
       // Set up authenticated state
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'valid-jwt-token');
-        win.localStorage.setItem('contract_crown_user', JSON.stringify({
+        win.localStorage.setItem('auth_token', 'valid-jwt-token');
+        win.localStorage.setItem('auth_user', JSON.stringify({
           user_id: 'test-user-id',
           username: 'testuser',
           email: 'test@example.com'
@@ -156,8 +156,8 @@ describe('Dashboard Authentication Integration', () => {
       
       // Should clear local storage
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.be.null;
-        expect(win.localStorage.getItem('contract_crown_user')).to.be.null;
+        expect(win.localStorage.getItem('auth_token')).to.be.null;
+        expect(win.localStorage.getItem('auth_user')).to.be.null;
       });
     });
 
@@ -193,7 +193,7 @@ describe('Dashboard Authentication Integration', () => {
       
       // Should update token in localStorage
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.equal('new-jwt-token');
+        expect(win.localStorage.getItem('auth_token')).to.equal('new-jwt-token');
       });
     });
   });
@@ -202,8 +202,8 @@ describe('Dashboard Authentication Integration', () => {
     beforeEach(() => {
       // Set up authenticated state
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'valid-jwt-token');
-        win.localStorage.setItem('contract_crown_user', JSON.stringify({
+        win.localStorage.setItem('auth_token', 'valid-jwt-token');
+        win.localStorage.setItem('auth_user', JSON.stringify({
           user_id: 'test-user-id',
           username: 'testuser',
           email: 'test@example.com'
@@ -245,8 +245,8 @@ describe('Dashboard Authentication Integration', () => {
       
       // Should clear authentication state
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.be.null;
-        expect(win.localStorage.getItem('contract_crown_user')).to.be.null;
+        expect(win.localStorage.getItem('auth_token')).to.be.null;
+        expect(win.localStorage.getItem('auth_user')).to.be.null;
       });
     });
 
@@ -266,7 +266,7 @@ describe('Dashboard Authentication Integration', () => {
       // Should still clear local state and redirect
       cy.url().should('include', 'login.html');
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.be.null;
+        expect(win.localStorage.getItem('auth_token')).to.be.null;
       });
     });
 
@@ -283,7 +283,7 @@ describe('Dashboard Authentication Integration', () => {
       // Should still clear local state and redirect
       cy.url().should('include', 'login.html');
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.be.null;
+        expect(win.localStorage.getItem('auth_token')).to.be.null;
       });
     });
   });
@@ -303,8 +303,8 @@ describe('Dashboard Authentication Integration', () => {
       }).as('validateSession');
 
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'valid-jwt-token');
-        win.localStorage.setItem('contract_crown_user', JSON.stringify({
+        win.localStorage.setItem('auth_token', 'valid-jwt-token');
+        win.localStorage.setItem('auth_user', JSON.stringify({
           user_id: 'test-user-id',
           username: 'testuser'
         }));
@@ -326,8 +326,8 @@ describe('Dashboard Authentication Integration', () => {
       }).as('invalidateSession');
 
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'invalid-token');
-        win.localStorage.setItem('contract_crown_user', JSON.stringify({
+        win.localStorage.setItem('auth_token', 'invalid-token');
+        win.localStorage.setItem('auth_user', JSON.stringify({
           user_id: 'test-user-id',
           username: 'testuser'
         }));
@@ -346,8 +346,8 @@ describe('Dashboard Authentication Integration', () => {
     it('should sync authentication state across tabs', () => {
       // Set up authenticated state
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'valid-jwt-token');
-        win.localStorage.setItem('contract_crown_user', JSON.stringify({
+        win.localStorage.setItem('auth_token', 'valid-jwt-token');
+        win.localStorage.setItem('auth_user', JSON.stringify({
           user_id: 'test-user-id',
           username: 'testuser'
         }));
@@ -357,12 +357,12 @@ describe('Dashboard Authentication Integration', () => {
       
       // Simulate logout in another tab by clearing localStorage
       cy.window().then((win) => {
-        win.localStorage.removeItem('contract_crown_token');
-        win.localStorage.removeItem('contract_crown_user');
+        win.localStorage.removeItem('auth_token');
+        win.localStorage.removeItem('auth_user');
         
         // Trigger storage event
         win.dispatchEvent(new StorageEvent('storage', {
-          key: 'contract_crown_token',
+          key: 'auth_token',
           oldValue: 'valid-jwt-token',
           newValue: null,
           storageArea: win.localStorage

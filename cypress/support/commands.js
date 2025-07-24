@@ -16,12 +16,12 @@ Cypress.Commands.add('authenticateUser', (credentials) => {
     url: '/api/auth/login',
     body: credentials
   }).then((response) => {
-    window.localStorage.setItem('contract_crown_token', response.body.token)
+    window.localStorage.setItem('auth_token', response.body.token)
     if (response.body.user) {
-      window.localStorage.setItem('contract_crown_user', JSON.stringify(response.body.user))
+      window.localStorage.setItem('auth_user', JSON.stringify(response.body.user))
     }
     if (response.body.refreshToken) {
-      window.localStorage.setItem('contract_crown_refresh_token', response.body.refreshToken)
+      window.localStorage.setItem('auth_refresh_token', response.body.refreshToken)
     }
   })
 })
@@ -102,28 +102,28 @@ Cypress.Commands.add('setAuthenticatedState', (userData = {}) => {
   }
   
   cy.window().then((win) => {
-    win.localStorage.setItem('contract_crown_token', 'mock-jwt-token')
-    win.localStorage.setItem('contract_crown_user', JSON.stringify(defaultUser))
-    win.localStorage.setItem('contract_crown_refresh_token', 'mock-refresh-token')
+    win.localStorage.setItem('auth_token', 'mock-jwt-token')
+    win.localStorage.setItem('auth_user', JSON.stringify(defaultUser))
+    win.localStorage.setItem('auth_refresh_token', 'mock-refresh-token')
   })
 })
 
 Cypress.Commands.add('clearAuthState', () => {
   cy.window().then((win) => {
-    win.localStorage.removeItem('contract_crown_token')
-    win.localStorage.removeItem('contract_crown_user')
-    win.localStorage.removeItem('contract_crown_refresh_token')
+    win.localStorage.removeItem('auth_token')
+    win.localStorage.removeItem('auth_user')
+    win.localStorage.removeItem('auth_refresh_token')
   })
 })
 
 Cypress.Commands.add('verifyAuthState', (shouldBeAuthenticated = true) => {
   cy.window().then((win) => {
     if (shouldBeAuthenticated) {
-      expect(win.localStorage.getItem('contract_crown_token')).to.not.be.null
-      expect(win.localStorage.getItem('contract_crown_user')).to.not.be.null
+      expect(win.localStorage.getItem('auth_token')).to.not.be.null
+      expect(win.localStorage.getItem('auth_user')).to.not.be.null
     } else {
-      expect(win.localStorage.getItem('contract_crown_token')).to.be.null
-      expect(win.localStorage.getItem('contract_crown_user')).to.be.null
+      expect(win.localStorage.getItem('auth_token')).to.be.null
+      expect(win.localStorage.getItem('auth_user')).to.be.null
     }
   })
 })

@@ -51,8 +51,8 @@ describe('Authentication Flow', () => {
       
       // Check that token is stored in localStorage
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.equal('mock-jwt-token')
-        expect(win.localStorage.getItem('contract_crown_user')).to.contain('testuser')
+        expect(win.localStorage.getItem('auth_token')).to.equal('mock-jwt-token')
+        expect(win.localStorage.getItem('auth_user')).to.contain('testuser')
       })
     })
 
@@ -270,7 +270,7 @@ describe('Authentication Flow', () => {
       // Reload page and check if still authenticated
       cy.reload()
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.equal('mock-jwt-token')
+        expect(win.localStorage.getItem('auth_token')).to.equal('mock-jwt-token')
       })
     })
 
@@ -278,14 +278,14 @@ describe('Authentication Flow', () => {
       // Set expired token
       cy.window().then((win) => {
         const expiredToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.invalid'
-        win.localStorage.setItem('contract_crown_token', expiredToken)
+        win.localStorage.setItem('auth_token', expiredToken)
       })
 
       cy.visit('/login.html')
       
       // Should clear expired token
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.be.null
+        expect(win.localStorage.getItem('auth_token')).to.be.null
       })
     })
 
@@ -298,8 +298,8 @@ describe('Authentication Flow', () => {
 
       // Set authenticated state
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'mock-jwt-token')
-        win.localStorage.setItem('contract_crown_user', JSON.stringify({ id: 1, username: 'testuser' }))
+        win.localStorage.setItem('auth_token', 'mock-jwt-token')
+        win.localStorage.setItem('auth_user', JSON.stringify({ id: 1, username: 'testuser' }))
       })
 
       cy.visit('/login.html')
@@ -314,8 +314,8 @@ describe('Authentication Flow', () => {
       
       // Check that tokens are cleared
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.be.null
-        expect(win.localStorage.getItem('contract_crown_user')).to.be.null
+        expect(win.localStorage.getItem('auth_token')).to.be.null
+        expect(win.localStorage.getItem('auth_user')).to.be.null
       })
     })
   })

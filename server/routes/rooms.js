@@ -101,6 +101,20 @@ router.post('/:roomId/join', auth, async (req, res) => {
             });
         }
 
+        // Check if user is already in this room - if so, just return success
+        const isAlreadyInRoom = room.players.some(p => p.id === userId);
+        
+        if (isAlreadyInRoom) {
+            // User is already in this room, just redirect them back
+            return res.json({
+                success: true,
+                message: 'Rejoined room successfully',
+                roomId: room.room_id,
+                room: room.toApiResponse(),
+                rejoined: true
+            });
+        }
+
         // Add user to room (this will validate if user can join)
         await room.addPlayer(userId);
 

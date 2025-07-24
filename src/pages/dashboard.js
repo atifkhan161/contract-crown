@@ -9,7 +9,7 @@ import { RoomManager } from '../core/RoomManager.js';
 class DashboardManager {
     constructor() {
         this.authManager = new window.AuthManager();
-        this.socketManager = new SocketManager();
+        this.socketManager = new SocketManager(this.authManager);
         this.roomManager = new RoomManager();
         
         this.elements = {};
@@ -337,7 +337,12 @@ class DashboardManager {
     async handleJoinRoom(roomId) {
         try {
             this.showLoading(true);
-            await this.roomManager.joinRoom(roomId);
+            const response = await this.roomManager.joinRoom(roomId);
+            
+            // Hide loading and redirect to lobby
+            this.showLoading(false);
+            window.location.href = `lobby.html?room=${response.roomId}`;
+            
         } catch (error) {
             console.error('Join room error:', error);
             this.showError(error.message || 'Failed to join room');
@@ -367,8 +372,8 @@ class DashboardManager {
     }
 
     handleRoomJoined(roomData) {
-        // Redirect to game room
-        window.location.href = `game.html?room=${roomData.roomId}`;
+        // Redirect to lobby page for the room
+        window.location.href = `lobby.html?room=${roomData.roomId}`;
     }
 
     handleRoomError(error) {

@@ -283,14 +283,14 @@ class Room {
             return { canJoin: false, reason: 'Room is not accepting new players' };
         }
         
+        // Check if user is already in room - this is now allowed for rejoining
+        if (this.players.some(p => p.id === userId)) {
+            return { canJoin: true, reason: 'User can rejoin this room' };
+        }
+        
         // Check if room is full
         if (this.players.length >= this.max_players) {
             return { canJoin: false, reason: 'Room is full' };
-        }
-        
-        // Check if user is already in room
-        if (this.players.some(p => p.id === userId)) {
-            return { canJoin: false, reason: 'User is already in this room' };
         }
         
         return { canJoin: true };

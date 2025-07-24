@@ -217,14 +217,14 @@ describe('Authentication Edge Cases', () => {
       
       // Set malformed token
       cy.window().then((win) => {
-        win.localStorage.setItem('contract_crown_token', 'malformed.jwt.token')
+        win.localStorage.setItem('auth_token', 'malformed.jwt.token')
       })
 
       cy.reload()
 
       // Should clear malformed token
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.be.null
+        expect(win.localStorage.getItem('auth_token')).to.be.null
       })
     })
 

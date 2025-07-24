@@ -402,8 +402,8 @@ describe('Dashboard Functionality', () => {
       
       // Should clear local storage
       cy.window().then((win) => {
-        expect(win.localStorage.getItem('contract_crown_token')).to.be.null;
-        expect(win.localStorage.getItem('contract_crown_user')).to.be.null;
+        expect(win.localStorage.getItem('auth_token')).to.be.null;
+        expect(win.localStorage.getItem('auth_user')).to.be.null;
       });
     });
 

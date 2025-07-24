@@ -4,8 +4,9 @@
  */
 
 export class RoomManager {
-    constructor() {
+    constructor(authManager = null) {
         this.apiBase = '/api';
+        this.authManager = authManager;
     }
 
     /**
@@ -17,7 +18,7 @@ export class RoomManager {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    'Authorization': `Bearer ${this.authManager ? this.authManager.getToken() : localStorage.getItem('auth_token')}`
                 }
             });
 
@@ -42,7 +43,7 @@ export class RoomManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    'Authorization': `Bearer ${this.authManager ? this.authManager.getToken() : localStorage.getItem('auth_token')}`
                 },
                 body: JSON.stringify(roomData)
             });
@@ -69,7 +70,7 @@ export class RoomManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    'Authorization': `Bearer ${this.authManager ? this.authManager.getToken() : localStorage.getItem('auth_token')}`
                 }
             });
 
@@ -95,7 +96,7 @@ export class RoomManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    'Authorization': `Bearer ${this.authManager ? this.authManager.getToken() : localStorage.getItem('auth_token')}`
                 }
             });
 
@@ -120,7 +121,7 @@ export class RoomManager {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    'Authorization': `Bearer ${this.authManager ? this.authManager.getToken() : localStorage.getItem('auth_token')}`
                 }
             });
 
@@ -145,7 +146,7 @@ export class RoomManager {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+                    'Authorization': `Bearer ${this.authManager ? this.authManager.getToken() : localStorage.getItem('auth_token')}`
                 }
             });
 

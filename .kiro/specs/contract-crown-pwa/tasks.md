@@ -39,7 +39,7 @@
   - Set up test data and fixtures for game testing
   - _Requirements: 12.4_
 
-- [ ] 2. Authentication System Implementation
+- [x] 2. Authentication System Implementation
 
 
 
@@ -94,7 +94,7 @@
   - Test logout functionality and token cleanup
   - _Requirements: 12.4_
 
-- [-] 3. Backend Authentication API
+- [x] 3. Backend Authentication API
 
 
   - Set up Node.js server with Express.js and authentication endpoints
@@ -196,12 +196,27 @@
   - _Requirements: 12.4_
 
 - [ ] 5. Waiting Lobby Implementation
+
+
+
+
+
+
   - Create waiting lobby page with player status and team formation
   - Implement real-time player updates and ready status management
   - Add host controls for team formation and game starting
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 10.1, 10.2_
 
-- [ ] 5.1 Create waiting lobby page with player slots
+- [x] 5.1 Create waiting lobby page with player slots
+
+
+
+
+
+
+
+
+
   - Build lobby.html with 4 player slots and status indicators
   - Implement lobby.css with team formation and ready status display
   - Create lobby.js with player management and real-time updates (max 300 lines)

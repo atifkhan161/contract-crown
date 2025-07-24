@@ -1,6 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
 const router = express.Router();
@@ -184,13 +185,26 @@ router.post('/login',
             // Update last login
             await user.updateLastLogin();
 
+            // Generate JWT token
+            const payload = {
+                id: user.user_id,
+                username: user.username,
+                email: user.email
+            };
+
+            const token = jwt.sign(
+                payload,
+                process.env.JWT_SECRET || 'your-secret-key',
+                { expiresIn: '24h' }
+            );
+
             console.log(`[Auth] User logged in successfully: ${user.username}`);
 
             res.status(200).json({
                 success: true,
                 message: 'Login successful',
                 user: user.toSafeObject(),
-                token: 'placeholder_jwt_token' // TODO: Implement JWT token generation
+                token: token
             });
 
         } catch (error) {
@@ -230,6 +244,82 @@ router.post('/login',
         }
     }
 );
+
+// Token validation endpoint
+router.post('/validate', async (req, res) => {
+    try {
+        const authHeader = req.header('Authorization');
+        
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({
+                valid: false,
+                message: 'No token provided'
+            });
+        }
+
+        const token = authHeader.substring(7);
+        
+        // Verify token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        
+        // Check if user still exists
+        const user = await User.findById(decoded.id);
+        if (!user) {
+            return res.status(401).json({
+                valid: false,
+                message: 'User not found'
+            });
+        }
+
+        res.json({
+            valid: true,
+            user: user.toSafeObject()
+        });
+    } catch (error) {
+        console.error('Token validation error:', error);
+        res.status(401).json({
+            valid: false,
+            message: 'Invalid token'
+        });
+    }
+});
+
+// Token refresh endpoint (placeholder for future implementation)
+router.post('/refresh', async (req, res) => {
+    try {
+        const { refreshToken } = req.body;
+        
+        if (!refreshToken) {
+            return res.status(401).json({
+                success: false,
+                message: 'Refresh token required'
+            });
+        }
+
+        // TODO: Implement refresh token logic
+        // For now, return error to indicate not implemented
+        res.status(501).json({
+            success: false,
+            message: 'Refresh token functionality not yet implemented'
+        });
+    } catch (error) {
+        console.error('Token refresh error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Token refresh failed'
+        });
+    }
+});
+
+// Logout endpoint
+router.post('/logout', (req, res) => {
+    // For JWT tokens, logout is handled client-side by removing the token
+    // In a production app, you might want to maintain a blacklist of tokens
+    res.json({
+        success: true,
+        message: 'Logged out successfully'
+    });
+});
 
 // Health check for auth routes
 router.get('/health', (req, res) => {

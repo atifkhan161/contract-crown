@@ -46,9 +46,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Store username if remember me is checked
                 if (rememberMe) {
-                    localStorage.setItem('contract_crown_last_username', credentials.username);
+                    localStorage.setItem('auth_last_username', credentials.username);
                 } else {
-                    localStorage.removeItem('contract_crown_last_username');
+                    localStorage.removeItem('auth_last_username');
                 }
                 
                 // Verify authentication state after login
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (authManager.getRememberMe()) {
         rememberMeCheckbox.checked = true;
         // Pre-fill username if stored
-        const lastUsername = localStorage.getItem('contract_crown_last_username');
+        const lastUsername = localStorage.getItem('auth_last_username');
         if (lastUsername) {
             usernameInput.value = lastUsername;
             // Focus on password field if username is pre-filled
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
     rememberMeCheckbox.addEventListener('change', function() {
         if (!this.checked) {
             // If unchecking remember me, remove stored username
-            localStorage.removeItem('contract_crown_last_username');
+            localStorage.removeItem('auth_last_username');
         }
     });
 });

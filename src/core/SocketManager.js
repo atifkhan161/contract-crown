@@ -4,13 +4,14 @@
  */
 
 export class SocketManager {
-    constructor() {
+    constructor(authManager = null) {
         this.socket = null;
         this.eventListeners = new Map();
         this.isConnected = false;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 1000;
+        this.authManager = authManager;
     }
 
     /**
@@ -19,8 +20,8 @@ export class SocketManager {
     async connect() {
         return new Promise((resolve, reject) => {
             try {
-                // Get auth token
-                const token = localStorage.getItem('authToken');
+                // Get auth token from AuthManager
+                const token = this.authManager ? this.authManager.getToken() : null;
                 if (!token) {
                     throw new Error('No authentication token found');
                 }

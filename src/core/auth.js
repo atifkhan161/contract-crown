@@ -6,11 +6,11 @@
 class AuthManager {
     constructor() {
         this.baseURL = this.getBaseURL();
-        this.tokenKey = 'contract_crown_token';
-        this.userKey = 'contract_crown_user';
-        this.refreshTokenKey = 'contract_crown_refresh_token';
-        this.sessionKey = 'contract_crown_session';
-        this.rememberMeKey = 'contract_crown_remember_me';
+        this.tokenKey = 'auth_token';
+        this.userKey = 'auth_user';
+        this.refreshTokenKey = 'auth_refresh_token';
+        this.sessionKey = 'auth_session';
+        this.rememberMeKey = 'auth_remember_me';
         
         // Authentication state
         this.isAuthenticating = false;
@@ -176,15 +176,7 @@ class AuthManager {
             return false;
         }
 
-        // Handle placeholder token during development
-        if (token === 'placeholder_jwt_token') {
-            console.log('[AuthManager] Placeholder token detected');
-            // Check if we have user data stored
-            const userData = localStorage.getItem(this.userKey) || sessionStorage.getItem(this.userKey);
-            const isAuth = userData !== null;
-            console.log('[AuthManager] Placeholder token auth result:', isAuth, 'userData:', !!userData);
-            return isAuth;
-        }
+
 
         // Check if token is expired (for real JWT tokens)
         try {
@@ -201,18 +193,8 @@ class AuthManager {
             console.log('[AuthManager] Valid JWT token');
             return true;
         } catch (error) {
-            // Invalid token format - could be placeholder or malformed
+            // Invalid token format - clear session
             console.warn('[AuthManager] Invalid token format:', error.message);
-            
-            // For development, if we have user data, consider authenticated
-            const userData = localStorage.getItem(this.userKey) || sessionStorage.getItem(this.userKey);
-            if (userData) {
-                console.log('[AuthManager] Invalid token but user data exists, considering authenticated');
-                return true;
-            }
-            
-            // Clear invalid session
-            console.log('[AuthManager] Clearing invalid session');
             this.clearSession();
             return false;
         }
@@ -365,11 +347,7 @@ class AuthManager {
             return;
         }
 
-        // Skip token refresh for placeholder token
-        if (token === 'placeholder_jwt_token') {
-            console.log('Skipping token refresh for placeholder token');
-            return;
-        }
+
 
         try {
             const payload = this.parseJWT(token);
@@ -402,12 +380,7 @@ class AuthManager {
             return false;
         }
 
-        // Skip refresh for placeholder tokens during development
-        const currentToken = this.getToken();
-        if (currentToken === 'placeholder_jwt_token') {
-            console.log('Skipping token refresh for placeholder token');
-            return true; // Consider it successful for development
-        }
+
 
         try {
             const response = await fetch(`${this.baseURL}/auth/refresh`, {
@@ -519,12 +492,7 @@ class AuthManager {
             return false;
         }
 
-        // Skip server validation for placeholder token during development
-        if (token === 'placeholder_jwt_token') {
-            // Just check if we have user data
-            const userData = localStorage.getItem(this.userKey) || sessionStorage.getItem(this.userKey);
-            return userData !== null;
-        }
+
 
         try {
             const response = await fetch(`${this.baseURL}/auth/validate`, {

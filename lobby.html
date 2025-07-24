@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waiting Lobby - Contract Crown</title>
+    <meta name="description" content="Contract Crown game lobby - waiting for players to join">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    
+    <!-- Apple PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Contract Crown">
+    
+    <link rel="stylesheet" href="src/styles/theme.css">
+    <link rel="stylesheet" href="src/styles/main.css">
+    <link rel="stylesheet" href="src/styles/lobby.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="lobby-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <button id="leave-room-btn" class="btn btn-secondary btn-sm">
+                        <span class="btn-icon">←</span>
+                        Leave Room
+                    </button>
+                </div>
+                <div class="header-center">
+                    <h1 class="room-title">Waiting Lobby</h1>
+                    <div class="game-code-display">
+                        <span class="game-code-label">Game Code:</span>
+                        <span id="game-code" class="game-code">------</span>
+                        <button id="copy-code-btn" class="copy-btn" title="Copy game code">
+                            <span class="copy-icon">📋</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div id="connection-status" class="connection-status">
+                        <span class="status-indicator" id="status-indicator"></span>
+                        <span class="status-text" id="status-text">Connecting...</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Lobby Content -->
+        <main class="lobby-main">
+            <div class="lobby-container">
+                <!-- Player Slots Section -->
+                <section class="players-section">
+                    <div class="section-header">
+                        <h2>Players</h2>
+                        <div class="players-count">
+                            <span id="current-players">0</span>/<span id="max-players">4</span>
+                        </div>
+                    </div>
+                    
+                    <div class="players-grid">
+                        <!-- Player Slot 1 -->
+                        <div class="player-slot" id="player-slot-1" data-position="1">
+                            <div class="player-avatar">
+                                <div class="avatar-placeholder">1</div>
+                            </div>
+                            <div class="player-info">
+                                <div class="player-name">Waiting for player...</div>
+                                <div class="player-status">
+                                    <span class="status-indicator"></span>
+                                    <span class="status-text">Not Ready</span>
+                                </div>
+                            </div>
+                            <div class="player-badges">
+                                <span class="host-badge hidden">Host</span>
+                                <span class="ready-badge hidden">Ready</span>
+                            </div>
+                        </div>
+
+                        <!-- Player Slot 2 -->
+                        <div class="player-slot" id="player-slot-2" data-position="2">
+                            <div class="player-avatar">
+                                <div class="avatar-placeholder">2</div>
+                            </div>
+                            <div class="player-info">
+                                <div class="player-name">Waiting for player...</div>
+                                <div class="player-status">
+                                    <span class="status-indicator"></span>
+                                    <span class="status-text">Not Ready</span>
+                                </div>
+                            </div>
+                            <div class="player-badges">
+                                <span class="host-badge hidden">Host</span>
+                                <span class="ready-badge hidden">Ready</span>
+                            </div>
+                        </div>
+
+                        <!-- Player Slot 3 -->
+                        <div class="player-slot" id="player-slot-3" data-position="3">
+                            <div class="player-avatar">
+                                <div class="avatar-placeholder">3</div>
+                            </div>
+                            <div class="player-info">
+                                <div class="player-name">Waiting for player...</div>
+                                <div class="player-status">
+                                    <span class="status-indicator"></span>
+                                    <span class="status-text">Not Ready</span>
+                                </div>
+                            </div>
+                            <div class="player-badges">
+                                <span class="host-badge hidden">Host</span>
+                                <span class="ready-badge hidden">Ready</span>
+                            </div>
+                        </div>
+
+                        <!-- Player Slot 4 -->
+                        <div class="player-slot" id="player-slot-4" data-position="4">
+                            <div class="player-avatar">
+                                <div class="avatar-placeholder">4</div>
+                            </div>
+                            <div class="player-info">
+                                <div class="player-name">Waiting for player...</div>
+                                <div class="player-status">
+                                    <span class="status-indicator"></span>
+                                    <span class="status-text">Not Ready</span>
+                                </div>
+                            </div>
+                            <div class="player-badges">
+                                <span class="host-badge hidden">Host</span>
+                                <span class="ready-badge hidden">Ready</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Team Formation Section -->
+                <section class="teams-section">
+                    <div class="section-header">
+                        <h2>Team Formation</h2>
+                        <button id="shuffle-teams-btn" class="btn btn-secondary btn-sm hidden">
+                            <span class="btn-icon">🔀</span>
+                            Shuffle Teams
+                        </button>
+                    </div>
+                    
+                    <div class="teams-grid">
+                        <div class="team-card" id="team-1">
+                            <div class="team-header">
+                                <h3>Team 1</h3>
+                                <div class="team-color team-color-blue"></div>
+                            </div>
+                            <div class="team-players">
+                                <div class="team-player-slot empty">
+                                    <span class="slot-text">Waiting...</span>
+                                </div>
+                                <div class="team-player-slot empty">
+                                    <span class="slot-text">Waiting...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="team-card" id="team-2">
+                            <div class="team-header">
+                                <h3>Team 2</h3>
+                                <div class="team-color team-color-red"></div>
+                            </div>
+                            <div class="team-players">
+                                <div class="team-player-slot empty">
+                                    <span class="slot-text">Waiting...</span>
+                                </div>
+                                <div class="team-player-slot empty">
+                                    <span class="slot-text">Waiting...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Game Controls Section -->
+                <section class="controls-section">
+                    <div class="ready-controls">
+                        <button id="ready-toggle-btn" class="btn btn-primary btn-lg" disabled>
+                            <span class="btn-text">Ready Up</span>
+                        </button>
+                        <div class="ready-status">
+                            <span id="ready-count">0</span> of <span id="total-players">4</span> players ready
+                        </div>
+                    </div>
+
+                    <div class="host-controls hidden" id="host-controls">
+                        <button id="start-game-btn" class="btn btn-primary btn-lg" disabled>
+                            <span class="btn-text">Start Game</span>
+                            <span id="start-spinner" class="spinner hidden"></span>
+                        </button>
+                        <div class="host-info">
+                            <span class="host-text">You are the host</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Game Messages -->
+                <section class="messages-section">
+                    <div id="game-messages" class="game-messages">
+                        <!-- Messages will be populated dynamically -->
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p id="loading-text">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Error Modal -->
+        <div id="error-modal" class="modal hidden">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Error</h3>
+                    <button id="close-error-btn" class="modal-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p id="error-message">An error occurred.</p>
+                </div>
+                <div class="modal-footer">
+                    <button id="error-ok-btn" class="btn btn-primary">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="src/core/auth.js"></script>
+    <script type="module" src="src/pages/lobby.js"></script>
+</body>
+</html>

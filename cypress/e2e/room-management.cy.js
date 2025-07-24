@@ -15,8 +15,8 @@ describe('Room Management', () => {
     
     // Mock authentication
     cy.window().then((win) => {
-      win.localStorage.setItem('contract_crown_token', 'mock-jwt-token');
-      win.localStorage.setItem('contract_crown_user', JSON.stringify(testUser));
+      win.localStorage.setItem('auth_token', 'mock-jwt-token');
+      win.localStorage.setItem('auth_user', JSON.stringify(testUser));
     });
     
     // Visit dashboard
