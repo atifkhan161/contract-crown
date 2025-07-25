@@ -26,12 +26,19 @@ export class SocketManager {
                     throw new Error('No authentication token found');
                 }
 
-                // Initialize socket connection
+                // Initialize socket connection with better configuration
                 this.socket = io({
                     auth: {
                         token: token
                     },
-                    transports: ['websocket', 'polling']
+                    transports: ['websocket', 'polling'],
+                    timeout: 20000,
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000,
+                    reconnectionDelayMax: 5000,
+                    maxReconnectionAttempts: 5,
+                    forceNew: false
                 });
 
                 // Connection event handlers
@@ -54,6 +61,13 @@ export class SocketManager {
                     }
                 });
 
+                this.socket.on('reconnect', () => {
+                    console.log('Socket reconnected');
+                    this.isConnected = true;
+                    this.reconnectAttempts = 0;
+                    this.emit('reconnect');
+                });
+
                 this.socket.on('connect_error', (error) => {
                     console.error('Socket connection error:', error);
                     this.isConnected = false;
@@ -70,8 +84,9 @@ export class SocketManager {
                 this.socket.on('auth_error', (error) => {
                     console.error('Socket authentication error:', error);
                     this.disconnect();
-                    // Redirect to login if auth fails
-                    window.location.href = 'login.html';
+                    // Don't immediately redirect - let the page handle this
+                    // The dashboard can still work without WebSocket
+                    this.emit('auth_error', error);
                 });
 
                 // Set up event forwarding
@@ -121,22 +136,38 @@ export class SocketManager {
      */
     setupEventForwarding() {
         // Room events
-        this.socket.on('roomsUpdated', (data) => this.emit('roomsUpdated', data));
-        this.socket.on('roomCreated', (data) => this.emit('roomCreated', data));
+        this.socket.on('roomsUpdated', (data) => {
+            console.log('[SocketManager] roomsUpdated event received:', data);
+            this.emit('roomsUpdated', data);
+        });
+        this.socket.on('roomCreated', (data) => {
+            console.log('[SocketManager] roomCreated event received:', data);
+            this.emit('roomCreated', data);
+        });
         this.socket.on('roomJoined', (data) => this.emit('roomJoined', data));
         this.socket.on('roomLeft', (data) => this.emit('roomLeft', data));
-        this.socket.on('roomDeleted', (data) => this.emit('roomDeleted', data));
+        this.socket.on('roomDeleted', (data) => {
+            console.log('[SocketManager] roomDeleted event received:', data);
+            this.emit('roomDeleted', data);
+        });
         this.socket.on('roomError', (data) => this.emit('roomError', data));
         
-        // Player events
-        this.socket.on('playerJoined', (data) => this.emit('playerJoined', data));
-        this.socket.on('playerLeft', (data) => this.emit('playerLeft', data));
-        this.socket.on('playerReadyStatusChanged', (data) => this.emit('playerReadyStatusChanged', data));
-        this.socket.on('teamsFormed', (data) => this.emit('teamsFormed', data));
+        // Player events - Real-time lobby updates
+        this.socket.on('player-joined', (data) => this.emit('playerJoined', data));
+        this.socket.on('player-left', (data) => this.emit('playerLeft', data));
+        this.socket.on('player-ready-changed', (data) => this.emit('playerReadyStatusChanged', data));
+        this.socket.on('player-disconnected', (data) => this.emit('playerDisconnected', data));
+        this.socket.on('player-removed', (data) => this.emit('playerRemoved', data));
+        
+        // Room events
+        this.socket.on('room-joined', (data) => this.emit('roomJoined', data));
+        
+        // Team events
+        this.socket.on('teams-formed', (data) => this.emit('teamsFormed', data));
         
         // Game events
         this.socket.on('gameStarted', (data) => this.emit('gameStarted', data));
-        this.socket.on('gameStarting', (data) => this.emit('gameStarting', data));
+        this.socket.on('game-starting', (data) => this.emit('gameStarting', data));
         this.socket.on('gameEnded', (data) => this.emit('gameEnded', data));
         this.socket.on('gameStateUpdated', (data) => this.emit('gameStateUpdated', data));
         this.socket.on('roomUpdated', (data) => this.emit('roomUpdated', data));
@@ -149,6 +180,16 @@ export class SocketManager {
         
         // Error events
         this.socket.on('error', (data) => this.emit('error', data));
+        
+        // Connection events
+        this.socket.on('connection-confirmed', (data) => this.emit('connectionConfirmed', data));
+        this.socket.on('connection-status', (data) => this.emit('connectionStatus', data));
+        
+        // Heartbeat events
+        this.socket.on('pong', (data) => {
+            console.log('[SocketManager] Received pong:', data);
+            this.emit('pong', data);
+        });
     }
 
     /**

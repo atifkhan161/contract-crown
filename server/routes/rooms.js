@@ -61,7 +61,13 @@ router.post('/', auth, async (req, res) => {
         });
 
         // Emit room created event to all clients
+        console.log('[Rooms API] Emitting roomCreated event:', room.toApiResponse());
         req.io.emit('roomCreated', room.toApiResponse());
+        
+        // Also emit updated rooms list
+        const allRooms = await Room.findAll(['waiting', 'playing']);
+        console.log('[Rooms API] Emitting roomsUpdated event with', allRooms.length, 'rooms');
+        req.io.emit('roomsUpdated', allRooms.map(r => r.toApiResponse()));
 
         res.status(201).json({
             success: true,

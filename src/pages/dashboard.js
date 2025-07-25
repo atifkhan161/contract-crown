@@ -10,7 +10,7 @@ class DashboardManager {
     constructor() {
         this.authManager = new window.AuthManager();
         this.socketManager = new SocketManager(this.authManager);
-        this.roomManager = new RoomManager();
+        this.roomManager = new RoomManager(this.authManager);
         
         this.elements = {};
         this.currentUser = null;
@@ -94,13 +94,30 @@ class DashboardManager {
         this.socketManager.on('reconnecting', () => this.updateConnectionStatus('connecting'));
         
         // Room updates
-        this.socketManager.on('roomsUpdated', (rooms) => this.updateRoomsList(rooms));
-        this.socketManager.on('roomCreated', (room) => this.handleRoomCreated(room));
+        this.socketManager.on('roomsUpdated', (rooms) => {
+            console.log('[Dashboard] Rooms updated via WebSocket:', rooms);
+            this.updateRoomsList(rooms);
+        });
+        this.socketManager.on('roomCreated', (room) => {
+            console.log('[Dashboard] Room created via WebSocket:', room);
+            this.handleRoomCreated(room);
+        });
         this.socketManager.on('roomJoined', (roomData) => this.handleRoomJoined(roomData));
         this.socketManager.on('roomError', (error) => this.handleRoomError(error));
+        this.socketManager.on('roomDeleted', (data) => {
+            console.log('[Dashboard] Room deleted via WebSocket:', data);
+            this.handleRoomDeleted(data);
+        });
         
         // User stats updates
         this.socketManager.on('userStatsUpdated', (stats) => this.updateUserStats(stats));
+        
+        // Handle WebSocket authentication errors gracefully
+        this.socketManager.on('auth_error', (error) => {
+            console.warn('[Dashboard] WebSocket authentication failed:', error);
+            this.updateConnectionStatus('disconnected');
+            // Don't redirect immediately - the dashboard can work without WebSocket
+        });
     }
 
     async initialize() {
@@ -135,17 +152,27 @@ class DashboardManager {
                 console.error('[Dashboard] Missing user data or username display element');
             }
             
-            // Set up authentication state monitoring
-            this.authManager.onAuthStateChange((authState) => {
-                if (!authState.isAuthenticated) {
-                    // User session expired or was logged out
-                    alert('Your session has expired. Please log in again.');
-                    window.location.href = 'login.html';
-                }
-            });
+            // Set up minimal authentication state monitoring
+            // Only listen for explicit logout events, not automatic session validation
+            if (typeof this.authManager.onAuthStateChange === 'function') {
+                this.authManager.onAuthStateChange((authState) => {
+                    console.log('[Dashboard] Auth state changed:', authState);
+                    // Only redirect if we're sure the user was logged out (not just a validation failure)
+                    if (!authState.isAuthenticated && !this.authManager.getToken()) {
+                        console.log('[Dashboard] User logged out, redirecting to login');
+                        window.location.href = 'login.html';
+                    }
+                });
+            }
 
-            // Initialize socket connection
-            await this.socketManager.connect();
+            // Initialize socket connection (non-blocking)
+            try {
+                await this.socketManager.connect();
+                console.log('[Dashboard] WebSocket connected successfully');
+            } catch (error) {
+                console.warn('[Dashboard] WebSocket connection failed, continuing without real-time updates:', error);
+                this.updateConnectionStatus('disconnected');
+            }
             
             // Load initial data
             await this.loadDashboardData();
@@ -234,7 +261,7 @@ class DashboardManager {
     createRoomHTML(room) {
         const isWaiting = room.status === 'waiting';
         const canJoin = isWaiting && room.players.length < room.maxPlayers;
-        const isOwner = room.owner === this.currentUser.id;
+        const isOwner = room.owner === (this.currentUser.user_id || this.currentUser.id);
         
         return `
             <div class="room-item" data-room-id="${room.id}">
@@ -324,12 +351,17 @@ class DashboardManager {
             this.setCreateRoomLoading(true);
             this.clearFormError();
             
-            await this.roomManager.createRoom(roomData);
+            const createdRoom = await this.roomManager.createRoom(roomData);
+            
+            // Handle successful room creation
+            this.hideCreateRoomModal();
+            
+            // Immediately redirect to lobby
+            window.location.href = `lobby.html?room=${createdRoom.id}`;
             
         } catch (error) {
             console.error('Create room error:', error);
             this.showFormError(error.message || 'Failed to create room');
-        } finally {
             this.setCreateRoomLoading(false);
         }
     }
@@ -368,7 +400,17 @@ class DashboardManager {
 
     handleRoomCreated(room) {
         this.hideCreateRoomModal();
-        // Room will be added to list via roomsUpdated event
+        
+        // Add the new room to the list immediately for better UX
+        this.rooms.push(room);
+        this.updateRoomsList(this.rooms);
+        
+        // Auto-redirect to lobby if user created the room
+        if (room.owner === (this.currentUser.user_id || this.currentUser.id)) {
+            setTimeout(() => {
+                window.location.href = `lobby.html?room=${room.id}`;
+            }, 500);
+        }
     }
 
     handleRoomJoined(roomData) {
@@ -378,6 +420,12 @@ class DashboardManager {
 
     handleRoomError(error) {
         this.showError(error.message || 'Room operation failed');
+    }
+
+    handleRoomDeleted(data) {
+        // Remove the deleted room from the list
+        this.rooms = this.rooms.filter(room => room.id !== data.roomId);
+        this.updateRoomsList(this.rooms);
     }
 
     handleLogout() {

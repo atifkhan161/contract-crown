@@ -156,21 +156,32 @@ socket.emit('play-card', {
 
 ## Authentication
 
-WebSocket connections require JWT authentication:
+WebSocket connections require JWT authentication with enhanced support for both production and development environments:
 
 ```javascript
-// Token should contain:
+// Production JWT token should contain:
 {
   userId: 'unique-user-id',
   username: 'player-name',
   email: 'user@example.com',
   exp: 1234567890  // Expiration timestamp
 }
+
+// Development test tokens are also supported for easier testing
 ```
 
 ### Token Verification
 
-Tokens are verified using the `JWT_SECRET` environment variable. Invalid or expired tokens will result in connection rejection.
+The authentication system provides flexible token verification:
+
+- **Production JWT Tokens**: Verified using the `JWT_SECRET` environment variable with full cryptographic validation
+- **Development Test Tokens**: Supported in development mode (`NODE_ENV=development`) or when `ALLOW_TEST_TOKENS=true`
+- **Multi-source Token Extraction**: Tokens can be provided via:
+  - `auth.token` object (preferred method)
+  - `Authorization: Bearer <token>` header
+  - `token` query parameter (fallback)
+- **Comprehensive Error Handling**: Invalid or expired tokens result in connection rejection with detailed error codes
+- **Graceful Fallback**: Authentication failures don't crash the application, allowing HTTP API fallback
 
 ## Room Management
 

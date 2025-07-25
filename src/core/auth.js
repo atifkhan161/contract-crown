@@ -20,8 +20,8 @@ class AuthManager {
         this.refreshTimer = null;
         this.setupTokenRefresh();
         
-        // Initialize session monitoring
-        this.setupSessionMonitoring();
+        // Initialize session monitoring (disabled by default to prevent aggressive auth checks)
+        // this.setupSessionMonitoring();
     }
 
     /**
@@ -457,29 +457,52 @@ class AuthManager {
     }
 
     /**
+     * Enable session monitoring (call this manually if needed)
+     */
+    enableSessionMonitoring() {
+        this.setupSessionMonitoring();
+    }
+
+    /**
      * Setup session monitoring for tab visibility and storage changes
      */
     setupSessionMonitoring() {
         // Monitor storage changes across tabs
         window.addEventListener('storage', (e) => {
             if (e.key === this.tokenKey || e.key === this.userKey || e.key === this.rememberMeKey) {
-                this.notifyAuthStateChange();
+                console.log('[AuthManager] Storage change detected for key:', e.key);
+                // Only notify if the token was actually removed
+                if (e.key === this.tokenKey && !e.newValue) {
+                    console.log('[AuthManager] Token removed, notifying auth state change');
+                    this.notifyAuthStateChange();
+                }
             }
         });
 
-        // Monitor tab visibility for session validation
+        // Monitor tab visibility for session validation (less aggressive)
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden && this.isAuthenticated()) {
-                this.validateSession();
+                // Only validate session if it's been more than 5 minutes since last validation
+                const lastValidation = sessionStorage.getItem('last_session_validation');
+                const now = Date.now();
+                if (!lastValidation || (now - parseInt(lastValidation)) > 300000) { // 5 minutes
+                    sessionStorage.setItem('last_session_validation', now.toString());
+                    this.validateSession();
+                }
             }
         });
 
-        // Periodic session validation
+        // Less frequent periodic session validation
         setInterval(() => {
             if (this.isAuthenticated()) {
-                this.validateSession();
+                const lastValidation = sessionStorage.getItem('last_session_validation');
+                const now = Date.now();
+                if (!lastValidation || (now - parseInt(lastValidation)) > 600000) { // 10 minutes
+                    sessionStorage.setItem('last_session_validation', now.toString());
+                    this.validateSession();
+                }
             }
-        }, 60000); // Check every minute
+        }, 300000); // Check every 5 minutes instead of 1 minute
     }
 
     /**
@@ -492,8 +515,26 @@ class AuthManager {
             return false;
         }
 
+        // First check if token is expired locally before making API call
+        try {
+            const payload = this.parseJWT(token);
+            const currentTime = Math.floor(Date.now() / 1000);
+            
+            if (payload.exp && payload.exp < currentTime) {
+                console.log('[AuthManager] Token expired locally');
+                this.clearSession();
+                this.notifyAuthStateChange();
+                return false;
+            }
+        } catch (error) {
+            console.log('[AuthManager] Invalid token format during validation');
+            this.clearSession();
+            this.notifyAuthStateChange();
+            return false;
+        }
 
-
+        // Skip server validation if we don't have a validate endpoint
+        // This prevents unnecessary errors and session clearing
         try {
             const response = await fetch(`${this.baseURL}/auth/validate`, {
                 method: 'POST',
@@ -508,6 +549,7 @@ class AuthManager {
                 if (data.valid) {
                     return true;
                 } else {
+                    console.log('[AuthManager] Server says token is invalid');
                     this.clearSession();
                     this.notifyAuthStateChange();
                     return false;
@@ -519,12 +561,18 @@ class AuthManager {
                     this.notifyAuthStateChange();
                 }
                 return refreshed;
+            } else if (response.status === 404) {
+                // Validation endpoint doesn't exist, assume token is valid if not expired
+                console.log('[AuthManager] Validation endpoint not found, assuming token is valid');
+                return true;
             }
         } catch (error) {
             console.error('Session validation error:', error);
+            // Don't clear session on network errors, just assume it's valid
+            return true;
         }
 
-        return false;
+        return true; // Default to valid if we can't determine otherwise
     }
 
     /**

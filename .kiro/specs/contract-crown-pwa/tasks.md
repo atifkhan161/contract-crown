@@ -256,14 +256,22 @@
   - Add WebSocket authentication and authorization
   - _Requirements: 3.5, 11.1, 11.2_
 
-- [ ] 5.4 Implement real-time lobby updates
+- [x] 5.4 Implement real-time lobby updates
+
+
+
+
+
   - Create WebSocket events for player joining/leaving
   - Add real-time ready status synchronization
   - Implement team formation broadcasting
   - Add game start coordination between all players
   - _Requirements: 3.5, 11.4, 11.5_
 
-- [ ] 5.5 Write Cypress tests for lobby functionality
+- [-] 5.5 Write Cypress tests for lobby functionality
+
+
+
   - Test player joining and leaving lobby
   - Test ready status changes and synchronization
   - Test team formation and host controls

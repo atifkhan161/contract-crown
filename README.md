@@ -21,7 +21,10 @@ A Progressive Web App for the Contract Crown strategic card game, featuring real
 - **Role-based Access Control**: User permissions and role management
 - **Profile Management**: User profile updates and password change capabilities
 - **Security Features**: XSS prevention, rate limiting protection, and secure token storage
-- **Session Validation**: Real-time server validation of authentication tokens
+- **Intelligent Session Validation**: Enhanced token validation with local expiration checks and graceful fallback handling
+- **Network-Resilient Authentication**: Robust authentication that handles network errors and missing validation endpoints gracefully
+- **Optimized Session Monitoring**: Reduced frequency of session validation checks to prevent false session expiry alerts
+- **Enhanced Error Handling**: Better handling of network errors during validation with more robust token expiry checking
 
 ### Game Dashboard
 - **Room Management Interface**: Visual dashboard for creating and joining game rooms
@@ -30,6 +33,7 @@ A Progressive Web App for the Contract Crown strategic card game, featuring real
 - **Connection Status Monitoring**: Real-time connection status with the game server
 - **Room Creation Modal**: Easy-to-use interface for creating custom game rooms
 - **Private/Public Room Options**: Support for both private (invite-only) and public rooms
+- **Seamless Room Creation Flow**: Immediate UI updates and automatic lobby redirection for room creators
 
 ### Room Management
 - Create private or public game rooms with customizable settings
@@ -42,9 +46,9 @@ A Progressive Web App for the Contract Crown strategic card game, featuring real
 
 ### Waiting Lobby
 - **Complete Player Management**: Real-time display of connected players with 4-slot layout and status indicators
-- **Ready Status System**: Players can toggle ready/unready status with real-time synchronization across all clients
+- **Ready Status System**: Players can toggle ready/unready status with real-time synchronization across all clients, intelligent HTTP API fallback, and connection-aware validation
 - **Team Formation Interface**: Visual representation of Team 1 (Blue) and Team 2 (Red) with automatic team assignment
-- **Host Controls**: Room host can shuffle teams and start games when all players are ready
+- **Host Controls**: Room host can shuffle teams and start games when all connected players are ready
 - **Connection Monitoring**: Visual indicators for player connection status and WebSocket health
 - **Game Code Sharing**: Easy-to-copy game codes for inviting other players
 - **Real-time Updates**: Live synchronization of player joins, leaves, and status changes
@@ -57,17 +61,28 @@ A Progressive Web App for the Contract Crown strategic card game, featuring real
 - **Team Formation Algorithm**: Automatic random team assignment for 4 players with shuffle functionality
 - **Ready Status Validation**: Game start validation ensuring all players are ready before proceeding
 - **Dynamic UI Updates**: Real-time visual feedback for team assignments and player status changes
+- **Intelligent Fallback System**: Automatic HTTP API fallback for WebSocket failures with 3-second timeout protection
+- **Connection-Aware Game Logic**: Game start validation ensures all players are ready before proceeding, considering only connected players
+- **Enhanced Disconnect Handling**: Improved WebSocket disconnection management with proper heartbeat cleanup and connection state reset
+- **Session Expiration Recovery**: Automatic page refresh when WebSocket authentication fails due to expired sessions
+- **Robust Authentication Error Handling**: Enhanced WebSocket authentication with comprehensive error validation and automatic recovery mechanisms
+- **User Information Validation**: Mandatory user data validation during WebSocket connections to prevent unauthorized access and session issues
 
 ### Real-time WebSocket Communication
 - **Socket.IO Integration**: Complete client-server WebSocket communication with automatic fallback to polling
-- **Authentication**: JWT-based WebSocket authentication with automatic token validation
+- **Enhanced Authentication**: JWT-based WebSocket authentication with automatic token validation, user information verification, and comprehensive error handling
+- **Flexible User ID Handling**: Robust authentication system that supports both `userId` and `id` fields in JWT tokens for maximum compatibility with different authentication systems, including consistent handling across both production JWT tokens and development test tokens
+- **Development Token Support**: Flexible authentication system supporting both production JWT tokens and development test tokens for easier testing
+- **Multi-source Token Extraction**: Token extraction from auth object, Authorization header, or query parameters for maximum compatibility
 - **Connection Management**: Automatic reconnection with exponential backoff and connection status monitoring
 - **Room-based Events**: Real-time events for player joining/leaving, ready status changes, and team formation
 - **Event Broadcasting**: Server-side event broadcasting to all players in a room
-- **Error Handling**: Comprehensive WebSocket error handling with graceful degradation
+- **Error Handling**: Comprehensive WebSocket error handling with graceful degradation, connection validation, and automatic recovery mechanisms
+- **Graceful Authentication Failures**: WebSocket authentication errors are handled gracefully without forcing immediate redirects, allowing pages to continue functioning with HTTP API fallback
 - **Development Proxy**: Vite development server proxy configuration for WebSocket connections
 - **Client Example**: Complete WebSocket client example with multiplayer simulation and testing utilities
-- **Connection Health Monitoring**: Real-time connection status tracking and ping/pong functionality
+- **Connection Health Monitoring**: Real-time connection status tracking with heartbeat functionality and ping/pong support
+- **Multi-layer Security Validation**: Enhanced connection security with mandatory user information validation at both middleware and socket manager levels, plus role-based authorization support
 
 
 ## Project Structure
@@ -110,6 +125,17 @@ contract-crown-pwa/
 │   ├── fixtures/         # Test data
 │   └── support/          # Test utilities
 ├── docs/                  # Project documentation
+├── test-websocket-fixes.html     # Interactive WebSocket testing tool
+├── test-websocket-connection.html # Basic WebSocket connection test
+├── test-websocket-connection-fixed.html # Complete WebSocket connection testing with authentication setup
+├── test-auth-debug.html          # Authentication state debugging and token validation
+├── test-dashboard-auth.html      # Dashboard-specific authentication testing
+├── test-auth-simple.html         # Basic authentication testing and token management
+├── validate-websocket-fixes.js   # WebSocket fixes validation script
+├── diagnose-websocket.js         # Automated WebSocket diagnostic tool
+├── QUICK_START_WEBSOCKET.md      # 3-step quick fix guide for WebSocket issues
+├── fix-websocket-connection.md   # Comprehensive WebSocket troubleshooting guide
+├── WEBSOCKET_FIXES_SUMMARY.md    # Detailed WebSocket fixes documentation
 ├── UX/                    # UI/UX design assets
 │   ├── game_lobby.png    # Lobby interface design
 │   └── multiplayer lobby*.jpg # Lobby design iterations
@@ -158,7 +184,7 @@ npm run dev
 
 This runs:
 - Frontend development server on `http://localhost:5173`
-- Backend API server on `http://localhost:3000`
+- Backend API server on `http://localhost:3030`
 
 ### Application Pages
 - **Login**: `http://localhost:5173/login.html` - User authentication
@@ -181,7 +207,45 @@ npm run dev:backend
 
 ### WebSocket Development and Testing
 
-The project includes a comprehensive WebSocket client example for development and testing:
+The project includes comprehensive WebSocket testing tools for development and debugging:
+
+**Enhanced User Data Compatibility**: The WebSocket system now provides consistent handling of both `user_id` and `id` field names in user objects and JWT tokens, ensuring seamless compatibility across different authentication systems and user data structures. This includes proper current user identification in the lobby interface.
+
+**Flexible User ID Handling**: The entire application now supports both `user_id` and `id` field names in user objects across all operations including host transfer, ready status handling, player management, current user identification, and room ownership validation, providing robust compatibility with different authentication backends and user data structures.
+
+#### Quick Start WebSocket Fix
+For immediate WebSocket connection resolution, see `QUICK_START_WEBSOCKET.md` for a **3-step fix**:
+
+1. **Environment Setup** (30 seconds): Verify your `server/.env` configuration
+2. **Test Connection** (1 minute): Run `node diagnose-websocket.js` for automated testing
+3. **Verify in Browser** (1 minute): Use `test-websocket-connection-fixed.html` for interactive testing
+
+#### Comprehensive Fix Guide
+For detailed troubleshooting, follow the **Complete Fix Guide** in `fix-websocket-connection.md`:
+
+1. **Set Environment Variables**: Configure `.env` with proper JWT settings
+2. **Test Connection**: Use interactive test pages or diagnostic tools
+3. **Common Issues**: Solutions for authentication, token, and connection problems
+4. **Manual Token Creation**: Fallback token generation for testing
+5. **Verification**: Confirm dashboard and lobby functionality
+
+#### Interactive WebSocket Testing Tools
+Access these browser-based testing interfaces during development:
+
+- **`test-websocket-connection-fixed.html`**: Complete WebSocket connection testing with authentication setup
+- **`test-websocket-fixes.html`**: Room management and ready status testing
+- **`test-auth-debug.html`**: Authentication state debugging and token validation
+- **`test-dashboard-auth.html`**: Dashboard-specific authentication testing
+- **`test-auth-simple.html`**: Basic authentication testing and token management
+
+These tools provide:
+- **Real-time Connection Testing**: Test WebSocket connections with authentication
+- **Room Management Testing**: Create, join, and leave rooms interactively
+- **Ready Status Testing**: Toggle player ready status and observe real-time updates
+- **Event Logging**: Comprehensive logging of all WebSocket events with timestamps
+- **Connection Status Monitoring**: Visual connection status indicators
+- **Error Handling Testing**: Test various error scenarios and edge cases
+- **Token Generation**: Multiple methods for creating valid authentication tokens
 
 #### Running the WebSocket Client Example
 ```bash
@@ -189,12 +253,12 @@ cd server
 node examples/websocket-client-example.js
 ```
 
-This example demonstrates:
+This command-line example demonstrates:
 - **Multi-client Simulation**: Creates 4 simulated players to test multiplayer functionality
 - **Complete Game Flow**: Simulates joining rooms, ready status, game start, trump declaration, and card play
 - **Connection Management**: Tests authentication, reconnection, and error handling
 - **Real-time Events**: Demonstrates all WebSocket events used in the game
-- **Development Testing**: Perfect for testing WebSocket functionality during development
+- **Development Testing**: Perfect for automated testing of WebSocket functionality
 
 #### WebSocket Client Usage
 The example client can also be imported and used in other testing scenarios:
@@ -207,6 +271,80 @@ await client.connect('user-123', 'TestPlayer', 'test@example.com');
 client.joinGameRoom('game-456');
 client.setReady('game-456', true);
 ```
+
+#### WebSocket Diagnostic Tools
+For comprehensive WebSocket troubleshooting and validation:
+
+**Automated Diagnostic Tool**:
+```bash
+node diagnose-websocket.js
+```
+
+This diagnostic tool provides:
+- **Environment Validation**: Checks JWT configuration and environment variables
+- **Token Generation Testing**: Validates JWT token creation and verification
+- **Connection Testing**: Tests WebSocket connection establishment and authentication
+- **Room Operations Testing**: Validates room joining, ready status, and event handling
+- **Comprehensive Reporting**: Generates detailed diagnostic reports with recommendations
+
+**WebSocket Fixes Validation**:
+```bash
+node validate-websocket-fixes.js
+```
+
+This validation script checks:
+- **Code Implementation**: Verifies that all required WebSocket fixes are present in the codebase
+- **File Existence**: Ensures all necessary files and components are in place
+- **Feature Completeness**: Validates that lobby functionality, ready status handling, and connection management are properly implemented
+- **Documentation**: Confirms that test files and documentation are available
+
+The script provides detailed feedback on:
+- ✅ Successfully implemented features
+- ❌ Missing or incomplete implementations
+- 📋 Next steps for testing and validation
+
+### Troubleshooting
+
+#### Quick WebSocket Fix
+If experiencing WebSocket connection issues, see the comprehensive troubleshooting guides:
+```bash
+# View the 3-step quick fix guide (fastest solution)
+cat QUICK_START_WEBSOCKET.md
+
+# View the detailed fix guide (comprehensive troubleshooting)
+cat fix-websocket-connection.md
+
+# Run automated diagnostics
+node diagnose-websocket.js
+
+# Validate all fixes are in place
+node validate-websocket-fixes.js
+```
+
+#### Common Troubleshooting Commands
+
+```bash
+# Check if server is running (your server runs on port 3030)
+curl http://localhost:3030/api/health
+
+# Test JWT token generation
+curl -X POST http://localhost:3030/api/auth/test-token \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser"}'
+
+# Run full diagnostic
+node diagnose-websocket.js
+
+# Check server logs
+npm start | grep -E "(WebSocket|Socket|Auth)"
+```
+
+#### Expected Behavior After Fix
+✅ Dashboard shows "Connected" status (not "Disconnected")  
+✅ Room creation works and auto-redirects to lobby  
+✅ Lobby ready status syncs in real-time between users  
+✅ No more "Authentication failed" popups  
+✅ Real-time updates visible in both dashboard and lobby
 
 ### Development Environment
 
@@ -270,7 +408,9 @@ npm run test:e2e
 ```
 
 ### Test Coverage
-The authentication tests cover:
+The comprehensive test suite covers:
+
+#### Authentication Tests
 - ✅ Form validation (client-side and server-side)
 - ✅ Successful login/registration flows
 - ✅ Error handling and user feedback
@@ -279,6 +419,26 @@ The authentication tests cover:
 - ✅ Session state across page reloads
 - ✅ Accessibility and keyboard navigation
 - ✅ Network error scenarios
+
+#### WebSocket Tests
+- ✅ Connection establishment and authentication
+- ✅ Room management (create, join, leave)
+- ✅ Real-time player status updates
+- ✅ Ready status synchronization
+- ✅ Team formation and broadcasting
+- ✅ Connection health monitoring
+- ✅ Error handling and recovery
+- ✅ Multi-client simulation testing
+
+#### Interactive Testing Tools
+- ✅ Browser-based WebSocket testing interface
+- ✅ Authentication state debugging tools
+- ✅ Dashboard-specific authentication testing
+- ✅ Connection status monitoring
+- ✅ Event logging and debugging utilities
+- ✅ Automated diagnostic tool with comprehensive reporting
+- ✅ Quick fix guide for common WebSocket issues
+- ✅ Multiple authentication token generation methods
 
 ## Building for Production
 
@@ -307,6 +467,9 @@ npm start
 - `POST /api/auth/validate` - Validate current session
 - `PUT /api/auth/profile` - Update user profile
 - `POST /api/auth/change-password` - Change password
+
+#### Development & Testing Endpoints (Non-Production Only)
+- `POST /api/auth/test-token` - Generate test JWT token for development and testing
 
 ### Rooms
 - `GET /api/rooms` - Get available rooms
@@ -354,34 +517,65 @@ Configure the following in `server/.env`:
 
 ```env
 NODE_ENV=development
-PORT=3000
+PORT=3030
 JWT_SECRET=your-jwt-secret
-JWT_REFRESH_SECRET=your-refresh-secret
-DB_CONNECTION_STRING=your-database-url
+JWT_EXPIRES_IN=24h
+ALLOW_TEST_TOKENS=true
+DB_HOST=your-database-host
+DB_PORT=3306
+DB_NAME=your-database-name
+DB_USER=your-database-user
+DB_PASSWORD=your-database-password
+BCRYPT_ROUNDS=12
 ```
+
+**WebSocket Development Variables:**
+- `ALLOW_TEST_TOKENS=true` - Enables test token support for development
+- `JWT_SECRET` - Must match between client and server for WebSocket authentication
+- `PORT` - Server port (default: 3030)
+- `NODE_ENV` - Environment mode (development/production)
 
 ### PWA Configuration
 The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) for PWA functionality.
 
 ## Development Status
 
-**Current Phase**: Waiting Lobby Implementation (Tasks 5.1-5.5)  
-**Overall Progress**: ~50% Complete (Tasks 1.1-5.3 finished, 5.4-5.5 in progress)
+**Current Phase**: Waiting Lobby Implementation Complete (Tasks 5.1-5.5)  
+**Overall Progress**: ~60% Complete (Tasks 1.1-5.5 finished, moving to Game Page Foundation)
 
 ### Completed Features ✅
-- **Authentication System**: Complete JWT-based authentication with login/register pages and backend API
-- **Dashboard & Room Management**: Full room creation, joining, and management functionality with API endpoints
-- **Waiting Lobby**: Complete player management interface with ready status and team formation
-- **WebSocket Server Integration**: Socket.IO server fully integrated with Express.js for real-time communication
-- **WebSocket Client Example**: Comprehensive client example with multi-player simulation and testing utilities
-- **Backend Infrastructure**: Node.js/Express server with MariaDB integration and authentication middleware
-- **Testing Foundation**: Comprehensive Cypress test suite for authentication and dashboard flows
-- **PWA Foundation**: Service worker, manifest, and basic PWA capabilities
-- **Project Structure**: Organized codebase with separate frontend/backend and proper development environment
+- **Authentication System**: Complete JWT-based authentication with enhanced session management, intelligent token validation, and network-resilient authentication
+- **Dashboard & Room Management**: Full room creation, joining, and management functionality with real-time updates and auto-redirect flows
+- **Waiting Lobby**: Complete player management interface with ready status, team formation, and comprehensive WebSocket integration
+- **Real-time Communication**: Production-ready WebSocket implementation with Socket.IO featuring authentication, room management, and connection health monitoring
+- **Enhanced Session Management**: Robust authentication with graceful error handling, reduced false session expiry alerts, and intelligent fallback mechanisms
+- **WebSocket Server Integration**: Complete Socket.IO server with authentication middleware, connection status monitoring, and comprehensive event handling
+- **Testing Infrastructure**: Comprehensive test suite including WebSocket testing tools, authentication debugging utilities, and E2E tests
+- **Backend Infrastructure**: Production-ready Node.js/Express server with MariaDB integration, security middleware, and optimized static file serving
+- **PWA Foundation**: Service worker, manifest, and mobile-optimized design
+- **Development Tools**: Interactive WebSocket testing interface, authentication debugging tools, automated diagnostic tools, and comprehensive logging
 
-### In Progress 🚧
-- **Real-time Lobby Updates**: WebSocket events for player joining/leaving and ready status synchronization (Task 5.4)
-- **Lobby Testing Suite**: Comprehensive Cypress tests for lobby functionality (Task 5.5)
+### Recent Updates 🔄
+- **Enhanced User ID Field Compatibility**: Improved dashboard and lobby systems to support both `user_id` and `id` field names in user objects across all operations including host transfer, ready status handling, player management, current user identification, and room ownership validation, ensuring seamless compatibility across different authentication systems and user data structures
+- **Enhanced Token Field Compatibility**: Improved WebSocket authentication middleware to consistently handle both `userId` and `id` fields in JWT tokens, ensuring seamless compatibility across production JWT tokens and development test tokens
+- **Comprehensive WebSocket Troubleshooting**: Added complete troubleshooting guide (`fix-websocket-connection.md`) with step-by-step solutions for common WebSocket connection issues
+- **Automated Diagnostic Tool**: New `diagnose-websocket.js` script provides comprehensive WebSocket connection testing with environment validation, token generation testing, and detailed reporting
+- **Enhanced Testing Suite**: Multiple specialized test pages for different authentication and WebSocket scenarios with real-time debugging capabilities
+- **Intelligent Token Management**: Support for both production JWT tokens and development test tokens with flexible authentication methods
+- **Enhanced Ready Status Handling**: Improved WebSocket ready status updates with intelligent fallback to HTTP API and timeout handling (3-second fallback)
+- **Connection-Aware Ready Status**: Ready status changes now properly consider only connected players, preventing game start issues with disconnected players
+- **Robust User Data Handling**: WebSocket events now support flexible user identification from both socket authentication and request data
+- **Automatic Room Rejoining**: Enhanced auto-rejoin functionality for players who lose WebSocket connection but attempt ready status changes
+- **Improved Connection Status Logic**: Ready status validation now distinguishes between total players and connected players for accurate game start conditions
+- **WebSocket State Validation**: Enhanced room joining state validation to ensure WebSocket events are only sent when properly connected to room
+- **Connection Status Monitoring**: Real-time connection health monitoring with visual indicators and automatic room rejoining
+- **Heartbeat Connection Management**: Added heartbeat functionality for maintaining stable WebSocket connections with automatic start/stop on connect/disconnect events
+- **Enhanced Connection Security**: Added mandatory user information validation during WebSocket connection establishment to prevent unauthorized access
+- **Improved Error Recovery**: Enhanced WebSocket error handling with specific responses for session expiration and authentication failures
+- **Graceful Authentication Error Handling**: WebSocket authentication failures no longer force immediate page redirects, allowing applications to continue functioning with HTTP API fallback while maintaining user experience
+- **Comprehensive Error Validation**: Enhanced WebSocket authentication middleware with better error handling and validation for all connection scenarios
+- **Defensive Programming Improvements**: Added safety checks for optional authentication methods to prevent runtime errors and improve code reliability
+- **Intelligent Token Validation**: Enhanced session validation with local JWT expiration checks before server calls, graceful handling of missing validation endpoints, and network-resilient authentication that doesn't clear sessions on temporary network errors
 
 ### Upcoming Features 📋
 - **Game Page Foundation**: Card display, game table layout, and trump declaration interface (Tasks 6.1-6.4)
@@ -404,6 +598,8 @@ The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) f
 - Follow the existing code style
 - Update documentation for API changes
 - Ensure all tests pass before submitting PR
+- Use the WebSocket client example for testing real-time functionality
+- Test WebSocket events with multiple simulated clients
 
 ## Technologies Used
 

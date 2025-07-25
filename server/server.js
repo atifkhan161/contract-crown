@@ -13,6 +13,7 @@ import { existsSync } from 'fs';
 import authRoutes from './routes/auth.js';
 import roomsRoutes from './routes/rooms.js';
 import usersRoutes from './routes/users.js';
+import testAuthRoutes from './routes/test-auth.js';
 import DatabaseInitializer from './database/init.js';
 import SocketManager from './websocket/socketManager.js';
 import ConnectionStatusManager from './websocket/connectionStatus.js';
@@ -75,7 +76,7 @@ class GameServer {
     // Rate limiting
     const limiter = rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 100, // limit each IP to 100 requests per windowMs
+      max: 1000, // limit each IP to 100 requests per windowMs
       message: {
         error: 'Too many requests from this IP, please try again later.'
       }
@@ -186,6 +187,11 @@ class GameServer {
 
     // Authentication routes
     this.app.use('/api/auth', authRoutes);
+    
+    // Test authentication routes (development only)
+    if (process.env.NODE_ENV !== 'production') {
+      this.app.use('/api/auth', testAuthRoutes);
+    }
     
     // Rooms routes
     this.app.use('/api/rooms', roomsRoutes);

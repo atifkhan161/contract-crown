@@ -42,9 +42,23 @@ class SocketManager {
       // Verify JWT token
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
       
+      console.log('[WebSocket] DEBUG - Decoded token:', decoded);
+      
+      // Handle both 'id' and 'userId' fields
+      const userId = decoded.userId || decoded.id;
+      const username = decoded.username;
+      
+      console.log('[WebSocket] DEBUG - Extracted userId:', userId, 'username:', username);
+      
+      // Validate required fields
+      if (!userId || !username) {
+        console.error('[WebSocket] Token missing required user information:', decoded);
+        return next(new Error('User information is required'));
+      }
+      
       // Attach user info to socket
-      socket.userId = decoded.userId;
-      socket.username = decoded.username;
+      socket.userId = userId;
+      socket.username = username;
       
       console.log(`[WebSocket] User authenticated: ${socket.username} (${socket.userId})`);
       next();
@@ -59,6 +73,13 @@ class SocketManager {
    */
   handleConnection(socket) {
     const { userId, username } = socket;
+    
+    if (!userId || !username) {
+      console.error('[WebSocket] Connection rejected - missing user information');
+      socket.emit('auth_error', { message: 'User information is required' });
+      socket.disconnect();
+      return;
+    }
     
     console.log(`[WebSocket] Client connected: ${username} (${socket.id})`);
     
@@ -106,6 +127,10 @@ class SocketManager {
       this.handleStartGame(socket, data);
     });
 
+    socket.on('form-teams', (data) => {
+      this.handleFormTeams(socket, data);
+    });
+
     // Game events
     socket.on('declare-trump', (data) => {
       this.handleDeclareTrump(socket, data);
@@ -135,11 +160,23 @@ class SocketManager {
    * Handle joining a game room
    */
   handleJoinGameRoom(socket, data) {
-    const { gameId } = data;
+    const { gameId, userId: dataUserId, username: dataUsername } = data;
     const { userId, username } = socket;
+
+    // Use data from request if provided, otherwise use socket auth data
+    const effectiveUserId = dataUserId || userId;
+    const effectiveUsername = dataUsername || username;
+
+    console.log(`[WebSocket] Join room request - gameId: ${gameId}, socketUserId: ${userId}, socketUsername: ${username}, dataUserId: ${dataUserId}, dataUsername: ${dataUsername}`);
 
     if (!gameId) {
       socket.emit('error', { message: 'Game ID is required' });
+      return;
+    }
+
+    if (!effectiveUserId || !effectiveUsername) {
+      console.error(`[WebSocket] Missing user info - effectiveUserId: ${effectiveUserId}, effectiveUsername: ${effectiveUsername}`);
+      socket.emit('error', { message: 'User information is required. Please refresh the page and try again.' });
       return;
     }
 
@@ -152,49 +189,84 @@ class SocketManager {
         this.gameRooms.set(gameId, {
           gameId,
           players: new Map(),
+          teams: { team1: [], team2: [] },
           createdAt: new Date().toISOString(),
-          status: 'waiting'
+          status: 'waiting',
+          hostId: effectiveUserId
         });
+        console.log(`[WebSocket] Created new room: ${gameId} with host: ${effectiveUsername}`);
       }
 
       const room = this.gameRooms.get(gameId);
       
-      // Add player to room
-      room.players.set(userId, {
-        userId,
-        username,
-        socketId: socket.id,
-        isReady: false,
-        joinedAt: new Date().toISOString()
-      });
+      // Check if player is already in the room (reconnection case)
+      if (room.players.has(effectiveUserId)) {
+        console.log(`[WebSocket] Player ${effectiveUsername} rejoining existing room: ${gameId}`);
+        // Update existing player's connection info
+        const existingPlayer = room.players.get(effectiveUserId);
+        existingPlayer.socketId = socket.id;
+        existingPlayer.isConnected = true;
+        existingPlayer.reconnectedAt = new Date().toISOString();
+        
+        // Update socket mapping
+        this.userSockets.set(effectiveUserId, socket.id);
+        this.socketUsers.set(socket.id, effectiveUserId);
+      } else {
+        // Check if room is full for new players
+        if (room.players.size >= 4) {
+          socket.emit('error', { message: 'Room is full' });
+          return;
+        }
+        
+        // Add new player to room
+        room.players.set(effectiveUserId, {
+          userId: effectiveUserId,
+          username: effectiveUsername,
+          socketId: socket.id,
+          isReady: false,
+          teamAssignment: null,
+          joinedAt: new Date().toISOString(),
+          isConnected: true
+        });
 
-      console.log(`[WebSocket] ${username} joined game room: ${gameId}`);
+        console.log(`[WebSocket] ${effectiveUsername} (${effectiveUserId}) joined game room: ${gameId}. Room now has ${room.players.size} players.`);
 
-      // Notify all players in the room
-      this.io.to(gameId).emit('player-joined', {
-        gameId,
-        player: {
-          userId,
-          username,
-          isReady: false
-        },
-        players: Array.from(room.players.values()).map(p => ({
-          userId: p.userId,
-          username: p.username,
-          isReady: p.isReady
-        })),
-        timestamp: new Date().toISOString()
-      });
+        // Broadcast player joined to all OTHER players in the room (not the joining player)
+        socket.to(gameId).emit('player-joined', {
+          gameId,
+          player: {
+            userId: effectiveUserId,
+            username: effectiveUsername,
+            isReady: false,
+            teamAssignment: null
+          },
+          players: Array.from(room.players.values()).map(p => ({
+            userId: p.userId,
+            username: p.username,
+            isReady: p.isReady,
+            teamAssignment: p.teamAssignment,
+            isConnected: p.isConnected
+          })),
+          playerCount: room.players.size,
+          timestamp: new Date().toISOString()
+        });
+      }
 
-      // Send room info to the joining player
+      // Send room info to the joining/rejoining player
       socket.emit('room-joined', {
         gameId,
         players: Array.from(room.players.values()).map(p => ({
           userId: p.userId,
           username: p.username,
-          isReady: p.isReady
+          isReady: p.isReady,
+          teamAssignment: p.teamAssignment,
+          isConnected: p.isConnected
         })),
+        teams: room.teams,
         roomStatus: room.status,
+        hostId: room.hostId,
+        playerCount: room.players.size,
+        maxPlayers: 4,
         timestamp: new Date().toISOString()
       });
 
@@ -225,9 +297,24 @@ class SocketManager {
         // Remove player from room
         room.players.delete(userId);
         
+        // Remove player from teams if assigned
+        if (room.teams.team1.includes(userId)) {
+          room.teams.team1 = room.teams.team1.filter(id => id !== userId);
+        }
+        if (room.teams.team2.includes(userId)) {
+          room.teams.team2 = room.teams.team2.filter(id => id !== userId);
+        }
+        
+        // Transfer host if the leaving player was the host
+        let newHostId = room.hostId;
+        if (room.hostId === userId && room.players.size > 0) {
+          newHostId = Array.from(room.players.keys())[0];
+          room.hostId = newHostId;
+        }
+        
         console.log(`[WebSocket] ${username} left game room: ${gameId}`);
 
-        // Notify remaining players
+        // Broadcast player left to remaining players
         this.io.to(gameId).emit('player-left', {
           gameId,
           playerId: userId,
@@ -235,8 +322,13 @@ class SocketManager {
           players: Array.from(room.players.values()).map(p => ({
             userId: p.userId,
             username: p.username,
-            isReady: p.isReady
+            isReady: p.isReady,
+            teamAssignment: p.teamAssignment,
+            isConnected: p.isConnected
           })),
+          teams: room.teams,
+          newHostId: newHostId,
+          playerCount: room.players.size,
           timestamp: new Date().toISOString()
         });
 
@@ -259,11 +351,101 @@ class SocketManager {
    * Handle player ready status change
    */
   handlePlayerReady(socket, data) {
-    const { gameId, isReady } = data;
+    const { gameId, isReady, userId: dataUserId, username: dataUsername } = data;
     const { userId, username } = socket;
+
+    // Use data from request if provided, otherwise use socket auth data
+    const effectiveUserId = dataUserId || userId;
+    const effectiveUsername = dataUsername || username;
+
+    console.log(`[WebSocket] Player ready request - gameId: ${gameId}, isReady: ${isReady}, socketUserId: ${userId}, socketUsername: ${username}, dataUserId: ${dataUserId}, dataUsername: ${dataUsername}`);
 
     if (!gameId || typeof isReady !== 'boolean') {
       socket.emit('error', { message: 'Game ID and ready status are required' });
+      return;
+    }
+
+    if (!effectiveUserId || !effectiveUsername) {
+      console.error(`[WebSocket] Missing user info for ready status - effectiveUserId: ${effectiveUserId}, effectiveUsername: ${effectiveUsername}`);
+      socket.emit('error', { message: 'User information is required. Please refresh the page and try again.' });
+      return;
+    }
+
+    try {
+      const room = this.gameRooms.get(gameId);
+      if (!room) {
+        console.log(`[WebSocket] Room not found: ${gameId}. Available rooms:`, Array.from(this.gameRooms.keys()));
+        // Try to auto-rejoin the player to the room
+        console.log(`[WebSocket] Attempting to auto-rejoin player ${effectiveUsername} to room ${gameId}`);
+        this.handleJoinGameRoom(socket, { gameId, userId: effectiveUserId, username: effectiveUsername });
+        
+        // Retry the ready status update after a brief delay
+        setTimeout(() => {
+          this.handlePlayerReady(socket, data);
+        }, 500);
+        return;
+      }
+      
+      if (!room.players.has(effectiveUserId)) {
+        console.log(`[WebSocket] Player ${effectiveUsername} (${effectiveUserId}) not found in room ${gameId}. Room players:`, Array.from(room.players.keys()));
+        // Try to auto-rejoin the player to the room
+        console.log(`[WebSocket] Attempting to auto-rejoin player ${effectiveUsername} to room ${gameId}`);
+        this.handleJoinGameRoom(socket, { gameId, userId: effectiveUserId, username: effectiveUsername });
+        
+        // Retry the ready status update after a brief delay
+        setTimeout(() => {
+          this.handlePlayerReady(socket, data);
+        }, 500);
+        return;
+      }
+
+      // Update player ready status
+      const player = room.players.get(effectiveUserId);
+      player.isReady = isReady;
+
+      console.log(`[WebSocket] ${effectiveUsername} ready status: ${isReady} in room ${gameId}`);
+
+      const players = Array.from(room.players.values());
+      const connectedPlayers = players.filter(p => p.isConnected);
+      const readyCount = connectedPlayers.filter(p => p.isReady).length;
+      const allConnectedReady = connectedPlayers.every(p => p.isReady) && connectedPlayers.length >= 2;
+
+      // Broadcast ready status change to all players in the room
+      this.io.to(gameId).emit('player-ready-changed', {
+        gameId,
+        playerId: effectiveUserId,
+        playerName: effectiveUsername,
+        isReady,
+        players: players.map(p => ({
+          userId: p.userId,
+          username: p.username,
+          isReady: p.isReady,
+          teamAssignment: p.teamAssignment,
+          isConnected: p.isConnected
+        })),
+        readyCount,
+        totalPlayers: room.players.size,
+        connectedPlayers: connectedPlayers.length,
+        allReady: allConnectedReady,
+        canStartGame: allConnectedReady && connectedPlayers.length >= 2,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('[WebSocket] Error updating ready status:', error);
+      socket.emit('error', { message: 'Failed to update ready status' });
+    }
+  }
+
+  /**
+   * Handle team formation request
+   */
+  handleFormTeams(socket, data) {
+    const { gameId } = data;
+    const { userId, username } = socket;
+
+    if (!gameId) {
+      socket.emit('error', { message: 'Game ID is required' });
       return;
     }
 
@@ -274,30 +456,66 @@ class SocketManager {
         return;
       }
 
-      // Update player ready status
-      const player = room.players.get(userId);
-      player.isReady = isReady;
+      // Check if user is the host
+      if (room.hostId !== userId) {
+        socket.emit('error', { message: 'Only the host can form teams' });
+        return;
+      }
 
-      console.log(`[WebSocket] ${username} ready status: ${isReady} in room ${gameId}`);
+      const players = Array.from(room.players.values());
+      if (players.length < 2) {
+        socket.emit('error', { message: 'Need at least 2 players to form teams' });
+        return;
+      }
 
-      // Notify all players in the room
-      this.io.to(gameId).emit('player-ready-changed', {
+      // Shuffle players and assign to teams
+      const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+      const team1Size = Math.ceil(shuffledPlayers.length / 2);
+      
+      // Clear existing team assignments
+      room.teams.team1 = [];
+      room.teams.team2 = [];
+      
+      // Assign players to teams
+      shuffledPlayers.forEach((player, index) => {
+        if (index < team1Size) {
+          room.teams.team1.push(player.userId);
+          player.teamAssignment = 1;
+        } else {
+          room.teams.team2.push(player.userId);
+          player.teamAssignment = 2;
+        }
+      });
+
+      console.log(`[WebSocket] Teams formed in room ${gameId} by ${username}`);
+
+      // Broadcast team formation to all players
+      this.io.to(gameId).emit('teams-formed', {
         gameId,
-        playerId: userId,
-        playerName: username,
-        isReady,
-        players: Array.from(room.players.values()).map(p => ({
+        teams: {
+          team1: room.teams.team1.map(playerId => {
+            const player = room.players.get(playerId);
+            return { userId: playerId, username: player.username };
+          }),
+          team2: room.teams.team2.map(playerId => {
+            const player = room.players.get(playerId);
+            return { userId: playerId, username: player.username };
+          })
+        },
+        players: players.map(p => ({
           userId: p.userId,
           username: p.username,
-          isReady: p.isReady
+          isReady: p.isReady,
+          teamAssignment: p.teamAssignment,
+          isConnected: p.isConnected
         })),
-        allReady: Array.from(room.players.values()).every(p => p.isReady) && room.players.size === 4,
+        formedBy: username,
         timestamp: new Date().toISOString()
       });
 
     } catch (error) {
-      console.error('[WebSocket] Error updating ready status:', error);
-      socket.emit('error', { message: 'Failed to update ready status' });
+      console.error('[WebSocket] Error forming teams:', error);
+      socket.emit('error', { message: 'Failed to form teams' });
     }
   }
 
@@ -320,15 +538,27 @@ class SocketManager {
         return;
       }
 
-      // Check if all players are ready and room is full
+      // Check if user is the host
+      if (room.hostId !== userId) {
+        socket.emit('error', { message: 'Only the host can start the game' });
+        return;
+      }
+
+      // Check if all players are ready and minimum players present
       const players = Array.from(room.players.values());
-      if (players.length !== 4) {
-        socket.emit('error', { message: 'Need 4 players to start game' });
+      if (players.length < 2) {
+        socket.emit('error', { message: 'Need at least 2 players to start game' });
         return;
       }
 
       if (!players.every(p => p.isReady)) {
         socket.emit('error', { message: 'All players must be ready to start game' });
+        return;
+      }
+
+      // Ensure teams are formed for 4-player games
+      if (players.length === 4 && (room.teams.team1.length === 0 || room.teams.team2.length === 0)) {
+        socket.emit('error', { message: 'Teams must be formed before starting a 4-player game' });
         return;
       }
 
@@ -338,14 +568,18 @@ class SocketManager {
 
       console.log(`[WebSocket] Game starting in room ${gameId} by ${username}`);
 
-      // Notify all players that game is starting
+      // Broadcast game starting to all players
       this.io.to(gameId).emit('game-starting', {
         gameId,
         startedBy: username,
+        startedById: userId,
         players: players.map(p => ({
           userId: p.userId,
-          username: p.username
+          username: p.username,
+          teamAssignment: p.teamAssignment
         })),
+        teams: room.teams,
+        playerCount: players.length,
         timestamp: new Date().toISOString()
       });
 
@@ -414,16 +648,87 @@ class SocketManager {
         player.isConnected = false;
         player.disconnectedAt = new Date().toISOString();
         
-        // Notify other players in the room
+        // Broadcast player disconnection to other players in the room
         this.io.to(gameId).emit('player-disconnected', {
           gameId,
           playerId: userId,
           playerName: username,
+          players: Array.from(room.players.values()).map(p => ({
+            userId: p.userId,
+            username: p.username,
+            isReady: p.isReady,
+            teamAssignment: p.teamAssignment,
+            isConnected: p.isConnected
+          })),
+          playerCount: room.players.size,
+          connectedCount: Array.from(room.players.values()).filter(p => p.isConnected).length,
           timestamp: new Date().toISOString()
         });
         
         console.log(`[WebSocket] Player ${username} disconnected from game ${gameId}`);
+        
+        // Set up cleanup timer for disconnected players (remove after 5 minutes)
+        setTimeout(() => {
+          if (room.players.has(userId) && !room.players.get(userId).isConnected) {
+            this.handlePlayerTimeout(gameId, userId, username);
+          }
+        }, 5 * 60 * 1000); // 5 minutes
       }
+    }
+  }
+
+  /**
+   * Handle player timeout (remove disconnected player after timeout)
+   */
+  handlePlayerTimeout(gameId, userId, username) {
+    const room = this.gameRooms.get(gameId);
+    if (!room || !room.players.has(userId)) {
+      return;
+    }
+
+    console.log(`[WebSocket] Removing timed out player ${username} from room ${gameId}`);
+    
+    // Remove player from room
+    room.players.delete(userId);
+    
+    // Remove from teams if assigned
+    if (room.teams.team1.includes(userId)) {
+      room.teams.team1 = room.teams.team1.filter(id => id !== userId);
+    }
+    if (room.teams.team2.includes(userId)) {
+      room.teams.team2 = room.teams.team2.filter(id => id !== userId);
+    }
+    
+    // Transfer host if needed
+    let newHostId = room.hostId;
+    if (room.hostId === userId && room.players.size > 0) {
+      newHostId = Array.from(room.players.keys())[0];
+      room.hostId = newHostId;
+    }
+    
+    // Broadcast player removal
+    this.io.to(gameId).emit('player-removed', {
+      gameId,
+      playerId: userId,
+      playerName: username,
+      reason: 'timeout',
+      players: Array.from(room.players.values()).map(p => ({
+        userId: p.userId,
+        username: p.username,
+        isReady: p.isReady,
+        teamAssignment: p.teamAssignment,
+        isConnected: p.isConnected
+      })),
+      teams: room.teams,
+      newHostId: newHostId,
+      playerCount: room.players.size,
+      timestamp: new Date().toISOString()
+    });
+
+    // Clean up empty rooms
+    if (room.players.size === 0) {
+      this.gameRooms.delete(gameId);
+      console.log(`[WebSocket] Cleaned up empty room after timeout: ${gameId}`);
     }
   }
 
