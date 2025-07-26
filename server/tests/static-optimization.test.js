@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
-import GameServer from '../server.js';
+import GameServer from '../src/server.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

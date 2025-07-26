@@ -86,7 +86,8 @@
   - Add separate test scripts for client and server
   - _Requirements: 3.2, 5.3_
 
-- [-] 8. Update import paths throughout the codebase
+- [x] 8. Update import paths throughout the codebase
+
 
 
 

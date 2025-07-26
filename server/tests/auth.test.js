@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
-import GameServer from '../server.js';
+import GameServer from '../src/server.js';
 import DatabaseInitializer from '../database/init.js';
 
 describe('Authentication API', () => {
