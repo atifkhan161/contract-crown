@@ -87,44 +87,57 @@ A Progressive Web App for the Contract Crown strategic card game, featuring real
 
 ## Project Structure
 
+**Note**: The project is currently undergoing a folder structure refactoring to follow modern full-stack development practices. The current structure is a hybrid state with some components moved to the new structure.
+
+### Current Structure (Transitional)
 ```
 contract-crown-pwa/
-├── src/                    # Frontend source code
-│   ├── core/              # Core application modules
-│   │   ├── auth.js        # Authentication manager
-│   │   ├── RoomManager.js # Room management functionality
-│   │   ├── SocketManager.js # WebSocket connection management with Socket.IO
-│   │   └── websocket.js   # WebSocket utilities
-│   ├── pages/             # Page-specific components
-│   │   ├── dashboard.js   # Dashboard page functionality
-│   │   ├── lobby.js       # Lobby page functionality
-│   │   ├── login.js       # Login page functionality
-│   │   └── register.js    # Registration page functionality
-│   └── styles/            # CSS and styling
-│       ├── theme.css      # Global theme variables
-│       ├── dashboard.css  # Dashboard styling
-│       ├── lobby.css      # Lobby page styling
-│       ├── login.css      # Login page styling
-│       └── register.css   # Registration styling
-├── server/                # Backend Node.js server
-│   ├── routes/            # API route handlers
-│   ├── models/            # Database models
-│   ├── middleware/        # Express middleware
-│   │   └── socketAuth.js  # WebSocket authentication middleware
-│   ├── database/          # Database configuration
-│   ├── websocket/         # WebSocket server components
+├── client/                # Frontend application (NEW STRUCTURE)
+│   ├── public/           # Static assets (being populated)
+│   ├── src/              # Frontend source code
+│   │   ├── assets/       # Images, fonts, etc.
+│   │   ├── components/   # Reusable UI components
+│   │   ├── core/         # Core application modules
+│   │   │   ├── auth.js        # Authentication manager
+│   │   │   ├── RoomManager.js # Room management functionality
+│   │   │   ├── SocketManager.js # WebSocket connection management
+│   │   │   └── websocket.js   # WebSocket utilities
+│   │   ├── pages/        # Page-specific components
+│   │   │   ├── dashboard.js   # Dashboard page functionality
+│   │   │   ├── lobby.js       # Lobby page functionality
+│   │   │   ├── login.js       # Login page functionality
+│   │   │   └── register.js    # Registration page functionality
+│   │   ├── styles/       # CSS and styling
+│   │   │   ├── theme.css      # Global theme variables
+│   │   │   ├── dashboard.css  # Dashboard styling
+│   │   │   ├── lobby.css      # Lobby page styling
+│   │   │   ├── login.css      # Login page styling
+│   │   │   └── register.css   # Registration styling
+│   │   └── main.js       # Application entry point
+│   ├── index.html        # Main HTML template
+│   ├── login.html        # Login page
+│   ├── register.html     # Registration page
+│   ├── dashboard.html    # Dashboard page
+│   └── vite.config.js    # Vite configuration
+├── server/               # Backend Node.js server
+│   ├── routes/           # API route handlers
+│   ├── models/           # Database models
+│   ├── middleware/       # Express middleware
+│   │   └── socketAuth.js # WebSocket authentication middleware
+│   ├── database/         # Database configuration
+│   ├── websocket/        # WebSocket server components
 │   │   ├── socketManager.js      # Socket.IO connection and room management
 │   │   └── connectionStatus.js   # Connection monitoring and status tracking
-│   ├── examples/          # Example implementations and demos
+│   ├── examples/         # Example implementations and demos
 │   │   └── websocket-client-example.js # Complete WebSocket client example
-│   └── tests/             # Server-side tests
+│   └── tests/            # Server-side tests
 │       └── websocket.test.js      # WebSocket functionality tests
-├── cypress/               # End-to-end testing
-│   ├── e2e/              # E2E test specifications
-│   │   └── auth.cy.js    # Authentication flow tests
-│   ├── fixtures/         # Test data
-│   └── support/          # Test utilities
-├── docs/                  # Project documentation
+├── cypress/              # End-to-end testing
+│   ├── e2e/             # E2E test specifications
+│   │   └── auth.cy.js   # Authentication flow tests
+│   ├── fixtures/        # Test data
+│   └── support/         # Test utilities
+├── docs/                 # Project documentation
 ├── test-websocket-fixes.html     # Interactive WebSocket testing tool
 ├── test-websocket-connection.html # Basic WebSocket connection test
 ├── test-websocket-connection-fixed.html # Complete WebSocket connection testing with authentication setup
@@ -136,10 +149,51 @@ contract-crown-pwa/
 ├── QUICK_START_WEBSOCKET.md      # 3-step quick fix guide for WebSocket issues
 ├── fix-websocket-connection.md   # Comprehensive WebSocket troubleshooting guide
 ├── WEBSOCKET_FIXES_SUMMARY.md    # Detailed WebSocket fixes documentation
-├── UX/                    # UI/UX design assets
-│   ├── game_lobby.png    # Lobby interface design
+├── UX/                   # UI/UX design assets
+│   ├── game_lobby.png   # Lobby interface design
 │   └── multiplayer lobby*.jpg # Lobby design iterations
-└── dist/                  # Production build output
+├── dist/                 # Production build output
+├── lobby.html           # Temporary: Will be moved to client/
+├── manifest.json        # Temporary: Will be moved to client/public/
+└── sw.js                # Temporary: Will be moved to client/public/
+```
+
+### Target Structure (In Progress)
+The project is being refactored to follow the recommended full-stack Express + Vite structure:
+
+```
+contract-crown-pwa/
+├── client/               # Frontend application
+│   ├── public/          # Static assets (manifest.json, sw.js, favicon, etc.)
+│   ├── src/             # Frontend source code
+│   │   ├── assets/      # Images, fonts, etc.
+│   │   ├── components/  # Reusable UI components
+│   │   ├── pages/       # Page-specific code
+│   │   ├── core/        # Core application logic
+│   │   └── main.js      # Application entry point
+│   ├── *.html           # HTML templates
+│   ├── vite.config.js   # Vite configuration
+│   └── package.json     # Frontend dependencies (planned)
+├── server/              # Backend application
+│   ├── src/             # Server source code (planned reorganization)
+│   │   ├── config/      # Configuration files
+│   │   ├── controllers/ # Request handlers
+│   │   ├── routes/      # API route definitions
+│   │   ├── middlewares/ # Express middlewares
+│   │   ├── services/    # Business logic
+│   │   ├── models/      # Data models
+│   │   ├── utils/       # Utility functions
+│   │   ├── app.js       # Express app setup (planned)
+│   │   └── server.js    # HTTP server entry (planned)
+│   ├── database/        # Database related files
+│   ├── websocket/       # WebSocket handling
+│   ├── tests/           # Server tests
+│   └── package.json     # Backend dependencies
+├── shared/              # Shared utilities (if needed)
+├── docs/                # Documentation
+├── cypress/             # E2E tests
+├── package.json         # Root workspace configuration
+└── README.md
 ```
 
 ## Getting Started
@@ -157,7 +211,7 @@ git clone <repository-url>
 cd contract-crown-pwa
 ```
 
-2. Install frontend dependencies:
+2. Install root dependencies:
 ```bash
 npm install
 ```
@@ -175,6 +229,8 @@ cp server/.env.example server/.env
 # Edit server/.env with your configuration
 ```
 
+**Note**: During the folder structure refactoring, the client will have its own `package.json` with frontend-specific dependencies. Currently, frontend dependencies are managed at the root level.
+
 ### Development
 
 Start both frontend and backend in development mode:
@@ -183,15 +239,17 @@ npm run dev
 ```
 
 This runs:
-- Frontend development server on `http://localhost:5173`
+- Frontend development server on `http://localhost:5173` (served from client/ directory)
 - Backend API server on `http://localhost:3030`
 
 ### Application Pages
 - **Login**: `http://localhost:5173/login.html` - User authentication
 - **Register**: `http://localhost:5173/register.html` - New user registration  
 - **Dashboard**: `http://localhost:5173/dashboard.html` - Main game dashboard
-- **Lobby**: `http://localhost:5173/lobby.html` - Waiting lobby for game preparation
+- **Lobby**: `http://localhost:5173/lobby.html` - Waiting lobby for game preparation (currently at root level)
 - **Home**: `http://localhost:5173/` - Landing page
+
+**Note**: Some pages are currently being served from the root level during the transition to the new folder structure.
 
 ### Individual Services
 
@@ -430,6 +488,13 @@ The comprehensive test suite covers:
 - ✅ Error handling and recovery
 - ✅ Multi-client simulation testing
 
+#### Lobby Functionality Tests
+- ✅ Player joining and leaving lobby
+- ✅ Ready status changes and synchronization
+- ✅ Team formation and host controls
+- ✅ WebSocket connection and real-time updates
+- ✅ Complete Cypress E2E test coverage for lobby functionality
+
 #### Interactive Testing Tools
 - ✅ Browser-based WebSocket testing interface
 - ✅ Authentication state debugging tools
@@ -540,7 +605,8 @@ The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) f
 
 ## Development Status
 
-**Current Phase**: Waiting Lobby Implementation Complete (Tasks 5.1-5.5)  
+**Current Phase**: Waiting Lobby Implementation Complete ✅ (Tasks 5.1-5.5)  
+**Next Phase**: Game Page Foundation (Tasks 6.1-6.4)  
 **Overall Progress**: ~60% Complete (Tasks 1.1-5.5 finished, moving to Game Page Foundation)
 
 ### Completed Features ✅
@@ -550,12 +616,13 @@ The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) f
 - **Real-time Communication**: Production-ready WebSocket implementation with Socket.IO featuring authentication, room management, and connection health monitoring
 - **Enhanced Session Management**: Robust authentication with graceful error handling, reduced false session expiry alerts, and intelligent fallback mechanisms
 - **WebSocket Server Integration**: Complete Socket.IO server with authentication middleware, connection status monitoring, and comprehensive event handling
-- **Testing Infrastructure**: Comprehensive test suite including WebSocket testing tools, authentication debugging utilities, and E2E tests
+- **Testing Infrastructure**: Comprehensive test suite including WebSocket testing tools, authentication debugging utilities, E2E tests, and complete Cypress test coverage for lobby functionality
 - **Backend Infrastructure**: Production-ready Node.js/Express server with MariaDB integration, security middleware, and optimized static file serving
 - **PWA Foundation**: Service worker, manifest, and mobile-optimized design
 - **Development Tools**: Interactive WebSocket testing interface, authentication debugging tools, automated diagnostic tools, and comprehensive logging
 
 ### Recent Updates 🔄
+- **Waiting Lobby Phase Complete**: All lobby functionality tests (Task 5.5) have been completed, marking the full completion of the Waiting Lobby Implementation phase with comprehensive Cypress test coverage
 - **Enhanced User ID Field Compatibility**: Improved dashboard and lobby systems to support both `user_id` and `id` field names in user objects across all operations including host transfer, ready status handling, player management, current user identification, and room ownership validation, ensuring seamless compatibility across different authentication systems and user data structures
 - **Enhanced Token Field Compatibility**: Improved WebSocket authentication middleware to consistently handle both `userId` and `id` fields in JWT tokens, ensuring seamless compatibility across production JWT tokens and development test tokens
 - **Comprehensive WebSocket Troubleshooting**: Added complete troubleshooting guide (`fix-websocket-connection.md`) with step-by-step solutions for common WebSocket connection issues

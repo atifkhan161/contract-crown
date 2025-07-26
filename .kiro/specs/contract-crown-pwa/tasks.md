@@ -268,7 +268,7 @@
   - Add game start coordination between all players
   - _Requirements: 3.5, 11.4, 11.5_
 
-- [-] 5.5 Write Cypress tests for lobby functionality
+- [x] 5.5 Write Cypress tests for lobby functionality
 
 
 

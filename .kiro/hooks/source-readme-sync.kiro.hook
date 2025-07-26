@@ -4,7 +4,7 @@
   "description": "Listens to all source files including JavaScript, HTML, configuration files, and other relevant project files. When changes are detected, triggers an agent to update the README file accordingly.",
   "version": "1",
   "when": {
-    "type": "fileEdited",
+    "type": "userTriggered",
     "patterns": [
       "*.js",
       "*.html",
