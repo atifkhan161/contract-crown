@@ -16,13 +16,21 @@
   - Move vite.config.js to client directory
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 2. Create client package.json and update frontend configuration
+- [x] 2. Create client package.json and update frontend configuration
+
+
+
+
+
   - Extract frontend dependencies from root package.json to create client/package.json
   - Update client/vite.config.js to work with new directory structure
   - Update build output path to client/dist/
   - _Requirements: 1.6, 3.1, 3.2, 3.3_
 
-- [ ] 3. Move static assets to client/public directory
+- [-] 3. Move static assets to client/public directory
+
+
+
   - Move manifest.json to client/public/
   - Move sw.js to client/public/
   - Move any favicon or icon files to client/public/
@@ -30,6 +38,7 @@
   - _Requirements: 4.1, 4.2, 4.5_
 
 - [ ] 4. Reorganize server directory structure
+
   - Create server/src/ directory with subdirectories (config, controllers, routes, middlewares, services, models, utils)
   - Move server.js to server/src/server.js
   - Move existing routes/ to server/src/routes/
@@ -38,18 +47,21 @@
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
 - [ ] 5. Create server app.js and update server entry point
+
   - Extract Express app setup from server.js into server/src/app.js
   - Update server/src/server.js to import and use app.js
   - Organize middleware setup and route registration in app.js
   - _Requirements: 2.5_
 
 - [ ] 6. Update server static file serving configuration
+
   - Update Express static file serving to use client/dist/ as source
   - Configure proper cache headers for production static assets
   - Update fallback routing for client-side routing
   - _Requirements: 4.3, 4.4_
 
 - [ ] 7. Update root package.json scripts for new structure
+
   - Update dev script to run both client and server from their directories
   - Update build script to build client from client directory
   - Update start script to run server from server directory
