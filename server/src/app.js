@@ -106,6 +106,7 @@ function setupRoutes(app, io, socketManager, connectionStatusManager) {
   // Development mode proxy to Vite dev server
   if (process.env.NODE_ENV === 'development' && process.env.VITE_DEV_SERVER_URL) {
     console.log(`[Proxy] Setting up development proxy to ${process.env.VITE_DEV_SERVER_URL}`);
+    console.log('[Proxy] Make sure Vite dev server is running on the configured port');
     
     // Proxy non-API requests to Vite dev server
     app.use('/', createProxyMiddleware({
@@ -119,16 +120,32 @@ function setupRoutes(app, io, socketManager, connectionStatusManager) {
                !pathname.startsWith('/socket.io');
       },
       onError: (err, req, res) => {
-        console.error('[Proxy] Error:', err.message);
-        res.status(500).json({
-          error: 'Proxy error',
-          message: 'Failed to proxy request to Vite dev server'
-        });
+        console.error('[Proxy] Error connecting to Vite dev server:', err.message);
+        console.error('[Proxy] Make sure Vite dev server is running on', process.env.VITE_DEV_SERVER_URL);
+        if (!res.headersSent) {
+          res.status(500).json({
+            error: 'Development proxy error',
+            message: `Failed to connect to Vite dev server at ${process.env.VITE_DEV_SERVER_URL}. Make sure it's running.`,
+            details: err.message
+          });
+        }
       },
       onProxyReq: (proxyReq, req) => {
-        console.log(`[Proxy] ${req.method} ${req.path} -> ${process.env.VITE_DEV_SERVER_URL}${req.path}`);
+        // Only log non-asset requests to reduce noise
+        if (!req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/)) {
+          console.log(`[Proxy] ${req.method} ${req.path} -> ${process.env.VITE_DEV_SERVER_URL}${req.path}`);
+        }
+      },
+      onProxyRes: (proxyRes, req, res) => {
+        // Add headers to support HMR
+        if (req.path.includes('/@vite/') || req.path.includes('/__vite_ping')) {
+          proxyRes.headers['cache-control'] = 'no-cache';
+        }
       }
     }));
+  } else if (process.env.NODE_ENV === 'development') {
+    console.log('[Proxy] Development mode detected but VITE_DEV_SERVER_URL not set');
+    console.log('[Proxy] Set VITE_DEV_SERVER_URL=http://localhost:5173 in server/.env to enable development proxy');
   }
 
   // Health check endpoint

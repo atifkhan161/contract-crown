@@ -4,9 +4,11 @@
   "description": "A Progressive Web App for the Contract Crown card game",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev": "concurrently --kill-others \"npm run dev:client\" \"npm run dev:server\"",
     "dev:client": "cd client && npm run dev",
     "dev:server": "cd server && npm run dev",
+    "dev:client-only": "cd client && npm run dev",
+    "dev:server-only": "cd server && npm run dev",
     "build": "cd client && npm run build",
     "build:server": "cd server && npm install --production=false",
     "start": "cd server && npm start",
