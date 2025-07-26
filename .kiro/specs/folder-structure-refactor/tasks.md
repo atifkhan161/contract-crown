@@ -74,7 +74,9 @@
   - Update fallback routing for client-side routing
   - _Requirements: 4.3, 4.4_
 
-- [-] 7. Update root package.json scripts for new structure
+- [x] 7. Update root package.json scripts for new structure
+
+
 
 
 
@@ -84,7 +86,8 @@
   - Add separate test scripts for client and server
   - _Requirements: 3.2, 5.3_
 
-- [ ] 8. Update import paths throughout the codebase
+- [-] 8. Update import paths throughout the codebase
+
 
 
   - Update all relative import paths in moved files
