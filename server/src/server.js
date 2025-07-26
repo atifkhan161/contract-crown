@@ -14,9 +14,9 @@ import authRoutes from './routes/auth.js';
 import roomsRoutes from './routes/rooms.js';
 import usersRoutes from './routes/users.js';
 import testAuthRoutes from './routes/test-auth.js';
-import DatabaseInitializer from './database/init.js';
-import SocketManager from './websocket/socketManager.js';
-import ConnectionStatusManager from './websocket/connectionStatus.js';
+import DatabaseInitializer from '../database/init.js';
+import SocketManager from '../websocket/socketManager.js';
+import ConnectionStatusManager from '../websocket/connectionStatus.js';
 
 // Load environment variables
 dotenv.config();
@@ -209,7 +209,7 @@ class GameServer {
     });
 
     // Serve static files from Vite build output
-    const staticPath = path.join(__dirname, '..', 'dist');
+    const staticPath = path.join(__dirname, '..', '..', 'dist');
     
     // Check if dist directory exists in production
     if (process.env.NODE_ENV === 'production' && !existsSync(staticPath)) {

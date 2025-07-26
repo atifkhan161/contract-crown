@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt';
-import dbConnection from '../database/connection.js';
+import dbConnection from '../../database/connection.js';
 
 class User {
   constructor(userData = {}) {
