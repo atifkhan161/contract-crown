@@ -21,7 +21,7 @@ class Room {
         this.updated_at = roomData.updated_at;
         this.started_at = roomData.started_at;
         this.finished_at = roomData.finished_at;
-        
+
         // These will be populated separately
         this.players = [];
         this.owner = null;
@@ -31,7 +31,7 @@ class Room {
     static async create(roomData) {
         try {
             const { name, maxPlayers, isPrivate, ownerId } = roomData;
-            
+
             // Validate required fields
             if (!name || !name.trim()) {
                 throw new Error('Room name is required');
@@ -70,7 +70,7 @@ class Room {
             `, [room.room_id, ownerId]);
 
             console.log(`[Room] Created new room: ${room.name} (${room.room_id})`);
-            
+
             // Load and return complete room data
             return await Room.findById(room.room_id);
         } catch (error) {
@@ -298,17 +298,17 @@ class Room {
         if (this.status !== 'waiting') {
             return { canJoin: false, reason: 'Room is not accepting new players' };
         }
-        
+
         // Check if user is already in room - this is now allowed for rejoining
         if (this.players.some(p => p.id === userId)) {
             return { canJoin: true, reason: 'User can rejoin this room' };
         }
-        
+
         // Check if room is full
         if (this.players.length >= this.max_players) {
             return { canJoin: false, reason: 'Room is full' };
         }
-        
+
         return { canJoin: true };
     }
 
@@ -401,7 +401,7 @@ class Room {
                 await dbConnection.query(`
                     ALTER TABLE room_players ADD COLUMN team_assignment INT NULL CHECK (team_assignment IN (1, 2))
                 `);
-                
+
                 // Retry team assignments
                 for (const player of team1Players) {
                     await dbConnection.query(`
@@ -433,7 +433,7 @@ class Room {
     getTeams() {
         const team1 = this.players.filter(p => p.teamAssignment === 1);
         const team2 = this.players.filter(p => p.teamAssignment === 2);
-        
+
         return {
             team1: team1.map(p => ({ id: p.id, username: p.username })),
             team2: team2.map(p => ({ id: p.id, username: p.username }))

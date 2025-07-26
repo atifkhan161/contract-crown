@@ -44,6 +44,7 @@
 - [x] 4. Reorganize server directory structure
 
 
+
   - Create server/src/ directory with subdirectories (config, controllers, routes, middlewares, services, models, utils)
   - Move server.js to server/src/server.js
   - Move existing routes/ to server/src/routes/
@@ -51,7 +52,9 @@
   - Move existing models/ to server/src/models/
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 5. Create server app.js and update server entry point
+
+- [x] 5. Create server app.js and update server entry point
+
 
   - Extract Express app setup from server.js into server/src/app.js
   - Update server/src/server.js to import and use app.js
