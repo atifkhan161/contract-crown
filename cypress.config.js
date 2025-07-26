@@ -17,6 +17,11 @@ export default defineConfig({
     devServer: {
       framework: 'vite',
       bundler: 'vite',
+      viteConfig: {
+        configFile: 'client/vite.config.js'
+      }
     },
+    specPattern: 'client/src/**/*.cy.{js,jsx,ts,tsx}',
+    indexHtmlFile: 'client/index.html'
   },
 })

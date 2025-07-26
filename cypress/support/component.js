@@ -1,0 +1,7 @@
+// Import commands.js using ES2015 syntax:
+import './commands'
+
+// Alternatively you can use CommonJS syntax:
+// require('./commands')
+
+// Component testing specific setup can go here
