@@ -152,10 +152,6 @@ contract-crown-pwa/
 ├── UX/                   # UI/UX design assets
 │   ├── game_lobby.png   # Lobby interface design
 │   └── multiplayer lobby*.jpg # Lobby design iterations
-├── dist/                 # Production build output
-├── lobby.html           # Temporary: Will be moved to client/
-├── manifest.json        # Temporary: Will be moved to client/public/
-└── sw.js                # Temporary: Will be moved to client/public/
 ```
 
 ### Target Structure (In Progress)

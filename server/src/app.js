@@ -209,13 +209,13 @@ function setupRoutes(app, io, socketManager, connectionStatusManager) {
     });
   });
 
-  // Serve static files from Vite build output
-  const staticPath = path.join(__dirname, '..', '..', 'dist');
+  // Serve static files from client build output
+  const staticPath = path.join(__dirname, '..', '..', 'client', 'dist');
   
-  // Check if dist directory exists in production
+  // Check if client/dist directory exists in production
   if (process.env.NODE_ENV === 'production' && !existsSync(staticPath)) {
     console.error('[Static Files] Production build directory not found at:', staticPath);
-    console.error('[Static Files] Run "npm run build" to create the production build');
+    console.error('[Static Files] Run "npm run build" from the client directory to create the production build');
   }
   
   // Configure static file serving with production optimizations
@@ -231,50 +231,75 @@ function setupRoutes(app, io, socketManager, connectionStatusManager) {
     // Custom cache control for different file types
     setHeaders: (res, filePath) => {
       const ext = path.extname(filePath).toLowerCase();
+      const filename = path.basename(filePath);
       
       if (process.env.NODE_ENV === 'production') {
-        // Cache hashed assets (JS, CSS with hash) for 1 year
+        // Security headers for all static files
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+        
+        // Cache hashed assets (JS, CSS with hash) for 1 year with immutable flag
         if (ext === '.js' || ext === '.css') {
-          const filename = path.basename(filePath);
-          // Check if filename contains hash (common pattern: name-[hash].ext)
-          if (filename.match(/\-[a-f0-9]{8,}\./)) {
+          // Check if filename contains hash (Vite pattern: name-[hash].ext or name.[hash].ext)
+          if (filename.match(/[\-\.][a-f0-9]{8,}\./)) {
             res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
           } else {
-            // Non-hashed JS/CSS files get shorter cache
-            res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+            // Non-hashed JS/CSS files get shorter cache with must-revalidate
+            res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate'); // 1 day
           }
         }
         // Cache images and fonts for 30 days
         else if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot'].includes(ext)) {
           res.setHeader('Cache-Control', 'public, max-age=2592000'); // 30 days
         }
-        // Cache manifest and other files for 1 day
+        // Cache manifest and service worker files for shorter duration
         else if (['.json', '.xml', '.txt'].includes(ext)) {
-          res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day
+          if (filename === 'manifest.json' || filename.includes('sw.js') || filename.includes('service-worker')) {
+            res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour for PWA files
+          } else {
+            res.setHeader('Cache-Control', 'public, max-age=86400'); // 1 day for other files
+          }
+        }
+        // HTML files should not be cached to ensure updates are served
+        else if (ext === '.html') {
+          res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
         }
       } else {
-        // Development: no cache
+        // Development: no cache to ensure fresh content during development
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
       }
     }
   }));
   
   // Handle client-side routing - serve index.html for non-API routes
   app.get('*', (req, res) => {
-    // Don't serve index.html for API routes
-    if (req.path.startsWith('/api/')) {
+    // Don't serve index.html for API routes, health check, or socket.io
+    if (req.path.startsWith('/api/') || req.path.startsWith('/health') || req.path.startsWith('/socket.io')) {
       return res.status(404).json({
-        error: 'API endpoint not found',
+        error: 'Endpoint not found',
         path: req.path
       });
     }
     
-    res.sendFile(path.join(staticPath, 'index.html'), (err) => {
+    const indexPath = path.join(staticPath, 'index.html');
+    
+    // Set appropriate headers for the SPA fallback
+    res.setHeader('Content-Type', 'text/html');
+    if (process.env.NODE_ENV === 'production') {
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    } else {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+    
+    res.sendFile(indexPath, (err) => {
       if (err) {
-        console.error('Error serving index.html:', err);
+        console.error('[Static Files] Error serving index.html from:', indexPath, err);
         res.status(500).json({
           error: 'Failed to serve application',
-          message: 'Build files not found. Run "npm run build" first.'
+          message: 'Client build files not found. Run "npm run build" from the client directory first.',
+          path: indexPath
         });
       }
     });

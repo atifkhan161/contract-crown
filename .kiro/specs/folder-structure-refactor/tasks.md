@@ -56,19 +56,27 @@
 - [x] 5. Create server app.js and update server entry point
 
 
+
   - Extract Express app setup from server.js into server/src/app.js
   - Update server/src/server.js to import and use app.js
   - Organize middleware setup and route registration in app.js
   - _Requirements: 2.5_
 
-- [ ] 6. Update server static file serving configuration
+- [x] 6. Update server static file serving configuration
+
+
+
+
+
 
   - Update Express static file serving to use client/dist/ as source
   - Configure proper cache headers for production static assets
   - Update fallback routing for client-side routing
   - _Requirements: 4.3, 4.4_
 
-- [ ] 7. Update root package.json scripts for new structure
+- [-] 7. Update root package.json scripts for new structure
+
+
 
   - Update dev script to run both client and server from their directories
   - Update build script to build client from client directory
@@ -78,12 +86,14 @@
 
 - [ ] 8. Update import paths throughout the codebase
 
+
   - Update all relative import paths in moved files
   - Update server imports to use new src/ structure
   - Update any hardcoded paths in configuration files
   - _Requirements: 3.4_
 
 - [ ] 9. Update Cypress configuration for new structure
+
 
   - Update cypress.config.js to work with new client directory
   - Update any test files that reference old file paths
@@ -92,12 +102,14 @@
 
 - [ ] 10. Update development proxy configuration
 
+
   - Ensure Vite proxy configuration works from client directory
   - Update server development setup to serve from correct static path
   - Test hot module replacement functionality
   - _Requirements: 5.6_
 
 - [ ] 11. Test and validate the restructured application
+
 
   - Run development servers to ensure they start correctly
   - Test frontend build process produces correct output
