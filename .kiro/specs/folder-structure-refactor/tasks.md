@@ -27,7 +27,9 @@
   - Update build output path to client/dist/
   - _Requirements: 1.6, 3.1, 3.2, 3.3_
 
-- [-] 3. Move static assets to client/public directory
+- [x] 3. Move static assets to client/public directory
+
+
 
 
 
@@ -36,6 +38,8 @@
   - Move any favicon or icon files to client/public/
   - Update HTML files to reference assets from correct paths
   - _Requirements: 4.1, 4.2, 4.5_
+
+
 
 - [ ] 4. Reorganize server directory structure
 
