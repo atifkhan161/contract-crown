@@ -127,6 +127,7 @@
 
 
 
+
   - Run development servers to ensure they start correctly
   - Test frontend build process produces correct output
   - Verify WebSocket connections work with new structure

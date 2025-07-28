@@ -278,34 +278,48 @@
   - Test WebSocket connection and real-time updates
   - _Requirements: 12.4_
 
-- [ ] 6. Game Page Foundation
+- [x] 6. Game Page Foundation
+
+
+
+
+
   - Create game page with card display and game table layout
   - Implement basic game state management and UI components
   - Add trump declaration interface and card distribution
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 10.1, 10.2_
 
-- [ ] 6.1 Create game page with table layout
+- [x] 6.1 Create game page with table layout
+
+
   - Build game.html with game table, player positions, and card areas
   - Implement game.css with mobile-optimized card game interface
   - Create game.js with basic game state management (max 500 lines)
   - Add score display, trump indicator, and turn highlighting
   - _Requirements: 4.1, 4.2, 10.1, 10.2_
 
-- [ ] 6.2 Implement card rendering and hand management
+- [x] 6.2 Implement card rendering and hand management
+
+
   - Create card component with suit and rank display
   - Add player hand rendering with touch-friendly card selection
   - Implement opponent card count display
   - Add card animation and visual feedback for selections
   - _Requirements: 4.2, 4.5, 10.1_
 
-- [ ] 6.3 Create trump declaration interface
+- [x] 6.3 Create trump declaration interface
+
+
+
   - Add trump selection UI for the first player
   - Implement trump suit display for all players
   - Create initial 4-card distribution and trump selection flow
   - Add trump declaration validation and confirmation
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 6.4 Write Cypress tests for game page basics
+- [x] 6.4 Write Cypress tests for game page basics
+
+
   - Test game page loading and layout rendering
   - Test card display and hand management
   - Test trump declaration interface and flow
