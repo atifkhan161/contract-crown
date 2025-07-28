@@ -419,7 +419,10 @@
   - Implement graceful degradation for connection issues
   - _Requirements: 9.2, 9.3, 11.3, 11.4, 11.5_
 
-- [-] 8.4 Write Cypress tests for real-time communication
+- [x] 8.4 Write Cypress tests for real-time communication
+
+
+
 
   - Test WebSocket connection establishment and events
   - Test game state synchronization across multiple clients
@@ -427,7 +430,9 @@
   - Test real-time game event handling
   - _Requirements: 12.4_
 
-- [-] 9. Complete Game Flow Integration
+- [x] 9. Complete Game Flow Integration
+
+
 
 
 
@@ -436,28 +441,36 @@
   - Add game completion and winner determination
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5, 7.1, 7.2_
 
-- [ ] 9.1 Integrate card play with game rules enforcement
+- [x] 9.1 Integrate card play with game rules enforcement
+
+
   - Connect frontend card selection with backend validation
   - Implement real-time card play updates and animations
   - Add suit-following rule enforcement and visual feedback
   - Create invalid move handling and error messages
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 9.2 Complete trick and round management
+- [x] 9.2 Complete trick and round management
+
+
   - Implement full 8-trick rounds with winner determination
   - Add trick completion animations and score updates
   - Create round-end processing and next round initialization
   - Implement dealer rotation and trump declaration for new rounds
   - _Requirements: 5.4, 5.5, 7.1, 7.2_
 
-- [ ] 9.3 Add game completion and statistics
+- [x] 9.3 Add game completion and statistics
+
+
   - Implement game end detection and winner announcement
   - Create final score display and game summary
   - Add user statistics updates (games played, games won)
   - Implement return to dashboard after game completion
   - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 9.4 Write comprehensive end-to-end tests
+
+- [x] 9.4 Write comprehensive end-to-end tests
+
   - Test complete game flow from login to game completion
   - Test 4-player game with all rules and scoring
   - Test Crown Rule implementation across multiple rounds

@@ -313,7 +313,7 @@ describe('Real-time Lobby Updates', () => {
       
       setTimeout(() => {
         clientSocket1.on('error', (data) => {
-          expect(data.message).toBe('All players must be ready to start game');
+          expect(data.message).toBe('All connected players must be ready to start game');
           done();
         });
 

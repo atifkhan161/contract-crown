@@ -510,7 +510,7 @@ class GameEngine {
     }
 
     /**
-     * Play a card in the current trick
+     * Play a card in the current trick with comprehensive validation
      * @param {string} gameId - Game ID
      * @param {string} roundId - Round ID
      * @param {string} trickId - Trick ID
@@ -520,28 +520,49 @@ class GameEngine {
      */
     async playCard(gameId, roundId, trickId, playerId, card) {
         try {
-            // Validate the card play
+            // Comprehensive validation
             const validation = await this.validateCardPlay(gameId, roundId, trickId, playerId, card);
             if (!validation.isValid) {
                 throw new Error(validation.reason);
             }
 
+            // Additional turn validation
+            const turnValidation = await this.validatePlayerTurn(gameId, trickId, playerId);
+            if (!turnValidation.isValid) {
+                throw new Error(turnValidation.reason);
+            }
+
             // Get current trick state
             const trickResult = await dbConnection.query(`
-                SELECT cards_played FROM game_tricks WHERE trick_id = ?
+                SELECT cards_played, leading_player_id FROM game_tricks WHERE trick_id = ?
             `, [trickId]);
 
+            if (trickResult.length === 0) {
+                throw new Error('Trick not found');
+            }
+
             const cardsPlayed = JSON.parse(trickResult[0].cards_played || '[]');
+            const leadingPlayerId = trickResult[0].leading_player_id;
             
-            // Add the played card
-            cardsPlayed.push({
+            // Ensure card has proper value for comparison
+            const cardWithValue = {
+                ...card,
+                value: this.cardValues[card.rank] || 0
+            };
+
+            // Add the played card with timestamp
+            const playedCard = {
                 playerId,
-                card: { suit: card.suit, rank: card.rank, value: card.value }
-            });
+                card: cardWithValue,
+                playedAt: new Date().toISOString(),
+                position: cardsPlayed.length // 0-3 for play order
+            };
+
+            cardsPlayed.push(playedCard);
 
             // Update trick with new card
             await dbConnection.query(`
-                UPDATE game_tricks SET cards_played = ? WHERE trick_id = ?
+                UPDATE game_tricks SET cards_played = ?, updated_at = NOW() WHERE trick_id = ?
             `, [JSON.stringify(cardsPlayed), trickId]);
 
             // Remove card from player's hand
@@ -558,11 +579,17 @@ class GameEngine {
                 WHERE game_id = ? AND user_id = ?
             `, [JSON.stringify(updatedHand), gameId, playerId]);
 
-            console.log(`[GameEngine] Player ${playerId} played ${card.rank} of ${card.suit} in trick ${trickId}`);
+            console.log(`[GameEngine] Player ${playerId} played ${card.rank} of ${card.suit} in trick ${trickId} (${cardsPlayed.length}/4 cards)`);
 
             // Check if trick is complete (4 cards played)
             if (cardsPlayed.length === 4) {
-                return await this.completeTrick(gameId, roundId, trickId);
+                const trickResult = await this.completeTrick(gameId, roundId, trickId);
+                return {
+                    ...trickResult,
+                    cardPlayed: cardWithValue,
+                    playerId,
+                    cardsInTrick: cardsPlayed
+                };
             }
 
             // Get next player in turn order
@@ -571,13 +598,112 @@ class GameEngine {
             return {
                 trickId,
                 cardsPlayed,
+                cardsInTrick: cardsPlayed,
                 nextPlayerId,
-                trickComplete: false
+                trickComplete: false,
+                cardPlayed: cardWithValue,
+                playerId,
+                leadSuit: cardsPlayed.length === 1 ? card.suit : (cardsPlayed[0]?.card?.suit || null)
             };
         } catch (error) {
             console.error('[GameEngine] Play card error:', error.message);
+            
+            // Return structured error for better client handling
+            throw {
+                type: 'card_play_error',
+                message: error.message,
+                code: this.getErrorCode(error.message),
+                playerId,
+                card,
+                trickId
+            };
+        }
+    }
+
+    /**
+     * Validate if it's the player's turn to play
+     * @param {string} gameId - Game ID
+     * @param {string} trickId - Trick ID
+     * @param {string} playerId - Player attempting to play
+     * @returns {Object} Validation result
+     */
+    async validatePlayerTurn(gameId, trickId, playerId) {
+        try {
+            // Get trick information
+            const trickResult = await dbConnection.query(`
+                SELECT cards_played, leading_player_id FROM game_tricks WHERE trick_id = ?
+            `, [trickId]);
+
+            if (trickResult.length === 0) {
+                return { isValid: false, reason: 'Trick not found' };
+            }
+
+            const cardsPlayed = JSON.parse(trickResult[0].cards_played || '[]');
+            const leadingPlayerId = trickResult[0].leading_player_id;
+
+            // If no cards played yet, only the leading player can play
+            if (cardsPlayed.length === 0) {
+                if (playerId !== leadingPlayerId) {
+                    return { isValid: false, reason: 'Only the leading player can play the first card' };
+                }
+                return { isValid: true };
+            }
+
+            // Check if player has already played in this trick
+            const hasAlreadyPlayed = cardsPlayed.some(play => play.playerId === playerId);
+            if (hasAlreadyPlayed) {
+                return { isValid: false, reason: 'Player has already played in this trick' };
+            }
+
+            // Determine whose turn it is based on play order
+            const expectedPlayerId = await this.getExpectedPlayer(gameId, leadingPlayerId, cardsPlayed.length);
+            if (playerId !== expectedPlayerId) {
+                return { isValid: false, reason: 'Not your turn to play' };
+            }
+
+            return { isValid: true };
+        } catch (error) {
+            console.error('[GameEngine] Validate player turn error:', error.message);
+            return { isValid: false, reason: 'Turn validation error' };
+        }
+    }
+
+    /**
+     * Get the expected player for the current position in trick
+     * @param {string} gameId - Game ID
+     * @param {string} leadingPlayerId - Leading player ID
+     * @param {number} position - Position in trick (0-3)
+     * @returns {string} Expected player ID
+     */
+    async getExpectedPlayer(gameId, leadingPlayerId, position) {
+        try {
+            const players = await this.getGamePlayers(gameId);
+            const leadingIndex = players.findIndex(p => p.user_id === leadingPlayerId);
+            
+            if (leadingIndex === -1) {
+                throw new Error('Leading player not found');
+            }
+
+            const expectedIndex = (leadingIndex + position) % players.length;
+            return players[expectedIndex].user_id;
+        } catch (error) {
+            console.error('[GameEngine] Get expected player error:', error.message);
             throw error;
         }
+    }
+
+    /**
+     * Get error code for structured error handling
+     * @param {string} message - Error message
+     * @returns {string} Error code
+     */
+    getErrorCode(message) {
+        if (message.includes('Must follow suit')) return 'SUIT_FOLLOWING_VIOLATION';
+        if (message.includes('not your turn')) return 'TURN_VIOLATION';
+        if (message.includes('does not have this card')) return 'CARD_NOT_IN_HAND';
+        if (message.includes('already played')) return 'ALREADY_PLAYED';
+        if (message.includes('Trick not found')) return 'TRICK_NOT_FOUND';
+        return 'UNKNOWN_ERROR';
     }
 
     /**
@@ -1190,6 +1316,364 @@ class GameEngine {
             };
         } catch (error) {
             console.error('[GameEngine] Start new game error:', error.message);
+            throw error;
+        }
+    }
+}
+
+export default GameEngine;   
+ /**
+     * Complete a round and calculate scores
+     * @param {string} gameId - Game ID
+     * @param {string} roundId - Round ID
+     * @returns {Object} Round completion result
+     */
+    async completeRound(gameId, roundId) {
+        try {
+            // Get round information
+            const roundResult = await dbConnection.query(`
+                SELECT trump_suit, declaring_team_id, round_number 
+                FROM game_rounds 
+                WHERE round_id = ?
+            `, [roundId]);
+
+            if (roundResult.length === 0) {
+                throw new Error('Round not found');
+            }
+
+            const { trump_suit, declaring_team_id, round_number } = roundResult[0];
+
+            // Calculate tricks won by each team
+            const teamTricks = await this.calculateTeamTricks(gameId, roundId);
+            const declaringTeamTricks = teamTricks[declaring_team_id] || 0;
+            
+            // Get the other team ID
+            const teams = await this.getGameTeams(gameId);
+            const challengingTeam = teams.find(t => t.team_id !== declaring_team_id);
+            const challengingTeamTricks = teamTricks[challengingTeam.team_id] || 0;
+
+            // Calculate scores based on Contract Crown rules
+            const scores = this.calculateRoundScores(
+                declaringTeamTricks, 
+                challengingTeamTricks, 
+                declaring_team_id, 
+                challengingTeam.team_id
+            );
+
+            // Update team scores in database
+            await this.updateTeamScores(gameId, scores);
+
+            // Mark round as complete
+            await dbConnection.query(`
+                UPDATE game_rounds 
+                SET declaring_team_tricks_won = ?, 
+                    challenging_team_tricks_won = ?, 
+                    round_completed_at = NOW()
+                WHERE round_id = ?
+            `, [declaringTeamTricks, challengingTeamTricks, roundId]);
+
+            // Get updated team scores
+            const updatedTeams = await this.getGameTeams(gameId);
+            const finalScores = {};
+            updatedTeams.forEach(team => {
+                finalScores[team.team_id] = team.current_score;
+            });
+
+            // Check if game is complete (any team reached 52 points)
+            const gameComplete = updatedTeams.some(team => team.current_score >= 52);
+            let winningTeam = null;
+
+            if (gameComplete) {
+                // Find winning team
+                winningTeam = updatedTeams.reduce((winner, team) => 
+                    team.current_score > (winner?.current_score || 0) ? team : winner
+                );
+
+                // Update game status
+                await dbConnection.query(`
+                    UPDATE games 
+                    SET status = 'completed', 
+                        completed_at = NOW(), 
+                        winning_team_id = ?
+                    WHERE game_id = ?
+                `, [winningTeam.team_id, gameId]);
+
+                console.log(`[GameEngine] Game ${gameId} completed! Winner: Team ${winningTeam.team_number}`);
+            } else {
+                // Prepare for next round
+                const nextRoundData = await this.prepareNextRound(gameId, roundId);
+                
+                return {
+                    roundId,
+                    roundNumber: round_number,
+                    roundComplete: true,
+                    gameComplete: false,
+                    declaringTeamTricks,
+                    challengingTeamTricks,
+                    scores: finalScores,
+                    nextRound: nextRoundData
+                };
+            }
+
+            console.log(`[GameEngine] Round ${round_number} completed in game ${gameId}`);
+
+            return {
+                roundId,
+                roundNumber: round_number,
+                roundComplete: true,
+                gameComplete,
+                winningTeam: winningTeam ? {
+                    teamId: winningTeam.team_id,
+                    teamNumber: winningTeam.team_number,
+                    finalScore: winningTeam.current_score
+                } : null,
+                declaringTeamTricks,
+                challengingTeamTricks,
+                scores: finalScores
+            };
+        } catch (error) {
+            console.error('[GameEngine] Complete round error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Calculate tricks won by each team in a round
+     * @param {string} gameId - Game ID
+     * @param {string} roundId - Round ID
+     * @returns {Object} Team tricks count
+     */
+    async calculateTeamTricks(gameId, roundId) {
+        try {
+            // Get all completed tricks in the round with winners
+            const tricksResult = await dbConnection.query(`
+                SELECT gt.winning_player_id, gp.team_id
+                FROM game_tricks gt
+                JOIN game_players gp ON gt.winning_player_id = gp.user_id AND gp.game_id = ?
+                WHERE gt.round_id = ? AND gt.completed_at IS NOT NULL
+            `, [gameId, roundId]);
+
+            const teamTricks = {};
+            
+            tricksResult.forEach(trick => {
+                const teamId = trick.team_id;
+                teamTricks[teamId] = (teamTricks[teamId] || 0) + 1;
+            });
+
+            return teamTricks;
+        } catch (error) {
+            console.error('[GameEngine] Calculate team tricks error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Calculate round scores based on Contract Crown rules
+     * @param {number} declaringTeamTricks - Tricks won by declaring team
+     * @param {number} challengingTeamTricks - Tricks won by challenging team
+     * @param {string} declaringTeamId - Declaring team ID
+     * @param {string} challengingTeamId - Challenging team ID
+     * @returns {Object} Score updates for each team
+     */
+    calculateRoundScores(declaringTeamTricks, challengingTeamTricks, declaringTeamId, challengingTeamId) {
+        const scores = {};
+
+        // Declaring team scoring rules
+        if (declaringTeamTricks >= 5) {
+            // Declaring team made their contract
+            scores[declaringTeamId] = declaringTeamTricks;
+        } else {
+            // Declaring team failed their contract
+            scores[declaringTeamId] = 0;
+        }
+
+        // Challenging team scoring rules
+        if (challengingTeamTricks >= 4) {
+            // Challenging team gets points for 4+ tricks
+            scores[challengingTeamId] = challengingTeamTricks;
+        } else {
+            // Challenging team gets no points
+            scores[challengingTeamId] = 0;
+        }
+
+        return scores;
+    }
+
+    /**
+     * Update team scores in database
+     * @param {string} gameId - Game ID
+     * @param {Object} scores - Score updates for each team
+     */
+    async updateTeamScores(gameId, scores) {
+        try {
+            for (const [teamId, points] of Object.entries(scores)) {
+                await dbConnection.query(`
+                    UPDATE teams 
+                    SET current_score = current_score + ? 
+                    WHERE team_id = ? AND game_id = ?
+                `, [points, teamId, gameId]);
+            }
+
+            console.log(`[GameEngine] Updated team scores for game ${gameId}:`, scores);
+        } catch (error) {
+            console.error('[GameEngine] Update team scores error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Prepare for the next round
+     * @param {string} gameId - Game ID
+     * @param {string} currentRoundId - Current round ID
+     * @returns {Object} Next round information
+     */
+    async prepareNextRound(gameId, currentRoundId) {
+        try {
+            // Get current round info
+            const currentRoundResult = await dbConnection.query(`
+                SELECT round_number, dealer_user_id, declaring_team_id
+                FROM game_rounds 
+                WHERE round_id = ?
+            `, [currentRoundId]);
+
+            const { round_number, dealer_user_id, declaring_team_id } = currentRoundResult[0];
+
+            // Determine next dealer and trump declarer based on Crown Rule
+            const nextRoundInfo = await this.applyTrumpDeclarationRule(
+                gameId, 
+                currentRoundId, 
+                dealer_user_id, 
+                declaring_team_id
+            );
+
+            // Create next round
+            const nextRoundId = await this.createGameRound(
+                gameId,
+                round_number + 1,
+                nextRoundInfo.dealerUserId,
+                nextRoundInfo.firstPlayerUserId
+            );
+
+            // Deal initial cards for next round
+            const dealResult = await this.dealInitialCards(gameId);
+
+            console.log(`[GameEngine] Prepared next round ${round_number + 1} for game ${gameId}`);
+
+            return {
+                roundId: nextRoundId,
+                roundNumber: round_number + 1,
+                dealerUserId: nextRoundInfo.dealerUserId,
+                firstPlayerUserId: nextRoundInfo.firstPlayerUserId,
+                trumpDeclarerUserId: nextRoundInfo.trumpDeclarerUserId,
+                playerHands: dealResult.playerHands,
+                remainingDeck: dealResult.remainingDeck
+            };
+        } catch (error) {
+            console.error('[GameEngine] Prepare next round error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Apply Crown Rule for trump declaration privilege
+     * @param {string} gameId - Game ID
+     * @param {string} roundId - Current round ID
+     * @param {string} currentDealerId - Current dealer ID
+     * @param {string} declaringTeamId - Current declaring team ID
+     * @returns {Object} Next round player assignments
+     */
+    async applyTrumpDeclarationRule(gameId, roundId, currentDealerId, declaringTeamId) {
+        try {
+            // Get team tricks to determine if declaring team made contract
+            const teamTricks = await this.calculateTeamTricks(gameId, roundId);
+            const declaringTeamTricks = teamTricks[declaringTeamId] || 0;
+
+            // Get next dealer (always rotates clockwise)
+            const nextDealerInfo = await this.getNextDealer(gameId, currentDealerId);
+
+            let trumpDeclarerUserId;
+
+            if (declaringTeamTricks >= 5) {
+                // Declaring team made contract - same player declares trump again
+                const currentRoundResult = await dbConnection.query(`
+                    SELECT first_player_user_id FROM game_rounds WHERE round_id = ?
+                `, [roundId]);
+                trumpDeclarerUserId = currentRoundResult[0].first_player_user_id;
+            } else {
+                // Declaring team failed - trump declaration passes to dealer's left
+                trumpDeclarerUserId = nextDealerInfo.firstPlayerUserId;
+            }
+
+            return {
+                dealerUserId: nextDealerInfo.dealerUserId,
+                firstPlayerUserId: nextDealerInfo.firstPlayerUserId,
+                trumpDeclarerUserId
+            };
+        } catch (error) {
+            console.error('[GameEngine] Apply trump declaration rule error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Get comprehensive game statistics
+     * @param {string} gameId - Game ID
+     * @returns {Object} Game statistics
+     */
+    async getGameStatistics(gameId) {
+        try {
+            // Get game info
+            const gameResult = await dbConnection.query(`
+                SELECT status, created_at, started_at, completed_at, winning_team_id
+                FROM games WHERE game_id = ?
+            `, [gameId]);
+
+            if (gameResult.length === 0) {
+                throw new Error('Game not found');
+            }
+
+            const game = gameResult[0];
+
+            // Get teams and scores
+            const teams = await this.getGameTeams(gameId);
+
+            // Get rounds played
+            const roundsResult = await dbConnection.query(`
+                SELECT COUNT(*) as total_rounds FROM game_rounds 
+                WHERE game_id = ? AND round_completed_at IS NOT NULL
+            `, [gameId]);
+
+            // Get player statistics
+            const playersResult = await dbConnection.query(`
+                SELECT gp.user_id, u.username, gp.team_id, 
+                       SUM(gp.tricks_won_current_round) as total_tricks_won
+                FROM game_players gp
+                JOIN users u ON gp.user_id = u.user_id
+                WHERE gp.game_id = ?
+                GROUP BY gp.user_id, u.username, gp.team_id
+            `, [gameId]);
+
+            return {
+                gameId,
+                status: game.status,
+                duration: game.completed_at ? 
+                    new Date(game.completed_at) - new Date(game.started_at) : null,
+                totalRounds: roundsResult[0].total_rounds,
+                teams: teams.map(team => ({
+                    teamId: team.team_id,
+                    teamNumber: team.team_number,
+                    finalScore: team.current_score,
+                    isWinner: team.team_id === game.winning_team_id
+                })),
+                players: playersResult.map(player => ({
+                    userId: player.user_id,
+                    username: player.username,
+                    teamId: player.team_id,
+                    totalTricksWon: player.total_tricks_won || 0
+                }))
+            };
+        } catch (error) {
+            console.error('[GameEngine] Get game statistics error:', error.message);
             throw error;
         }
     }

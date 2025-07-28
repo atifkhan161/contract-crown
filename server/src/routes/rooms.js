@@ -304,6 +304,16 @@ router.post('/:roomId/ready', auth, async (req, res) => {
         // Update ready status
         await room.setPlayerReady(userId, !!isReady);
 
+        // Also update WebSocket room data if it exists
+        if (req.socketManager) {
+            const wsRoom = req.socketManager.gameRooms.get(roomId);
+            if (wsRoom && wsRoom.players.has(userId)) {
+                const wsPlayer = wsRoom.players.get(userId);
+                wsPlayer.isReady = !!isReady;
+                console.log(`[HTTP API] Updated WebSocket room data for ${wsPlayer.username}: ready=${!!isReady}`);
+            }
+        }
+
         // Emit ready status update to all players in room
         req.io.to(`room_${roomId}`).emit('playerReadyStatusChanged', {
             roomId: room.room_id,
@@ -402,7 +412,7 @@ router.post('/:roomId/start', auth, async (req, res) => {
         if (!room.canStartGame()) {
             return res.status(400).json({
                 success: false,
-                message: 'All players must be ready to start the game'
+                message: 'All connected players must be ready to start the game'
             });
         }
 

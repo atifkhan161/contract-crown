@@ -11,7 +11,7 @@ const authLimiter = process.env.NODE_ENV === 'test'
     ? (req, res, next) => next() // Skip rate limiting in tests
     : rateLimit({
         windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 5, // limit each IP to 5 requests per windowMs for auth
+        max: 150, // limit each IP to 5 requests per windowMs for auth
         message: {
             error: 'Too many authentication attempts, please try again later.'
         },

@@ -138,3 +138,74 @@ Cypress.Commands.add('playCard', (cardIndex) => {
   cy.get(`[data-cy=player-card-${cardIndex}]`).click()
   cy.get('[data-cy=confirm-play-button]').click()
 })
+// 
+WebSocket testing commands
+Cypress.Commands.add('waitForWebSocketConnection', () => {
+  cy.window().then((win) => {
+    return new Cypress.Promise((resolve) => {
+      const checkConnection = () => {
+        if (win.websocketManager && win.websocketManager.isConnected()) {
+          resolve();
+        } else {
+          setTimeout(checkConnection, 100);
+        }
+      };
+      checkConnection();
+    });
+  });
+});
+
+Cypress.Commands.add('simulateWebSocketEvent', (event, data) => {
+  cy.window().then((win) => {
+    if (win.websocketManager && win.websocketManager.socket) {
+      win.websocketManager.socket.emit(event, data);
+    }
+  });
+});
+
+Cypress.Commands.add('verifyConnectionStatus', (expectedStatus) => {
+  cy.get('#connectionStatus .status-text').should('contain', expectedStatus);
+  cy.get('#connectionStatus .status-indicator').should('have.class', expectedStatus.toLowerCase());
+});
+
+// Game setup commands for WebSocket tests
+Cypress.Commands.add('createTestGame', (gameData) => {
+  return cy.request({
+    method: 'POST',
+    url: '/api/test/create-game',
+    body: gameData
+  }).then((response) => {
+    return response.body;
+  });
+});
+
+Cypress.Commands.add('createTestUser', (userData) => {
+  return cy.request({
+    method: 'POST',
+    url: '/api/test/create-user',
+    body: userData,
+    failOnStatusCode: false
+  });
+});
+
+Cypress.Commands.add('cleanupTestData', () => {
+  return cy.request({
+    method: 'DELETE',
+    url: '/api/test/cleanup',
+    failOnStatusCode: false
+  });
+});
+
+// Multi-window testing support
+Cypress.Commands.add('openNewWindow', (url) => {
+  cy.window().then((win) => {
+    const newWindow = win.open(url, '_blank');
+    return cy.wrap(newWindow);
+  });
+});
+
+Cypress.Commands.add('switchToWindow', (windowAlias) => {
+  cy.get(windowAlias).then((win) => {
+    cy.wrap(win.document).as('currentDocument');
+  });
+});

@@ -219,6 +219,24 @@ class AuthManager {
     }
 
     /**
+     * Get current user ID
+     * @returns {string|null} User ID or null if not authenticated
+     */
+    getUserId() {
+        const user = this.getCurrentUser();
+        return user ? user.id : null;
+    }
+
+    /**
+     * Get current username
+     * @returns {string|null} Username or null if not authenticated
+     */
+    getUsername() {
+        const user = this.getCurrentUser();
+        return user ? user.username : null;
+    }
+
+    /**
      * Get storage based on remember me preference
      * @returns {Storage} localStorage or sessionStorage
      */
@@ -758,6 +776,9 @@ class AuthManager {
 }
 
 // Export for use in other modules
+export { AuthManager };
+
+// Fallback exports for compatibility
 if (typeof window !== 'undefined') {
     window.AuthManager = AuthManager;
 }

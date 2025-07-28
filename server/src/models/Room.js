@@ -441,9 +441,10 @@ class Room {
     }
 
     canStartGame() {
-        // Check if all players are ready and we have at least 2 players
-        const readyPlayers = this.players.filter(p => p.isReady);
-        return this.players.length >= 2 && readyPlayers.length === this.players.length;
+        // Check if all connected players are ready and we have at least 2 connected players
+        const connectedPlayers = this.players.filter(p => p.isConnected !== false);
+        const readyConnectedPlayers = connectedPlayers.filter(p => p.isReady);
+        return connectedPlayers.length >= 2 && readyConnectedPlayers.length === connectedPlayers.length;
     }
 
     // Validation methods

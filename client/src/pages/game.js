@@ -150,17 +150,41 @@ class GameManager {
             console.log('Connected to game server');
             this.updateConnectionStatus('connected');
             this.joinGame();
+            
+            // Fallback: hide loading after 5 seconds if no game state received
+            setTimeout(() => {
+                if (this.elements.loadingOverlay && !this.elements.loadingOverlay.classList.contains('hidden')) {
+                    console.log('Fallback: hiding loading screen after timeout');
+                    this.hideLoading();
+                    this.addGameMessage('Connected to game server', 'success');
+                }
+            }, 5000);
         });
 
         this.socket.on('disconnect', () => {
             console.log('Disconnected from game server');
             this.updateConnectionStatus('disconnected');
+            this.addGameMessage('Disconnected from server', 'warning');
         });
 
         this.socket.on('reconnecting', () => {
             console.log('Reconnecting to game server');
             this.updateConnectionStatus('connecting');
+            this.addGameMessage('Reconnecting to server...', 'info');
         });
+
+        this.socket.on('error', (error) => {
+            console.error('Socket error:', error);
+            this.addGameMessage('Connection error occurred', 'error');
+        });
+
+        // Room events
+        this.socket.on('room-joined', (data) => this.handleRoomJoined(data));
+        this.socket.on('player-joined', (data) => this.handlePlayerJoined(data));
+        this.socket.on('player-left', (data) => this.handlePlayerLeft(data));
+        this.socket.on('player-ready-changed', (data) => this.handlePlayerReadyChanged(data));
+        this.socket.on('teams-formed', (data) => this.handleTeamsFormed(data));
+        this.socket.on('game-starting', (data) => this.handleGameStarting(data));
 
         // Game events
         this.socket.on('game:state_update', (data) => this.handleGameStateUpdate(data));
@@ -181,10 +205,103 @@ class GameManager {
         }
 
         this.gameState.gameId = gameId;
-        this.socket.emit('game:join', { 
+        
+        // Join the game room
+        this.socket.emit('join-game-room', { 
             gameId: gameId,
-            token: this.authManager.getToken()
+            userId: this.authManager.getUserId(),
+            username: this.authManager.getUsername()
         });
+        
+        // Request initial game state
+        setTimeout(() => {
+            this.socket.emit('request-game-state', { gameId: gameId });
+        }, 500);
+    }
+
+    // Room Event Handlers
+    handleRoomJoined(data) {
+        console.log('Room joined:', data);
+        this.hideLoading();
+        this.addGameMessage(`Joined game room with ${data.playerCount} players`, 'success');
+        
+        // Update game state with room data
+        this.gameState.players = {};
+        data.players.forEach(player => {
+            this.gameState.players[player.userId] = {
+                username: player.username,
+                isReady: player.isReady,
+                teamAssignment: player.teamAssignment,
+                isConnected: player.isConnected
+            };
+        });
+        
+        this.updateUI();
+    }
+
+    handlePlayerJoined(data) {
+        console.log('Player joined:', data);
+        this.addGameMessage(`${data.player.username} joined the game`, 'info');
+        
+        // Update players list
+        this.gameState.players[data.player.userId] = {
+            username: data.player.username,
+            isReady: data.player.isReady,
+            teamAssignment: data.player.teamAssignment,
+            isConnected: true
+        };
+        
+        this.updateUI();
+    }
+
+    handlePlayerLeft(data) {
+        console.log('Player left:', data);
+        this.addGameMessage(`${data.playerName} left the game`, 'warning');
+        
+        // Remove player from state
+        if (this.gameState.players[data.playerId]) {
+            delete this.gameState.players[data.playerId];
+        }
+        
+        this.updateUI();
+    }
+
+    handlePlayerReadyChanged(data) {
+        console.log('Player ready changed:', data);
+        const readyText = data.isReady ? 'ready' : 'not ready';
+        this.addGameMessage(`${data.playerName} is ${readyText}`, 'info');
+        
+        // Update player ready status
+        if (this.gameState.players[data.playerId]) {
+            this.gameState.players[data.playerId].isReady = data.isReady;
+        }
+        
+        this.updateUI();
+    }
+
+    handleTeamsFormed(data) {
+        console.log('Teams formed:', data);
+        this.addGameMessage(`Teams formed by ${data.formedBy}`, 'success');
+        
+        // Update team assignments
+        data.players.forEach(player => {
+            if (this.gameState.players[player.userId]) {
+                this.gameState.players[player.userId].teamAssignment = player.teamAssignment;
+            }
+        });
+        
+        this.updateUI();
+    }
+
+    handleGameStarting(data) {
+        console.log('Game starting:', data);
+        this.addGameMessage(`Game starting! Started by ${data.startedBy}`, 'success');
+        
+        // Update game phase
+        this.gameState.gamePhase = 'starting';
+        this.gameState.status = 'starting';
+        
+        this.updateUI();
     }
 
     // Game State Management
@@ -216,32 +333,838 @@ class GameManager {
 
     handleCardPlayed(data) {
         console.log('Card played:', data);
-        this.renderPlayedCard(data.playerId, data.card, data.position);
-        this.addGameMessage(`${data.playerName} played ${data.card.rank} of ${data.card.suit}`, 'info');
+        
+        // Update current trick state
+        if (data.cardsInTrick) {
+            this.gameState.currentTrick = {
+                ...this.gameState.currentTrick,
+                cardsPlayed: data.cardsInTrick
+            };
+        }
+
+        // Update current player turn
+        if (data.nextPlayerId) {
+            this.gameState.currentTurnPlayer = data.nextPlayerId;
+            this.gameState.isMyTurn = (data.nextPlayerId === this.getCurrentPlayerId());
+        }
+
+        // Render the played card with animation
+        const playerPosition = this.getPlayerPositionById(data.playedBy);
+        this.renderPlayedCard(data.playedBy, data.card, playerPosition);
+        
+        // Update opponent hand sizes
+        this.updateOpponentHandSize(data.playedBy);
+        
+        // Update UI elements
+        this.updateTurnIndicators();
+        this.updateCardPlayability();
+        
+        // Add game message
+        const playerName = data.playedByName || this.getPlayerNameById(data.playedBy);
+        this.addGameMessage(`${playerName} played ${data.card.rank} of ${data.card.suit}`, 'info');
+        
+        // Show visual feedback for suit following
+        this.highlightLeadSuit(data.card);
+    }
+
+    /**
+     * Get current player ID
+     * @returns {string} Current player ID
+     */
+    getCurrentPlayerId() {
+        // This should be set during game initialization
+        return this.gameState.currentPlayer || 'player1';
+    }
+
+    /**
+     * Get player position by player ID
+     * @param {string} playerId - Player ID
+     * @returns {string} Player position (top, left, right, bottom)
+     */
+    getPlayerPositionById(playerId) {
+        // Map player IDs to positions based on seat arrangement
+        const playerPositions = {
+            [this.getCurrentPlayerId()]: 'bottom',
+            // This mapping should be set up during game initialization
+            // For now, use a simple mapping
+        };
+        
+        // If not found, determine position based on player order
+        const players = Object.keys(this.gameState.players || {});
+        const currentIndex = players.indexOf(this.getCurrentPlayerId());
+        const targetIndex = players.indexOf(playerId);
+        
+        if (currentIndex === -1 || targetIndex === -1) return 'top';
+        
+        const relativePosition = (targetIndex - currentIndex + 4) % 4;
+        const positions = ['bottom', 'left', 'top', 'right'];
+        return positions[relativePosition];
+    }
+
+    /**
+     * Get player name by ID
+     * @param {string} playerId - Player ID
+     * @returns {string} Player name
+     */
+    getPlayerNameById(playerId) {
+        if (this.gameState.players && this.gameState.players[playerId]) {
+            return this.gameState.players[playerId].username;
+        }
+        return `Player ${playerId}`;
+    }
+
+    /**
+     * Update opponent hand size after card play
+     * @param {string} playerId - Player who played the card
+     */
+    updateOpponentHandSize(playerId) {
+        if (this.gameState.players && this.gameState.players[playerId]) {
+            const player = this.gameState.players[playerId];
+            if (player.handSize > 0) {
+                player.handSize--;
+            }
+        }
+        this.updatePlayerInfo();
+    }
+
+    /**
+     * Highlight the lead suit for visual feedback
+     * @param {Object} card - Card that was played
+     */
+    highlightLeadSuit(card) {
+        const currentTrick = this.gameState.currentTrick;
+        if (!currentTrick || !currentTrick.cardsPlayed) return;
+        
+        // If this is the first card, it sets the lead suit
+        if (currentTrick.cardsPlayed.length === 1) {
+            this.gameState.leadSuit = card.suit;
+            this.showLeadSuitIndicator(card.suit);
+        }
+    }
+
+    /**
+     * Show lead suit indicator
+     * @param {string} suit - Lead suit
+     */
+    showLeadSuitIndicator(suit) {
+        const suitSymbols = {
+            hearts: '♥',
+            diamonds: '♦',
+            clubs: '♣',
+            spades: '♠'
+        };
+        
+        const message = `Lead suit: ${suitSymbols[suit]} ${suit.charAt(0).toUpperCase() + suit.slice(1)}`;
+        this.addGameMessage(message, 'info');
+        
+        // Add visual indicator to trick area
+        const trickArea = this.elements.trickArea;
+        if (trickArea) {
+            const leadSuitIndicator = trickArea.querySelector('.lead-suit-indicator') || 
+                document.createElement('div');
+            leadSuitIndicator.className = 'lead-suit-indicator';
+            leadSuitIndicator.innerHTML = `
+                <span class="lead-suit-label">Lead:</span>
+                <span class="lead-suit-symbol ${suit}">${suitSymbols[suit]}</span>
+            `;
+            
+            if (!trickArea.querySelector('.lead-suit-indicator')) {
+                trickArea.appendChild(leadSuitIndicator);
+            }
+        }
     }
 
     handleTrickWon(data) {
         console.log('Trick won:', data);
-        this.addGameMessage(`${data.winnerName} won the trick`, 'success');
         
-        // Clear played cards after a delay
+        // Update game state with trick winner
+        this.gameState.currentTrick = {
+            ...this.gameState.currentTrick,
+            winner: data.winnerId,
+            winningCard: data.winningCard,
+            complete: true
+        };
+
+        // Show trick winner animation
+        this.showTrickWinnerAnimation(data.winnerId, data.winningCard);
+        
+        // Add game message
+        const winnerName = data.winnerName || this.getPlayerNameById(data.winnerId);
+        this.addGameMessage(`${winnerName} won the trick with ${data.winningCard.rank} of ${data.winningCard.suit}`, 'success');
+        
+        // Clear played cards and prepare for next trick after animation
         setTimeout(() => {
             this.clearPlayedCards();
-            this.gameState.currentTrick++;
-            this.updateUI();
-        }, 2000);
+            this.prepareNextTrick(data);
+        }, 2500);
+    }
+
+    /**
+     * Show trick winner animation
+     * @param {string} winnerId - Winner player ID
+     * @param {Object} winningCard - Winning card
+     */
+    showTrickWinnerAnimation(winnerId, winningCard) {
+        // Highlight the winning card
+        const playedCards = document.querySelectorAll('.played-card');
+        playedCards.forEach(card => {
+            const cardRank = card.querySelector('.card-rank')?.textContent;
+            const cardSuit = card.querySelector('.card-suit')?.textContent;
+            
+            if (cardRank === winningCard.rank && this.getSuitSymbol(winningCard.suit) === cardSuit) {
+                card.classList.add('winning-card');
+                
+                // Add pulsing animation
+                setTimeout(() => {
+                    card.classList.add('winner-pulse');
+                }, 100);
+            } else {
+                card.classList.add('losing-card');
+            }
+        });
+
+        // Highlight winner's position
+        const winnerPosition = this.getPlayerPositionById(winnerId);
+        const winnerTurnIndicator = this.elements[`player${winnerPosition.charAt(0).toUpperCase() + winnerPosition.slice(1)}Turn`];
+        if (winnerTurnIndicator) {
+            winnerTurnIndicator.classList.add('trick-winner');
+            setTimeout(() => {
+                winnerTurnIndicator.classList.remove('trick-winner');
+            }, 2000);
+        }
+    }
+
+    /**
+     * Get suit symbol for display
+     * @param {string} suit - Suit name
+     * @returns {string} Suit symbol
+     */
+    getSuitSymbol(suit) {
+        const symbols = {
+            hearts: '♥',
+            diamonds: '♦',
+            clubs: '♣',
+            spades: '♠'
+        };
+        return symbols[suit] || '?';
+    }
+
+    /**
+     * Prepare for next trick
+     * @param {Object} trickData - Trick completion data
+     */
+    prepareNextTrick(trickData) {
+        // Update trick number
+        if (this.gameState.currentRound) {
+            this.gameState.currentRound.currentTrick = (this.gameState.currentRound.currentTrick || 1) + 1;
+        }
+
+        // Set next leader
+        if (trickData.nextLeaderId) {
+            this.gameState.currentTurnPlayer = trickData.nextLeaderId;
+            this.gameState.isMyTurn = (trickData.nextLeaderId === this.getCurrentPlayerId());
+        }
+
+        // Clear lead suit for new trick
+        this.gameState.leadSuit = null;
+        
+        // Remove lead suit indicator
+        const leadSuitIndicator = document.querySelector('.lead-suit-indicator');
+        if (leadSuitIndicator) {
+            leadSuitIndicator.remove();
+        }
+
+        // Update UI
+        this.updateUI();
+        
+        // Check if this was the last trick of the round
+        if (this.gameState.currentRound && this.gameState.currentRound.currentTrick > 8) {
+            this.addGameMessage('Round complete! Calculating scores...', 'info');
+        } else {
+            const nextTrickNumber = this.gameState.currentRound?.currentTrick || 1;
+            this.addGameMessage(`Starting trick ${nextTrickNumber}`, 'info');
+        }
     }
 
     handleRoundScores(data) {
         console.log('Round scores:', data);
+        
+        // Update game state with new scores
         this.gameState.scores = data.scores;
-        this.updateScoreDisplay();
-        this.addGameMessage(`Round ${data.round} complete. Scores updated.`, 'success');
+        this.gameState.currentRound = {
+            ...this.gameState.currentRound,
+            complete: true,
+            roundNumber: data.roundNumber,
+            declaringTeamTricks: data.declaringTeamTricks,
+            challengingTeamTricks: data.challengingTeamTricks
+        };
+
+        // Show round completion animation
+        this.showRoundCompletionAnimation(data);
+        
+        // Update score display with animation
+        this.updateScoreDisplay(true);
+        
+        // Show detailed round results
+        this.showRoundResults(data);
+        
+        // Check if game is complete
+        if (data.gameComplete) {
+            setTimeout(() => {
+                this.handleGameComplete(data);
+            }, 3000);
+        } else if (data.nextRound) {
+            // Prepare for next round
+            setTimeout(() => {
+                this.prepareNextRound(data.nextRound);
+            }, 4000);
+        }
+    }
+
+    /**
+     * Show round completion animation
+     * @param {Object} data - Round completion data
+     */
+    showRoundCompletionAnimation(data) {
+        // Create round completion overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'round-completion-overlay';
+        overlay.innerHTML = `
+            <div class="round-completion-content">
+                <h2>Round ${data.roundNumber} Complete!</h2>
+                <div class="round-stats">
+                    <div class="team-result">
+                        <h3>Declaring Team</h3>
+                        <p>${data.declaringTeamTricks} tricks won</p>
+                        <p class="${data.declaringTeamTricks >= 5 ? 'success' : 'failure'}">
+                            ${data.declaringTeamTricks >= 5 ? 'Contract Made!' : 'Contract Failed'}
+                        </p>
+                    </div>
+                    <div class="team-result">
+                        <h3>Challenging Team</h3>
+                        <p>${data.challengingTeamTricks} tricks won</p>
+                        <p class="${data.challengingTeamTricks >= 4 ? 'success' : 'failure'}">
+                            ${data.challengingTeamTricks >= 4 ? 'Points Earned!' : 'No Points'}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        // Remove overlay after animation
+        setTimeout(() => {
+            overlay.classList.add('fade-out');
+            setTimeout(() => {
+                document.body.removeChild(overlay);
+            }, 500);
+        }, 2500);
+    }
+
+    /**
+     * Show detailed round results
+     * @param {Object} data - Round completion data
+     */
+    showRoundResults(data) {
+        const message = `Round ${data.roundNumber}: Declaring team ${data.declaringTeamTricks} tricks, Challenging team ${data.challengingTeamTricks} tricks`;
+        this.addGameMessage(message, 'success');
+        
+        // Show score changes
+        Object.entries(data.scores).forEach(([teamId, score]) => {
+            if (score > 0) {
+                const teamName = this.getTeamName(teamId);
+                this.addGameMessage(`${teamName} earned ${score} points`, 'info');
+            }
+        });
+    }
+
+    /**
+     * Get team name for display
+     * @param {string} teamId - Team ID
+     * @returns {string} Team display name
+     */
+    getTeamName(teamId) {
+        // This should be enhanced based on actual team data
+        if (this.gameState.teams) {
+            const team = this.gameState.teams.find(t => t.teamId === teamId);
+            if (team) {
+                return `Team ${team.teamNumber}`;
+            }
+        }
+        return `Team ${teamId}`;
+    }
+
+    /**
+     * Prepare for next round
+     * @param {Object} nextRoundData - Next round information
+     */
+    prepareNextRound(nextRoundData) {
+        console.log('Preparing next round:', nextRoundData);
+        
+        // Update game state for new round
+        this.gameState.currentRound = {
+            roundId: nextRoundData.roundId,
+            roundNumber: nextRoundData.roundNumber,
+            dealerUserId: nextRoundData.dealerUserId,
+            firstPlayerUserId: nextRoundData.firstPlayerUserId,
+            trumpDeclarerUserId: nextRoundData.trumpDeclarerUserId,
+            currentTrick: 1,
+            complete: false
+        };
+
+        // Reset trump suit for new round
+        this.gameState.trumpSuit = null;
+        this.gameState.gamePhase = 'trump_declaration';
+        
+        // Update player hands with new cards
+        if (nextRoundData.playerHands && nextRoundData.playerHands[this.getCurrentPlayerId()]) {
+            this.gameState.playerHand = nextRoundData.playerHands[this.getCurrentPlayerId()];
+        }
+
+        // Clear played cards
+        this.clearPlayedCards();
+        
+        // Update UI
+        this.updateUI();
+        
+        // Show new round message
+        this.addGameMessage(`Starting Round ${nextRoundData.roundNumber}`, 'success');
+        
+        // If current player is trump declarer, show trump selection
+        if (nextRoundData.trumpDeclarerUserId === this.getCurrentPlayerId()) {
+            setTimeout(() => {
+                this.showTrumpDeclarationModal();
+                this.addGameMessage('Choose the trump suit for this round', 'info');
+            }, 1000);
+        } else {
+            const declarerName = this.getPlayerNameById(nextRoundData.trumpDeclarerUserId);
+            this.addGameMessage(`Waiting for ${declarerName} to declare trump...`, 'info');
+        }
+    }
+
+    /**
+     * Handle game completion
+     * @param {Object} data - Game completion data
+     */
+    handleGameComplete(data) {
+        console.log('Game complete:', data);
+        
+        this.gameState.status = 'completed';
+        this.gameState.winner = data.winningTeam;
+        
+        // Show game completion modal
+        this.showGameCompletionModal(data);
+    }
+
+    /**
+     * Show game completion modal
+     * @param {Object} data - Game completion data
+     */
+    showGameCompletionModal(data) {
+        const modal = document.createElement('div');
+        modal.className = 'game-completion-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="game-complete-header">
+                    <h1>🎉 Game Complete! 🎉</h1>
+                </div>
+                <div class="winner-announcement">
+                    <h2>${data.winningTeam ? `Team ${data.winningTeam.teamNumber} Wins!` : 'Game Complete'}</h2>
+                    <p class="final-score">Final Score: ${data.winningTeam ? data.winningTeam.finalScore : 'N/A'} points</p>
+                </div>
+                <div class="final-scores">
+                    <h3>Final Scores</h3>
+                    <div class="score-list">
+                        ${Object.entries(data.scores || {}).map(([teamId, score]) => `
+                            <div class="team-final-score ${teamId === data.winningTeam?.teamId ? 'winner' : ''}">
+                                <span>${this.getTeamName(teamId)}</span>
+                                <span>${score} points</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div class="game-actions">
+                    <button id="return-to-dashboard" class="btn btn-primary">Return to Dashboard</button>
+                    <button id="view-statistics" class="btn btn-secondary">View Statistics</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Add event listeners
+        document.getElementById('return-to-dashboard').addEventListener('click', () => {
+            window.location.href = '/dashboard.html';
+        });
+
+        document.getElementById('view-statistics').addEventListener('click', () => {
+            this.showGameStatistics();
+        });
+    }
+
+    /**
+     * Show game statistics
+     */
+    async showGameStatistics() {
+        try {
+            // Fetch game statistics from server
+            const response = await fetch(`/api/statistics/game/${this.gameState.gameId}`, {
+                headers: {
+                    'Authorization': `Bearer ${this.authManager.getToken()}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch game statistics');
+            }
+
+            const result = await response.json();
+            if (result.success) {
+                this.displayGameStatisticsModal(result.data);
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            console.error('Error fetching game statistics:', error);
+            this.addGameMessage('Failed to load game statistics', 'error');
+        }
+    }
+
+    /**
+     * Display game statistics modal
+     * @param {Object} stats - Game statistics data
+     */
+    displayGameStatisticsModal(stats) {
+        const modal = document.createElement('div');
+        modal.className = 'statistics-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Game Statistics</h2>
+                    <button class="close-btn" id="close-stats-modal">&times;</button>
+                </div>
+                <div class="statistics-content">
+                    <div class="game-overview">
+                        <h3>Game Overview</h3>
+                        <div class="stat-grid">
+                            <div class="stat-item">
+                                <span class="stat-label">Duration</span>
+                                <span class="stat-value">${this.formatDuration(stats.duration)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Total Rounds</span>
+                                <span class="stat-value">${stats.totalRounds || 'N/A'}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Total Tricks</span>
+                                <span class="stat-value">${stats.totalTricks || 'N/A'}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">Game Status</span>
+                                <span class="stat-value">${stats.status || 'Completed'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="player-performance">
+                        <h3>Player Performance</h3>
+                        <div class="performance-table">
+                            <div class="table-header">
+                                <span>Player</span>
+                                <span>Team</span>
+                                <span>Tricks Won</span>
+                                <span>Team Score</span>
+                                <span>Result</span>
+                            </div>
+                            ${this.renderPlayerPerformance(stats.players || stats.playerStats)}
+                        </div>
+                    </div>
+                    
+                    ${stats.trumpStats ? this.renderTrumpStatistics(stats.trumpStats) : ''}
+                    
+                    <div class="personal-stats">
+                        <h3>Your Performance</h3>
+                        ${this.renderPersonalStats(stats)}
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button id="share-stats" class="btn btn-secondary">Share Stats</button>
+                    <button id="download-stats" class="btn btn-secondary">Download</button>
+                    <button id="view-profile" class="btn btn-primary">View Profile</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Add event listeners
+        document.getElementById('close-stats-modal').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+
+        document.getElementById('share-stats').addEventListener('click', () => {
+            this.shareGameStats(stats);
+        });
+
+        document.getElementById('download-stats').addEventListener('click', () => {
+            this.downloadGameStats(stats);
+        });
+
+        document.getElementById('view-profile').addEventListener('click', () => {
+            window.location.href = '/profile.html';
+        });
+
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+    }
+
+    /**
+     * Format duration in milliseconds to readable format
+     * @param {number} duration - Duration in milliseconds
+     * @returns {string} Formatted duration
+     */
+    formatDuration(duration) {
+        if (!duration) return 'N/A';
+        
+        const minutes = Math.floor(duration / 60000);
+        const seconds = Math.floor((duration % 60000) / 1000);
+        
+        if (minutes > 0) {
+            return `${minutes}m ${seconds}s`;
+        } else {
+            return `${seconds}s`;
+        }
+    }
+
+    /**
+     * Render player performance table
+     * @param {Array} players - Player performance data
+     * @returns {string} HTML for player performance
+     */
+    renderPlayerPerformance(players) {
+        if (!players || players.length === 0) {
+            return '<div class="no-data">No player data available</div>';
+        }
+
+        return players.map(player => `
+            <div class="table-row ${player.isWinner ? 'winner' : ''}">
+                <span class="player-name">${player.username}</span>
+                <span class="team-info">Team ${this.getTeamNumber(player.teamId)}</span>
+                <span class="tricks-won">${player.tricksWon || 0}</span>
+                <span class="team-score">${player.teamScore || 0}</span>
+                <span class="result ${player.isWinner ? 'win' : 'loss'}">
+                    ${player.isWinner ? '🏆 Win' : '❌ Loss'}
+                </span>
+            </div>
+        `).join('');
+    }
+
+    /**
+     * Render trump declaration statistics
+     * @param {Object} trumpStats - Trump statistics data
+     * @returns {string} HTML for trump statistics
+     */
+    renderTrumpStatistics(trumpStats) {
+        const statsEntries = Object.entries(trumpStats);
+        if (statsEntries.length === 0) {
+            return '';
+        }
+
+        return `
+            <div class="trump-statistics">
+                <h3>Trump Declaration Statistics</h3>
+                <div class="trump-stats-grid">
+                    ${statsEntries.map(([playerId, stats]) => `
+                        <div class="trump-stat-item">
+                            <span class="player-name">${this.getPlayerNameById(playerId)}</span>
+                            <div class="trump-details">
+                                <span class="declarations">Declarations: ${stats.declarations}</span>
+                                <span class="successful">Successful: ${stats.successful}</span>
+                                <span class="failed">Failed: ${stats.failed}</span>
+                                <span class="success-rate">Success Rate: ${
+                                    stats.declarations > 0 
+                                        ? Math.round((stats.successful / stats.declarations) * 100)
+                                        : 0
+                                }%</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render personal statistics
+     * @param {Object} stats - Game statistics
+     * @returns {string} HTML for personal stats
+     */
+    renderPersonalStats(stats) {
+        const currentPlayerId = this.getCurrentPlayerId();
+        const playerStats = (stats.players || stats.playerStats || [])
+            .find(p => p.userId === currentPlayerId);
+
+        if (!playerStats) {
+            return '<div class="no-data">No personal statistics available</div>';
+        }
+
+        const trumpStats = stats.trumpStats && stats.trumpStats[currentPlayerId];
+
+        return `
+            <div class="personal-stats-grid">
+                <div class="personal-stat">
+                    <span class="stat-icon">🎯</span>
+                    <span class="stat-label">Tricks Won</span>
+                    <span class="stat-value">${playerStats.tricksWon || 0}</span>
+                </div>
+                <div class="personal-stat">
+                    <span class="stat-icon">⭐</span>
+                    <span class="stat-label">Team Score</span>
+                    <span class="stat-value">${playerStats.teamScore || 0}</span>
+                </div>
+                <div class="personal-stat">
+                    <span class="stat-icon">${playerStats.isWinner ? '🏆' : '🎮'}</span>
+                    <span class="stat-label">Result</span>
+                    <span class="stat-value">${playerStats.isWinner ? 'Victory' : 'Defeat'}</span>
+                </div>
+                ${trumpStats ? `
+                    <div class="personal-stat">
+                        <span class="stat-icon">♠</span>
+                        <span class="stat-label">Trump Success</span>
+                        <span class="stat-value">${trumpStats.successful}/${trumpStats.declarations}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    /**
+     * Get team number from team ID
+     * @param {string} teamId - Team ID
+     * @returns {number} Team number
+     */
+    getTeamNumber(teamId) {
+        // This should be enhanced based on actual team data
+        if (this.gameState.teams) {
+            const team = this.gameState.teams.find(t => t.teamId === teamId);
+            if (team) return team.teamNumber;
+        }
+        return teamId.includes('1') ? 1 : 2;
+    }
+
+    /**
+     * Share game statistics
+     * @param {Object} stats - Game statistics
+     */
+    shareGameStats(stats) {
+        const currentPlayer = (stats.players || stats.playerStats || [])
+            .find(p => p.userId === this.getCurrentPlayerId());
+        
+        const shareText = `Just finished a Contract Crown game! ${
+            currentPlayer?.isWinner ? '🏆 Victory!' : 'Good game!'
+        } I won ${currentPlayer?.tricksWon || 0} tricks. Game lasted ${this.formatDuration(stats.duration)}.`;
+
+        if (navigator.share) {
+            navigator.share({
+                title: 'Contract Crown Game Results',
+                text: shareText,
+                url: window.location.href
+            });
+        } else {
+            // Fallback to clipboard
+            navigator.clipboard.writeText(shareText).then(() => {
+                this.addGameMessage('Game stats copied to clipboard!', 'success');
+            });
+        }
+    }
+
+    /**
+     * Download game statistics as JSON
+     * @param {Object} stats - Game statistics
+     */
+    downloadGameStats(stats) {
+        const dataStr = JSON.stringify(stats, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = `contract-crown-game-${this.gameState.gameId}-stats.json`;
+        link.click();
+        
+        this.addGameMessage('Game statistics downloaded!', 'success');
     }
 
     handleGameError(data) {
         console.error('Game error:', data);
-        this.showError(data.message || 'A game error occurred');
+        
+        // Handle specific error types
+        if (data.type === 'invalid_card_play') {
+            this.handleInvalidCardPlay(data);
+        } else if (data.type === 'turn_violation') {
+            this.handleTurnViolation(data);
+        } else {
+            this.showError(data.message || 'A game error occurred');
+        }
+    }
+
+    /**
+     * Handle invalid card play error
+     * @param {Object} data - Error data
+     */
+    handleInvalidCardPlay(data) {
+        // Remove loading state from cards
+        const playingCards = this.elements.playerHand.querySelectorAll('.card.playing');
+        playingCards.forEach(card => card.classList.remove('playing'));
+        
+        // Re-enable card selection
+        this.gameState.isMyTurn = true;
+        this.updateCardPlayability();
+        
+        // Show specific error message
+        this.addGameMessage(data.message || 'Invalid card play', 'error');
+        
+        // Highlight valid cards
+        this.highlightValidCards();
+    }
+
+    /**
+     * Handle turn violation error
+     * @param {Object} data - Error data
+     */
+    handleTurnViolation(data) {
+        // Remove loading state
+        const playingCards = this.elements.playerHand.querySelectorAll('.card.playing');
+        playingCards.forEach(card => card.classList.remove('playing'));
+        
+        // Show turn violation message
+        this.addGameMessage(data.message || "It's not your turn", 'warning');
+        
+        // Update turn indicators
+        this.updateTurnIndicators();
+    }
+
+    /**
+     * Highlight valid cards that can be played
+     */
+    highlightValidCards() {
+        const cardElements = this.elements.playerHand.querySelectorAll('.card');
+        
+        cardElements.forEach((cardElement, index) => {
+            const card = this.gameState.playerHand[index];
+            if (!card) return;
+            
+            if (this.isCardPlayable(card)) {
+                cardElement.classList.add('valid-play');
+                setTimeout(() => {
+                    cardElement.classList.remove('valid-play');
+                }, 2000);
+            }
+        });
     }
 
     // UI Updates
@@ -320,12 +1243,33 @@ class GameManager {
         }
     }
 
-    updateScoreDisplay() {
+    updateScoreDisplay(animated = false) {
         if (this.elements.team1Score) {
-            this.elements.team1Score.querySelector('.score-value').textContent = this.gameState.scores.team1;
+            const scoreElement = this.elements.team1Score.querySelector('.score-value');
+            const newScore = this.gameState.scores.team1;
+            
+            if (animated && scoreElement.textContent !== newScore.toString()) {
+                scoreElement.classList.add('updating');
+                setTimeout(() => {
+                    scoreElement.classList.remove('updating');
+                }, 800);
+            }
+            
+            scoreElement.textContent = newScore;
         }
+        
         if (this.elements.team2Score) {
-            this.elements.team2Score.querySelector('.score-value').textContent = this.gameState.scores.team2;
+            const scoreElement = this.elements.team2Score.querySelector('.score-value');
+            const newScore = this.gameState.scores.team2;
+            
+            if (animated && scoreElement.textContent !== newScore.toString()) {
+                scoreElement.classList.add('updating');
+                setTimeout(() => {
+                    scoreElement.classList.remove('updating');
+                }, 800);
+            }
+            
+            scoreElement.textContent = newScore;
         }
     }
 
@@ -490,22 +1434,29 @@ class GameManager {
     }
 
     isCardPlayable(card) {
-        // Basic playability check - in a real game this would check suit following rules
+        // Check if it's player's turn
         if (!this.gameState.isMyTurn) return false;
         
-        // During trump declaration phase, all cards are playable
-        if (this.gameState.gamePhase === 'trump_declaration') return true;
+        // During trump declaration phase, cards are not playable
+        if (this.gameState.gamePhase === 'trump_declaration') return false;
         
         // During playing phase, implement suit following rules
         if (this.gameState.gamePhase === 'playing') {
+            const currentTrick = this.gameState.currentTrick;
+            if (!currentTrick) return false;
+
+            const cardsPlayed = currentTrick.cardsPlayed || [];
+            
             // If no cards played yet in trick, any card is playable
-            if (!this.gameState.leadSuit) return true;
+            if (cardsPlayed.length === 0) return true;
+            
+            // Get the lead suit (first card played in trick)
+            const leadSuit = cardsPlayed[0].card.suit;
             
             // Must follow suit if possible
-            const hasLeadSuit = this.gameState.playerHand.some(c => c.suit === this.gameState.leadSuit);
-            if (hasLeadSuit && card.suit !== this.gameState.leadSuit) {
-                // Can only play non-lead suit if no lead suit cards available
-                return false;
+            const playerSuitCards = this.gameState.playerHand.filter(c => c.suit === leadSuit);
+            if (playerSuitCards.length > 0 && card.suit !== leadSuit) {
+                return false; // Must follow suit
             }
         }
         
@@ -535,9 +1486,24 @@ class GameManager {
         if (!slotElement) return;
 
         const cardElement = this.createPlayedCardElement(card);
+        
+        // Add animation class
+        cardElement.classList.add('card-play-animation');
+        
+        // Clear previous card and add new one
         slotElement.innerHTML = '';
         slotElement.appendChild(cardElement);
         slotElement.classList.add('active');
+        
+        // Add position-specific animation
+        setTimeout(() => {
+            cardElement.classList.add('card-played');
+        }, 50);
+        
+        // Remove animation class after animation completes
+        setTimeout(() => {
+            cardElement.classList.remove('card-play-animation');
+        }, 500);
     }
 
     createPlayedCardElement(card) {
@@ -630,18 +1596,101 @@ class GameManager {
         const card = this.gameState.playerHand[this.gameState.selectedCard];
         if (!card) return;
 
-        // Emit card play to server
-        this.socket.emit('game:play_card', {
+        // Validate card play before sending to server
+        const validation = this.validateCardPlay(card);
+        if (!validation.isValid) {
+            this.addGameMessage(validation.reason, 'error');
+            this.deselectCard();
+            return;
+        }
+
+        // Show loading state
+        this.showCardPlayLoading(card);
+
+        // Emit card play to server with current game context
+        this.socket.emit('play-card', {
             gameId: this.gameState.gameId,
-            card: card
+            card: card,
+            trickId: this.gameState.currentTrick?.trickId,
+            roundId: this.gameState.currentRound?.roundId
         });
 
-        // Remove card from hand (optimistic update)
+        // Optimistic update - remove card from hand
         this.gameState.playerHand.splice(this.gameState.selectedCard, 1);
         this.gameState.selectedCard = null;
         this.gameState.isMyTurn = false;
         
         this.renderPlayerHand();
+        this.addGameMessage(`You played ${card.rank} of ${card.suit}`, 'info');
+    }
+
+    /**
+     * Validate if a card can be played according to Contract Crown rules
+     * @param {Object} card - Card to validate
+     * @returns {Object} Validation result with isValid and reason
+     */
+    validateCardPlay(card) {
+        // Check if it's player's turn
+        if (!this.gameState.isMyTurn) {
+            return { isValid: false, reason: "It's not your turn" };
+        }
+
+        // Check if game is in playing phase
+        if (this.gameState.gamePhase !== 'playing') {
+            return { isValid: false, reason: "Game is not in playing phase" };
+        }
+
+        // Check if player has the card
+        const hasCard = this.gameState.playerHand.some(c => 
+            c.suit === card.suit && c.rank === card.rank
+        );
+        if (!hasCard) {
+            return { isValid: false, reason: "You don't have this card" };
+        }
+
+        // Get current trick information
+        const currentTrick = this.gameState.currentTrick;
+        if (!currentTrick) {
+            return { isValid: false, reason: "No active trick" };
+        }
+
+        const cardsPlayed = currentTrick.cardsPlayed || [];
+        
+        // If this is the first card of the trick, any card is valid
+        if (cardsPlayed.length === 0) {
+            return { isValid: true };
+        }
+
+        // Get the lead suit (first card played in trick)
+        const leadSuit = cardsPlayed[0].card.suit;
+        
+        // Check suit-following rules
+        const playerSuitCards = this.gameState.playerHand.filter(c => c.suit === leadSuit);
+        
+        // Must follow suit if possible
+        if (playerSuitCards.length > 0 && card.suit !== leadSuit) {
+            return { 
+                isValid: false, 
+                reason: `Must follow suit (${leadSuit}) when possible` 
+            };
+        }
+
+        // If can't follow suit, can play trump or any other card
+        return { isValid: true };
+    }
+
+    /**
+     * Show loading state for card play
+     * @param {Object} card - Card being played
+     */
+    showCardPlayLoading(card) {
+        // Add visual feedback that card is being played
+        const cardElements = this.elements.playerHand.querySelectorAll('.card');
+        cardElements.forEach(cardEl => {
+            if (cardEl.dataset.suit === card.suit && cardEl.dataset.rank === card.rank) {
+                cardEl.classList.add('playing');
+            }
+        });
     }
 
     // Trump Declaration
@@ -846,6 +1895,18 @@ class GameManager {
         const positionIndex = positions.indexOf(position);
         const playerIds = Object.keys(this.gameState.players);
         return playerIds[positionIndex] || null;
+    }
+
+    handleGameError(data) {
+        console.error('Game error:', data);
+        this.addGameMessage(data.message || 'A game error occurred', 'error');
+        
+        // Handle specific error types
+        if (data.type === 'invalid_move') {
+            this.highlightValidCards();
+        } else if (data.type === 'connection_error') {
+            this.showError('Connection error. Please try again.');
+        }
     }
 
     addGameMessage(message, type = 'info') {

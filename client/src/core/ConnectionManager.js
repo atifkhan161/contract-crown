@@ -11,8 +11,8 @@ export class ConnectionManager {
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 1000;
         this.maxReconnectDelay = 30000;
-        this.heartbeatInterval = 10000;
-        this.connectionTimeout = 30000;
+        this.heartbeatInterval = 15000; // Match server heartbeat interval
+        this.connectionTimeout = 60000; // Match server timeout
         
         // Connection health tracking
         this.latencyHistory = [];
@@ -56,33 +56,38 @@ export class ConnectionManager {
         });
 
         // Server-sent connection status events
-        this.socketManager.on('connectionStatus', (data) => {
+        this.socketManager.on('connection-status', (data) => {
             this.handleServerConnectionStatus(data);
         });
 
-        this.socketManager.on('connectionTimeoutWarning', (data) => {
+        this.socketManager.on('connection-timeout-warning', (data) => {
             this.handleTimeoutWarning(data);
         });
 
-        this.socketManager.on('connectionRecovered', (data) => {
+        this.socketManager.on('connection-recovered', (data) => {
             this.handleConnectionRecovery(data);
         });
 
-        this.socketManager.on('connectionDegradation', (data) => {
+        this.socketManager.on('connection-degradation', (data) => {
             this.handleConnectionDegradation(data);
         });
 
-        this.socketManager.on('websocketError', (data) => {
+        this.socketManager.on('websocket-error', (data) => {
             this.handleWebSocketError(data);
         });
 
-        this.socketManager.on('recoveryInstruction', (data) => {
+        this.socketManager.on('recovery-instruction', (data) => {
             this.handleRecoveryInstruction(data);
         });
 
         // Ping/pong for health monitoring
         this.socketManager.on('pong-server', (data) => {
             this.handlePongResponse(data);
+        });
+
+        // Handle server health check pings
+        this.socketManager.on('ping-health-check', (data) => {
+            this.handleHealthCheckPing(data);
         });
 
         // Start heartbeat monitoring
@@ -172,8 +177,8 @@ export class ConnectionManager {
         });
 
         // Report issue to server if connected
-        if (this.socketManager.isSocketConnected()) {
-            this.socketManager.emitToServer('connection-issue', {
+        if (this.socketManager.socket && this.socketManager.socket.connected) {
+            this.socketManager.send('connection-issue', {
                 type: 'client_error',
                 message: error.message,
                 code: error.code
@@ -297,9 +302,9 @@ export class ConnectionManager {
      * Send heartbeat ping to server
      */
     sendHeartbeat() {
-        if (this.socketManager.isSocketConnected()) {
+        if (this.socketManager.socket && this.socketManager.socket.connected) {
             this.lastPingTime = Date.now();
-            this.socketManager.emitToServer('ping-server', {
+            this.socketManager.send('ping-server', {
                 timestamp: this.lastPingTime
             });
         }
@@ -326,6 +331,20 @@ export class ConnectionManager {
                 latency,
                 serverTime: data.serverTime,
                 timestamp: data.timestamp
+            });
+        }
+    }
+
+    /**
+     * Handle health check ping from server
+     * @param {Object} data - Ping data
+     */
+    handleHealthCheckPing(data) {
+        // Immediately respond to server health check
+        if (this.socketManager.socket && this.socketManager.socket.connected) {
+            this.socketManager.send('pong-health-check', {
+                timestamp: data.timestamp,
+                clientTime: Date.now()
             });
         }
     }

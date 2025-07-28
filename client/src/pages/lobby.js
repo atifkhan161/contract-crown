@@ -225,6 +225,7 @@ class LobbyManager {
         this.socketManager.on('playerJoined', (data) => this.handlePlayerJoined(data));
         this.socketManager.on('playerLeft', (data) => this.handlePlayerLeft(data));
         this.socketManager.on('playerDisconnected', (data) => this.handlePlayerDisconnected(data));
+        this.socketManager.on('playerReconnected', (data) => this.handlePlayerReconnected(data));
         this.socketManager.on('playerRemoved', (data) => this.handlePlayerRemoved(data));
         this.socketManager.on('playerReadyStatusChanged', (data) => this.handlePlayerReadyStatusChanged(data));
         this.socketManager.on('teamsFormed', (data) => this.handleTeamsFormed(data));
@@ -315,6 +316,8 @@ class LobbyManager {
             this.players = this.room.players || [];
             this.isHost = this.room.owner === (this.currentUser.user_id || this.currentUser.id);
 
+            console.log(`[Lobby] Loaded room data via HTTP API - ${this.players.length} players:`, this.players.map(p => ({ id: p.user_id || p.id, name: p.username, connected: p.isConnected })));
+
             this.updateRoomDisplay();
             this.updatePlayersDisplay();
             this.updateControlsDisplay();
@@ -362,6 +365,16 @@ class LobbyManager {
             this.players = data.players || [];
             this.updatePlayersDisplay();
             this.addMessage(`${data.playerName} disconnected (${data.connectedCount}/${data.playerCount} connected)`, 'warning');
+        }
+    }
+
+    handlePlayerReconnected(data) {
+        if (data.gameId === this.roomId) {
+            console.log(`[Lobby] Player ${data.playerName} reconnected`);
+            this.players = data.players || [];
+            this.updatePlayersDisplay();
+            this.updateReadyStatus(); // Update ready status since connection status changed
+            this.addMessage(`${data.playerName} reconnected`, 'success');
         }
     }
 
@@ -427,7 +440,7 @@ class LobbyManager {
     handleRoomJoined(data) {
         if (data.gameId === this.roomId) {
             console.log('[Lobby] Successfully joined WebSocket room:', data);
-            console.log('[Lobby] Current user ID:', this.currentUser?.id);
+            console.log('[Lobby] Current user ID:', this.currentUser?.user_id || this.currentUser?.id);
             console.log('[Lobby] Players in room:', data.players?.map(p => ({ id: p.userId, name: p.username })));
             this.isWebSocketRoomJoined = true;
             
@@ -441,9 +454,11 @@ class LobbyManager {
             
             // Update players from WebSocket data if available
             if (data.players) {
+                console.log(`[Lobby] Updating players from WebSocket room-joined event - ${data.players.length} players:`, data.players.map(p => ({ id: p.userId, name: p.username, connected: p.isConnected })));
                 this.players = data.players;
                 this.updatePlayersDisplay();
                 this.updateTeamsDisplay();
+                this.updateReadyStatus(); // Also update ready status since player data changed
             }
         }
     }
@@ -685,9 +700,12 @@ class LobbyManager {
 
             // Always try WebSocket first, with better error handling
             if (this.socketManager.isSocketConnected() && this.isWebSocketRoomJoined) {
-                console.log('[Lobby] Sending via WebSocket');
+                console.log('[Lobby] Sending ready status via WebSocket');
+                console.log('[Lobby] Socket connected:', this.socketManager.isSocketConnected());
+                console.log('[Lobby] WebSocket room joined:', this.isWebSocketRoomJoined);
                 console.log('[Lobby] Current user:', this.currentUser);
                 console.log('[Lobby] Room ID:', this.roomId);
+                console.log('[Lobby] New ready status:', newReadyStatus);
                 
                 this.socketManager.emitToServer('player-ready', {
                     gameId: this.roomId,
@@ -713,6 +731,8 @@ class LobbyManager {
                 
             } else {
                 console.log('[Lobby] WebSocket not connected or room not joined, using HTTP API');
+                console.log('[Lobby] Socket connected:', this.socketManager.isSocketConnected());
+                console.log('[Lobby] WebSocket room joined:', this.isWebSocketRoomJoined);
                 // If not joined to WebSocket room, try to join first
                 if (this.socketManager.isSocketConnected() && !this.isWebSocketRoomJoined) {
                     console.log('[Lobby] Attempting to rejoin WebSocket room...');
@@ -788,19 +808,34 @@ class LobbyManager {
     }
 
     async startGame() {
-        if (!this.isHost) return;
+        console.log('[Lobby] Start game called - isHost:', this.isHost);
+        console.log('[Lobby] Current user:', this.currentUser);
+        console.log('[Lobby] Room owner:', this.room?.owner);
+        
+        if (!this.isHost) {
+            console.log('[Lobby] Not host, cannot start game');
+            return;
+        }
 
         try {
-            const readyCount = this.players.filter(p => p.isReady).length;
-            const totalPlayers = this.players.length;
+            const connectedPlayers = this.players.filter(p => p.isConnected !== false);
+            const readyCount = connectedPlayers.filter(p => p.isReady).length;
+            const connectedCount = connectedPlayers.length;
 
-            if (totalPlayers < 2) {
-                this.showError('At least 2 players are required to start the game.');
+            console.log(`[Lobby] Start game check - Total players: ${this.players.length}, Connected: ${connectedCount}, Ready: ${readyCount}`);
+            console.log('[Lobby] Players state:', this.players.map(p => ({ 
+                username: p.username, 
+                isConnected: p.isConnected, 
+                isReady: p.isReady 
+            })));
+
+            if (connectedCount < 2) {
+                this.showError('At least 2 connected players are required to start the game.');
                 return;
             }
 
-            if (readyCount !== totalPlayers) {
-                this.showError('All players must be ready to start the game.');
+            if (readyCount !== connectedCount) {
+                this.showError('All connected players must be ready to start the game.');
                 return;
             }
 
@@ -808,6 +843,10 @@ class LobbyManager {
             if (this.elements.startspinner) this.elements.startspinner.classList.remove('hidden');
             if (this.elements.startgamebtn) this.elements.startgamebtn.disabled = true;
 
+            console.log('[Lobby] Sending start game request via WebSocket');
+            console.log('[Lobby] Room ID:', this.roomId);
+            console.log('[Lobby] Socket connected:', this.socketManager.isSocketConnected());
+            
             // Send game start request via WebSocket for real-time coordination
             if (this.socketManager.isSocketConnected()) {
                 this.socketManager.emitToServer('start-game', {

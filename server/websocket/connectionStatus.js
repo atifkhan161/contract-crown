@@ -15,9 +15,9 @@ class ConnectionStatusManager {
       recoveries: 0
     };
     
-    // Connection timeout settings
-    this.connectionTimeout = 30000; // 30 seconds
-    this.heartbeatInterval = 10000; // 10 seconds
+    // Connection timeout settings - increased for better stability
+    this.connectionTimeout = 60000; // 60 seconds (increased from 30)
+    this.heartbeatInterval = 15000; // 15 seconds (increased from 10)
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 1000; // Start with 1 second
     
@@ -164,6 +164,9 @@ class ConnectionStatusManager {
           latency: latency,
           isHealthy: latency < this.connectionTimeout / 2
         });
+        
+        // Clear any existing recovery timer since we got a response
+        this.clearHeartbeatTimer(socket.id);
       });
       
       // Handle status requests
@@ -342,8 +345,15 @@ class ConnectionStatusManager {
       const timeSinceLastPing = now - (healthData.lastPing || healthData.connectedAt);
       
       if (timeSinceLastPing > this.connectionTimeout) {
-        console.warn(`[ConnectionStatus] Connection timeout for ${socket.username || 'Unknown'} (${socketId})`);
-        this.handleConnectionTimeout(socket);
+        // Double-check with socket.io's built-in connected status
+        if (socket.connected) {
+          console.warn(`[ConnectionStatus] Connection timeout for ${socket.username || 'Unknown'} (${socketId})`);
+          this.handleConnectionTimeout(socket);
+        } else {
+          // Socket is already disconnected, clean up
+          this.connectionHealth.delete(socketId);
+          this.clearHeartbeatTimer(socketId);
+        }
       } else {
         // Send ping to check connection health
         socket.emit('ping-health-check', { timestamp: now });
@@ -357,6 +367,14 @@ class ConnectionStatusManager {
    */
   handleConnectionTimeout(socket) {
     this.connectionStats.timeouts++;
+    
+    // Check if socket is actually still connected before declaring timeout
+    if (!socket.connected) {
+      console.log(`[ConnectionStatus] Socket actually disconnected for ${socket.username || 'Unknown'} (${socket.id})`);
+      return;
+    }
+    
+    console.warn(`[ConnectionStatus] Connection timeout for ${socket.username || 'Unknown'} (${socket.id})`);
     
     // Emit timeout warning to client
     socket.emit('connection-timeout-warning', {
@@ -378,6 +396,42 @@ class ConnectionStatusManager {
         console.log(`[ConnectionStatus] Connection recovered for ${socket.username || 'Unknown'}`);
         this.connectionStats.recoveries++;
         
+        // Reset the connection health data
+        this.updateConnectionHealth(socket.id, {
+          lastPing: Date.now(),
+          errorCount: 0
+        });
+        
+        // Update WebSocket room data to mark player as connected again
+        const userId = socket.userId;
+        if (userId && this.socketManager) {
+          for (const [gameId, room] of this.socketManager.gameRooms.entries()) {
+            if (room.players.has(userId)) {
+              const player = room.players.get(userId);
+              if (!player.isConnected) {
+                player.isConnected = true;
+                player.reconnectedAt = new Date().toISOString();
+                console.log(`[ConnectionStatus] Marked ${socket.username} as connected in room ${gameId}`);
+                
+                // Broadcast reconnection to other players in the room
+                this.socketManager.io.to(gameId).emit('player-reconnected', {
+                  gameId,
+                  playerId: userId,
+                  playerName: socket.username,
+                  players: Array.from(room.players.values()).map(p => ({
+                    userId: p.userId,
+                    username: p.username,
+                    isReady: p.isReady,
+                    teamAssignment: p.teamAssignment,
+                    isConnected: p.isConnected
+                  })),
+                  timestamp: new Date().toISOString()
+                });
+              }
+            }
+          }
+        }
+        
         socket.emit('connection-recovered', {
           message: 'Connection has been restored',
           timestamp: new Date().toISOString()
@@ -386,7 +440,7 @@ class ConnectionStatusManager {
         console.log(`[ConnectionStatus] Connection recovery failed for ${socket.username || 'Unknown'}`);
         socket.disconnect(true);
       }
-    }, 5000); // 5 second recovery window
+    }, 10000); // 10 second recovery window (increased from 5)
 
     // Store recovery timer
     this.heartbeatTimers.set(socket.id, recoveryTimeout);
