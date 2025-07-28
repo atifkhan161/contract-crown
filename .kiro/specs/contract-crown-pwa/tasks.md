@@ -326,41 +326,56 @@
   - Test responsive design on different screen sizes
   - _Requirements: 12.4_
 
-- [ ] 7. Game Logic Engine Backend
+- [x] 7. Game Logic Engine Backend
+
+
+
+
   - Implement core game logic for card dealing, trump declaration, and trick-taking
   - Create game state management and rule enforcement
   - Add scoring system and Crown Rule implementation
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 7.1 Create game engine with card dealing logic
+- [x] 7.1 Create game engine with card dealing logic
+
+
   - Implement 32-card deck generation (7 through Ace)
   - Create Fisher-Yates shuffle algorithm
   - Add initial 4-card and final 4-card dealing logic
   - Implement dealer rotation and first player determination
   - _Requirements: 4.1, 4.2_
 
-- [ ] 7.2 Implement trump declaration and validation
+- [x] 7.2 Implement trump declaration and validation
+
+
   - Create trump declaration handling and validation
   - Add declaring team and challenging team assignment
   - Implement trump suit storage and broadcasting
   - Add trump declaration timeout and error handling
   - _Requirements: 4.3, 4.4_
 
-- [ ] 7.3 Create trick-taking game logic
+- [x] 7.3 Create trick-taking game logic
+
+
   - Implement card play validation (suit following, trump rules)
   - Create trick winner determination algorithm
   - Add turn management and player rotation
   - Implement trick completion and next trick initialization
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 7.4 Implement scoring system and Crown Rule
+- [x] 7.4 Implement scoring system and Crown Rule
+
+
   - Create scoring calculation based on tricks won
   - Implement declaring team (5+ tricks) and challenging team (4+ tricks) scoring
   - Add Crown Rule logic for trump declaration privilege
   - Create game end detection when team reaches 52 points
   - _Requirements: 5.4, 5.5_
 
-- [ ] 7.5 Write backend tests for game logic
+- [x] 7.5 Write backend tests for game logic
+
+
+
   - Test card dealing and shuffle algorithms
   - Test trump declaration and team assignment
   - Test trick-taking rules and winner determination
