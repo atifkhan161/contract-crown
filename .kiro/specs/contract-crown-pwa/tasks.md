@@ -331,6 +331,7 @@
 
 
 
+
   - Implement core game logic for card dealing, trump declaration, and trick-taking
   - Create game state management and rule enforcement
   - Add scoring system and Crown Rule implementation
@@ -382,41 +383,54 @@
   - Test scoring system and Crown Rule implementation
   - _Requirements: 12.4_
 
-- [ ] 8. Real-time Game Communication
+- [-] 8. Real-time Game Communication
+
+
+
   - Implement WebSocket events for game state synchronization
   - Create real-time card play and trick updates
   - Add game event broadcasting and state management
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 11.1, 11.2, 11.3, 11.4, 11.5_
 
-- [ ] 8.1 Create WebSocket game events
+- [x] 8.1 Create WebSocket game events
+
+
   - Implement game:state_update event for full state synchronization
   - Add player:declare_trump and game:trump_declared events
   - Create player:play_card and game:card_played events
   - Add game:trick_won and game:round_scores events
   - _Requirements: 9.1, 9.4_
 
-- [ ] 8.2 Implement real-time game state synchronization
+- [x] 8.2 Implement real-time game state synchronization
+
+
   - Create game state broadcasting to all players
   - Add player-specific data filtering (hand visibility)
   - Implement state update queuing and conflict resolution
   - Add game state persistence and recovery
   - _Requirements: 9.1, 9.4, 9.5_
 
-- [ ] 8.3 Add connection management and error handling
+- [x] 8.3 Add connection management and error handling
+
+
   - Implement player disconnection and reconnection handling
   - Create connection status tracking and timeout management
   - Add WebSocket error handling and recovery
   - Implement graceful degradation for connection issues
   - _Requirements: 9.2, 9.3, 11.3, 11.4, 11.5_
 
-- [ ] 8.4 Write Cypress tests for real-time communication
+- [-] 8.4 Write Cypress tests for real-time communication
+
   - Test WebSocket connection establishment and events
   - Test game state synchronization across multiple clients
   - Test connection loss and recovery scenarios
   - Test real-time game event handling
   - _Requirements: 12.4_
 
-- [ ] 9. Complete Game Flow Integration
+- [-] 9. Complete Game Flow Integration
+
+
+
   - Integrate all game components for full gameplay experience
   - Implement complete trick-taking rounds and scoring
   - Add game completion and winner determination

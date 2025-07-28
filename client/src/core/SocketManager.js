@@ -171,6 +171,16 @@ export class SocketManager {
         this.socket.on('gameEnded', (data) => this.emit('gameEnded', data));
         this.socket.on('gameStateUpdated', (data) => this.emit('gameStateUpdated', data));
         this.socket.on('roomUpdated', (data) => this.emit('roomUpdated', data));
+
+        // New real-time game communication events
+        this.socket.on('game:state_update', (data) => this.emit('gameStateUpdate', data));
+        this.socket.on('player:declare_trump', (data) => this.emit('playerDeclareTrump', data));
+        this.socket.on('game:trump_declared', (data) => this.emit('gameTrumpDeclared', data));
+        this.socket.on('player:play_card', (data) => this.emit('playerPlayCard', data));
+        this.socket.on('game:card_played', (data) => this.emit('gameCardPlayed', data));
+        this.socket.on('game:trick_won', (data) => this.emit('gameTrickWon', data));
+        this.socket.on('game:round_scores', (data) => this.emit('gameRoundScores', data));
+        this.socket.on('game:complete', (data) => this.emit('gameComplete', data));
         
         // User events
         this.socket.on('userStatsUpdated', (data) => this.emit('userStatsUpdated', data));
@@ -253,5 +263,40 @@ export class SocketManager {
      */
     getSocketId() {
         return this.socket ? this.socket.id : null;
+    }
+
+    /**
+     * Request current game state from server
+     */
+    requestGameState(gameId) {
+        this.emitToServer('request-game-state', { gameId });
+    }
+
+    /**
+     * Declare trump suit
+     */
+    declareTrump(gameId, trumpSuit) {
+        this.emitToServer('declare-trump', { gameId, trumpSuit });
+    }
+
+    /**
+     * Play a card
+     */
+    playCard(gameId, card, trickId = null, roundId = null) {
+        this.emitToServer('play-card', { gameId, card, trickId, roundId });
+    }
+
+    /**
+     * Report trick completion (usually called by game engine)
+     */
+    reportTrickComplete(gameId, trickData) {
+        this.emitToServer('trick-complete', { gameId, ...trickData });
+    }
+
+    /**
+     * Report round completion (usually called by game engine)
+     */
+    reportRoundComplete(gameId, roundData) {
+        this.emitToServer('round-complete', { gameId, ...roundData });
     }
 }

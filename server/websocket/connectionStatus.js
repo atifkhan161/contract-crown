@@ -10,10 +10,23 @@ class ConnectionStatusManager {
       activeConnections: 0,
       reconnections: 0,
       disconnections: 0,
-      errors: 0
+      errors: 0,
+      timeouts: 0,
+      recoveries: 0
     };
     
+    // Connection timeout settings
+    this.connectionTimeout = 30000; // 30 seconds
+    this.heartbeatInterval = 10000; // 10 seconds
+    this.maxReconnectAttempts = 5;
+    this.reconnectDelay = 1000; // Start with 1 second
+    
+    // Track connection health
+    this.connectionHealth = new Map(); // socketId -> health data
+    this.heartbeatTimers = new Map(); // socketId -> timer
+    
     this.setupStatusMonitoring();
+    this.startHeartbeatMonitoring();
   }
 
   /**
@@ -26,6 +39,15 @@ class ConnectionStatusManager {
     io.on('connection', (socket) => {
       this.connectionStats.totalConnections++;
       this.connectionStats.activeConnections++;
+      
+      // Initialize connection health tracking
+      this.connectionHealth.set(socket.id, {
+        connectedAt: Date.now(),
+        lastPing: Date.now(),
+        latencyHistory: [],
+        errorCount: 0,
+        reconnectAttempts: 0
+      });
       
       console.log(`[ConnectionStatus] New connection: ${socket.username || 'Unknown'} (${socket.id})`);
       console.log(`[ConnectionStatus] Active connections: ${this.connectionStats.activeConnections}`);
@@ -57,27 +79,90 @@ class ConnectionStatusManager {
         this.connectionStats.activeConnections--;
         this.connectionStats.disconnections++;
         
+        // Clean up connection health tracking
+        this.connectionHealth.delete(socket.id);
+        this.clearHeartbeatTimer(socket.id);
+        
         console.log(`[ConnectionStatus] Client disconnected: ${socket.username || 'Unknown'}, reason: ${reason}`);
         console.log(`[ConnectionStatus] Active connections: ${this.connectionStats.activeConnections}`);
+        
+        // Handle different disconnection reasons
+        if (reason === 'transport close' || reason === 'transport error') {
+          console.log(`[ConnectionStatus] Network-related disconnection for ${socket.username || 'Unknown'}`);
+        } else if (reason === 'ping timeout') {
+          console.log(`[ConnectionStatus] Ping timeout for ${socket.username || 'Unknown'}`);
+          this.connectionStats.timeouts++;
+        }
       });
       
       // Handle connection errors
       socket.on('connect_error', (error) => {
-        this.connectionStats.errors++;
-        console.error(`[ConnectionStatus] Connection error for ${socket.username || 'Unknown'}:`, error.message);
+        this.handleWebSocketError(socket, error);
+      });
+
+      // Handle custom error events
+      socket.on('error', (error) => {
+        this.handleWebSocketError(socket, error);
+      });
+
+      // Handle client-reported connection issues
+      socket.on('connection-issue', (data) => {
+        console.log(`[ConnectionStatus] Client reported connection issue: ${data.type} - ${data.message}`);
         
-        socket.emit('connection-status', {
-          status: 'error',
-          error: error.message,
-          timestamp: new Date().toISOString()
-        });
+        // Update error count
+        const health = this.connectionHealth.get(socket.id);
+        if (health) {
+          health.errorCount = (health.errorCount || 0) + 1;
+        }
+        
+        // Apply appropriate recovery strategy
+        this.handleGracefulDegradation(socket, data.type);
       });
       
       // Handle ping/pong for connection health
-      socket.on('ping-server', () => {
+      socket.on('ping-server', (data) => {
+        const now = Date.now();
+        const pingTime = data?.timestamp || now;
+        const latency = now - pingTime;
+        
+        // Update connection health
+        this.updateConnectionHealth(socket.id, {
+          lastPing: now,
+          latency: latency
+        });
+        
+        // Add to latency history
+        const health = this.connectionHealth.get(socket.id);
+        if (health) {
+          health.latencyHistory = health.latencyHistory || [];
+          health.latencyHistory.push(latency);
+          
+          // Keep only last 10 latency measurements
+          if (health.latencyHistory.length > 10) {
+            health.latencyHistory.shift();
+          }
+        }
+        
         socket.emit('pong-server', {
           timestamp: new Date().toISOString(),
-          latency: Date.now() - socket.handshake.time
+          latency: latency,
+          serverTime: now
+        });
+        
+        // Monitor connection quality
+        this.monitorConnectionQuality(socket.id);
+      });
+
+      // Handle health check pings
+      socket.on('pong-health-check', (data) => {
+        const now = Date.now();
+        const pingTime = data?.timestamp || now;
+        const latency = now - pingTime;
+        
+        this.updateConnectionHealth(socket.id, {
+          lastPing: now,
+          latency: latency,
+          isHealthy: latency < this.connectionTimeout / 2
         });
       });
       
@@ -227,6 +312,272 @@ class ConnectionStatusManager {
   }
 
   /**
+   * Start heartbeat monitoring for connection health
+   */
+  startHeartbeatMonitoring() {
+    setInterval(() => {
+      this.performHeartbeatCheck();
+    }, this.heartbeatInterval);
+    
+    console.log(`[ConnectionStatus] Started heartbeat monitoring every ${this.heartbeatInterval}ms`);
+  }
+
+  /**
+   * Perform heartbeat check on all connections
+   */
+  performHeartbeatCheck() {
+    const now = Date.now();
+    
+    for (const [socketId, healthData] of this.connectionHealth.entries()) {
+      const socket = this.socketManager.io.sockets.sockets.get(socketId);
+      
+      if (!socket) {
+        // Socket no longer exists, clean up
+        this.connectionHealth.delete(socketId);
+        this.clearHeartbeatTimer(socketId);
+        continue;
+      }
+
+      // Check if connection is stale
+      const timeSinceLastPing = now - (healthData.lastPing || healthData.connectedAt);
+      
+      if (timeSinceLastPing > this.connectionTimeout) {
+        console.warn(`[ConnectionStatus] Connection timeout for ${socket.username || 'Unknown'} (${socketId})`);
+        this.handleConnectionTimeout(socket);
+      } else {
+        // Send ping to check connection health
+        socket.emit('ping-health-check', { timestamp: now });
+      }
+    }
+  }
+
+  /**
+   * Handle connection timeout
+   * @param {Object} socket - Socket instance
+   */
+  handleConnectionTimeout(socket) {
+    this.connectionStats.timeouts++;
+    
+    // Emit timeout warning to client
+    socket.emit('connection-timeout-warning', {
+      message: 'Connection appears to be unstable',
+      timestamp: new Date().toISOString()
+    });
+
+    // Set up recovery timer
+    this.setupConnectionRecovery(socket);
+  }
+
+  /**
+   * Set up connection recovery for timed out connections
+   * @param {Object} socket - Socket instance
+   */
+  setupConnectionRecovery(socket) {
+    const recoveryTimeout = setTimeout(() => {
+      if (socket.connected) {
+        console.log(`[ConnectionStatus] Connection recovered for ${socket.username || 'Unknown'}`);
+        this.connectionStats.recoveries++;
+        
+        socket.emit('connection-recovered', {
+          message: 'Connection has been restored',
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        console.log(`[ConnectionStatus] Connection recovery failed for ${socket.username || 'Unknown'}`);
+        socket.disconnect(true);
+      }
+    }, 5000); // 5 second recovery window
+
+    // Store recovery timer
+    this.heartbeatTimers.set(socket.id, recoveryTimeout);
+  }
+
+  /**
+   * Handle graceful degradation for connection issues
+   * @param {Object} socket - Socket instance
+   * @param {string} issueType - Type of connection issue
+   */
+  handleGracefulDegradation(socket, issueType) {
+    const degradationStrategies = {
+      'slow_connection': {
+        message: 'Connection is slow, reducing update frequency',
+        action: 'reduce_updates'
+      },
+      'intermittent_connection': {
+        message: 'Connection is unstable, enabling offline mode',
+        action: 'enable_offline'
+      },
+      'high_latency': {
+        message: 'High latency detected, optimizing for performance',
+        action: 'optimize_performance'
+      }
+    };
+
+    const strategy = degradationStrategies[issueType];
+    if (strategy) {
+      socket.emit('connection-degradation', {
+        issueType,
+        message: strategy.message,
+        action: strategy.action,
+        timestamp: new Date().toISOString()
+      });
+
+      console.log(`[ConnectionStatus] Applied degradation strategy for ${issueType}: ${strategy.message}`);
+    }
+  }
+
+  /**
+   * Clear heartbeat timer for a socket
+   * @param {string} socketId - Socket ID
+   */
+  clearHeartbeatTimer(socketId) {
+    const timer = this.heartbeatTimers.get(socketId);
+    if (timer) {
+      clearTimeout(timer);
+      this.heartbeatTimers.delete(socketId);
+    }
+  }
+
+  /**
+   * Track connection health metrics
+   * @param {string} socketId - Socket ID
+   * @param {Object} metrics - Health metrics
+   */
+  updateConnectionHealth(socketId, metrics) {
+    const existing = this.connectionHealth.get(socketId) || {};
+    
+    this.connectionHealth.set(socketId, {
+      ...existing,
+      ...metrics,
+      lastUpdate: Date.now()
+    });
+  }
+
+  /**
+   * Get connection health for a specific socket
+   * @param {string} socketId - Socket ID
+   * @returns {Object} Health data
+   */
+  getConnectionHealth(socketId) {
+    return this.connectionHealth.get(socketId);
+  }
+
+  /**
+   * Handle WebSocket errors with recovery strategies
+   * @param {Object} socket - Socket instance
+   * @param {Error} error - Error object
+   */
+  handleWebSocketError(socket, error) {
+    this.connectionStats.errors++;
+    
+    const errorInfo = {
+      type: error.name || 'UnknownError',
+      message: error.message,
+      code: error.code,
+      timestamp: new Date().toISOString()
+    };
+
+    console.error(`[ConnectionStatus] WebSocket error for ${socket.username || 'Unknown'}:`, errorInfo);
+
+    // Determine recovery strategy based on error type
+    let recoveryStrategy = 'reconnect';
+    
+    switch (error.code) {
+      case 'ECONNRESET':
+      case 'ENOTFOUND':
+        recoveryStrategy = 'reconnect_with_delay';
+        break;
+      case 'ETIMEDOUT':
+        recoveryStrategy = 'optimize_connection';
+        break;
+      default:
+        recoveryStrategy = 'graceful_degradation';
+    }
+
+    // Send error info and recovery strategy to client
+    socket.emit('websocket-error', {
+      ...errorInfo,
+      recoveryStrategy,
+      canRecover: true
+    });
+
+    // Apply recovery strategy
+    this.applyRecoveryStrategy(socket, recoveryStrategy, error);
+  }
+
+  /**
+   * Apply recovery strategy for connection errors
+   * @param {Object} socket - Socket instance
+   * @param {string} strategy - Recovery strategy
+   * @param {Error} error - Original error
+   */
+  applyRecoveryStrategy(socket, strategy, error) {
+    switch (strategy) {
+      case 'reconnect':
+        // Immediate reconnection attempt
+        socket.emit('recovery-instruction', {
+          action: 'reconnect',
+          delay: 0,
+          message: 'Please reconnect immediately'
+        });
+        break;
+
+      case 'reconnect_with_delay':
+        // Delayed reconnection with exponential backoff
+        const delay = Math.min(this.reconnectDelay * Math.pow(2, socket.reconnectAttempts || 0), 30000);
+        socket.emit('recovery-instruction', {
+          action: 'reconnect',
+          delay,
+          message: `Reconnecting in ${delay}ms`
+        });
+        break;
+
+      case 'optimize_connection':
+        // Switch to more reliable transport
+        socket.emit('recovery-instruction', {
+          action: 'optimize',
+          message: 'Switching to more reliable connection mode'
+        });
+        break;
+
+      case 'graceful_degradation':
+        // Enable offline mode or reduced functionality
+        this.handleGracefulDegradation(socket, 'intermittent_connection');
+        break;
+    }
+  }
+
+  /**
+   * Monitor connection quality and suggest optimizations
+   * @param {string} socketId - Socket ID
+   */
+  monitorConnectionQuality(socketId) {
+    const health = this.connectionHealth.get(socketId);
+    if (!health) return;
+
+    const now = Date.now();
+    const socket = this.socketManager.io.sockets.sockets.get(socketId);
+    
+    if (!socket) return;
+
+    // Calculate connection metrics
+    const avgLatency = health.latencyHistory ? 
+      health.latencyHistory.reduce((a, b) => a + b, 0) / health.latencyHistory.length : 0;
+    
+    const connectionAge = now - (health.connectedAt || now);
+    const errorRate = (health.errorCount || 0) / Math.max(connectionAge / 60000, 1); // errors per minute
+
+    // Suggest optimizations based on metrics
+    if (avgLatency > 1000) {
+      this.handleGracefulDegradation(socket, 'high_latency');
+    } else if (errorRate > 5) {
+      this.handleGracefulDegradation(socket, 'intermittent_connection');
+    } else if (avgLatency > 500) {
+      this.handleGracefulDegradation(socket, 'slow_connection');
+    }
+  }
+
+  /**
    * Reset connection statistics
    */
   resetStats() {
@@ -235,10 +586,27 @@ class ConnectionStatusManager {
       activeConnections: this.socketManager.userSockets.size,
       reconnections: 0,
       disconnections: 0,
-      errors: 0
+      errors: 0,
+      timeouts: 0,
+      recoveries: 0
     };
     
     console.log('[ConnectionStatus] Connection statistics reset');
+  }
+
+  /**
+   * Cleanup connection monitoring
+   */
+  cleanup() {
+    // Clear all heartbeat timers
+    for (const timer of this.heartbeatTimers.values()) {
+      clearTimeout(timer);
+    }
+    
+    this.heartbeatTimers.clear();
+    this.connectionHealth.clear();
+    
+    console.log('[ConnectionStatus] Cleaned up connection monitoring');
   }
 }
 

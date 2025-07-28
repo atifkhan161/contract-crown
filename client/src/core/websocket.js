@@ -156,6 +156,39 @@ class WebSocketManager {
         this.socket.on('player_left', (data) => {
             this.emit('playerLeft', data);
         });
+
+        // New real-time game communication events
+        this.socket.on('game:state_update', (data) => {
+            this.emit('gameStateUpdate', data);
+        });
+
+        this.socket.on('player:declare_trump', (data) => {
+            this.emit('playerDeclareTrump', data);
+        });
+
+        this.socket.on('game:trump_declared', (data) => {
+            this.emit('gameTrumpDeclared', data);
+        });
+
+        this.socket.on('player:play_card', (data) => {
+            this.emit('playerPlayCard', data);
+        });
+
+        this.socket.on('game:card_played', (data) => {
+            this.emit('gameCardPlayed', data);
+        });
+
+        this.socket.on('game:trick_won', (data) => {
+            this.emit('gameTrickWon', data);
+        });
+
+        this.socket.on('game:round_scores', (data) => {
+            this.emit('gameRoundScores', data);
+        });
+
+        this.socket.on('game:complete', (data) => {
+            this.emit('gameComplete', data);
+        });
     }
 
     /**
@@ -366,6 +399,52 @@ class WebSocketManager {
      */
     authenticate(token) {
         this.send('auth', { token });
+    }
+
+    /**
+     * Request current game state from server
+     * @param {string} gameId - Game ID
+     */
+    requestGameState(gameId) {
+        this.send('request-game-state', { gameId });
+    }
+
+    /**
+     * Declare trump suit
+     * @param {string} gameId - Game ID
+     * @param {string} trumpSuit - Trump suit to declare
+     */
+    declareTrump(gameId, trumpSuit) {
+        this.send('declare-trump', { gameId, trumpSuit });
+    }
+
+    /**
+     * Play a card
+     * @param {string} gameId - Game ID
+     * @param {Object} card - Card to play
+     * @param {string} trickId - Current trick ID (optional)
+     * @param {string} roundId - Current round ID (optional)
+     */
+    playCard(gameId, card, trickId = null, roundId = null) {
+        this.send('play-card', { gameId, card, trickId, roundId });
+    }
+
+    /**
+     * Report trick completion (usually called by game engine)
+     * @param {string} gameId - Game ID
+     * @param {Object} trickData - Trick completion data
+     */
+    reportTrickComplete(gameId, trickData) {
+        this.send('trick-complete', { gameId, ...trickData });
+    }
+
+    /**
+     * Report round completion (usually called by game engine)
+     * @param {string} gameId - Game ID
+     * @param {Object} roundData - Round completion data
+     */
+    reportRoundComplete(gameId, roundData) {
+        this.send('round-complete', { gameId, ...roundData });
     }
 }
 
