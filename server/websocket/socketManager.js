@@ -23,7 +23,7 @@ class SocketManager {
 
     // Initialize connection status manager
     this.connectionStatusManager = new ConnectionStatusManager(this);
-    
+
     // Initialize enhanced connection status manager
     this.enhancedConnectionStatusManager = new EnhancedConnectionStatusManager(this);
 
@@ -72,7 +72,7 @@ class SocketManager {
 
     // Check if this is a reconnection
     const isReconnection = this.enhancedConnectionStatusManager.playerConnections.has(userId);
-    
+
     if (isReconnection) {
       // Handle reconnection with state restoration
       this.enhancedConnectionStatusManager.handlePlayerReconnection(userId, socket);
@@ -436,9 +436,9 @@ class SocketManager {
   }
 
   /**
-   * Handle player ready status change
+   * Handle player ready status change with immediate database sync and HTTP fallback
    */
-  handlePlayerReady(socket, data) {
+  async handlePlayerReady(socket, data) {
     const { gameId, isReady, userId: dataUserId, username: dataUsername } = data;
     const { userId, username } = socket;
 
@@ -460,13 +460,16 @@ class SocketManager {
       return;
     }
 
+    let dbUpdateSuccess = false;
+    let wsUpdateSuccess = false;
+
     try {
       const room = this.gameRooms.get(gameId);
       if (!room) {
         console.log(`[WebSocket] Room not found: ${gameId}. Available rooms:`, Array.from(this.gameRooms.keys()));
         // Try to auto-rejoin the player to the room
         console.log(`[WebSocket] Attempting to auto-rejoin player ${effectiveUsername} to room ${gameId}`);
-        this.handleJoinGameRoom(socket, { gameId, userId: effectiveUserId, username: effectiveUsername });
+        await this.handleJoinGameRoom(socket, { gameId, userId: effectiveUserId, username: effectiveUsername });
 
         // Retry the ready status update after a brief delay
         setTimeout(() => {
@@ -479,7 +482,7 @@ class SocketManager {
         console.log(`[WebSocket] Player ${effectiveUsername} (${effectiveUserId}) not found in room ${gameId}. Room players:`, Array.from(room.players.keys()));
         // Try to auto-rejoin the player to the room
         console.log(`[WebSocket] Attempting to auto-rejoin player ${effectiveUsername} to room ${gameId}`);
-        this.handleJoinGameRoom(socket, { gameId, userId: effectiveUserId, username: effectiveUsername });
+        await this.handleJoinGameRoom(socket, { gameId, userId: effectiveUserId, username: effectiveUsername });
 
         // Retry the ready status update after a brief delay
         setTimeout(() => {
@@ -488,14 +491,34 @@ class SocketManager {
         return;
       }
 
-      // Update player ready status
+      // Get the player and previous status
       const player = room.players.get(effectiveUserId);
       const previousReadyStatus = player.isReady;
-      player.isReady = isReady;
 
+      // First, update the database to ensure persistence
+      try {
+        const { default: Room } = await import('../src/models/Room.js');
+        const roomModel = await Room.findById(gameId);
+        if (roomModel) {
+          await roomModel.setPlayerReady(effectiveUserId, isReady);
+          dbUpdateSuccess = true;
+          console.log(`[WebSocket] Database updated: ${effectiveUsername} ready status set to ${isReady} in room ${gameId}`);
+        }
+      } catch (dbError) {
+        console.error(`[WebSocket] Database update failed for ready status:`, dbError);
+        // Emit error but continue with websocket update
+        socket.emit('warning', {
+          message: 'Ready status updated locally but database sync failed. Changes may not persist.',
+          fallbackAvailable: true
+        });
+      }
+
+      // Update websocket state
+      player.isReady = isReady;
+      player.lastReadyUpdate = new Date().toISOString();
       console.log(`[WebSocket] ${effectiveUsername} ready status changed from ${previousReadyStatus} to ${isReady} in room ${gameId}`);
 
-      // Update game state
+      // Update game state manager
       this.gameStateManager.updateGameState(gameId, {
         players: {
           [effectiveUserId]: {
@@ -505,13 +528,37 @@ class SocketManager {
         }
       }, effectiveUserId);
 
+      // Calculate ready status and game start eligibility with enhanced validation
       const players = Array.from(room.players.values());
       const connectedPlayers = players.filter(p => p.isConnected);
-      const readyCount = connectedPlayers.filter(p => p.isReady).length;
+      const readyPlayers = connectedPlayers.filter(p => p.isReady);
+      const readyCount = readyPlayers.length;
       const allConnectedReady = connectedPlayers.every(p => p.isReady) && connectedPlayers.length >= 2;
 
-      // Broadcast ready status change to all players in the room
-      this.io.to(gameId).emit('player-ready-changed', {
+      // Enhanced game start validation
+      let canStartGame = false;
+      let gameStartReason = '';
+
+      if (connectedPlayers.length < 2) {
+        gameStartReason = 'Need at least 2 connected players';
+      } else if (!allConnectedReady) {
+        gameStartReason = `${readyCount}/${connectedPlayers.length} players ready`;
+      } else if (connectedPlayers.length === 4) {
+        // Check if teams are formed for 4-player games
+        const hasTeamAssignments = connectedPlayers.every(p => p.teamAssignment !== null);
+        if (!hasTeamAssignments) {
+          gameStartReason = 'Teams must be formed for 4-player games';
+        } else {
+          canStartGame = true;
+          gameStartReason = 'Ready to start!';
+        }
+      } else {
+        canStartGame = true;
+        gameStartReason = 'Ready to start!';
+      }
+
+      // Prepare broadcast data
+      const broadcastData = {
         gameId,
         playerId: effectiveUserId,
         playerName: effectiveUsername,
@@ -527,13 +574,101 @@ class SocketManager {
         totalPlayers: room.players.size,
         connectedPlayers: connectedPlayers.length,
         allReady: allConnectedReady,
-        canStartGame: allConnectedReady && connectedPlayers.length >= 2,
+        canStartGame,
+        gameStartReason,
+        dbSynced: dbUpdateSuccess,
+        timestamp: new Date().toISOString()
+      };
+
+      // Try to broadcast via websocket with error handling
+      try {
+        this.io.to(gameId).emit('player-ready-changed', broadcastData);
+        wsUpdateSuccess = true;
+        console.log(`[WebSocket] Successfully broadcasted ready status change for ${effectiveUsername}`);
+      } catch (wsError) {
+        console.error(`[WebSocket] Failed to broadcast ready status change:`, wsError);
+        wsUpdateSuccess = false;
+
+        // Trigger HTTP API fallback
+        await this.triggerHttpFallbackForReadyStatus(gameId, effectiveUserId, isReady, broadcastData);
+      }
+
+      // Send confirmation back to the requesting player
+      socket.emit('ready-status-confirmed', {
+        gameId,
+        isReady,
+        success: wsUpdateSuccess,
+        dbSynced: dbUpdateSuccess,
+        fallbackTriggered: !wsUpdateSuccess,
         timestamp: new Date().toISOString()
       });
 
+      // If websocket failed but database succeeded, schedule a retry
+      if (!wsUpdateSuccess && dbUpdateSuccess) {
+        setTimeout(() => {
+          console.log(`[WebSocket] Retrying websocket broadcast for ${effectiveUsername} ready status`);
+          try {
+            this.io.to(gameId).emit('player-ready-changed', broadcastData);
+          } catch (retryError) {
+            console.error(`[WebSocket] Retry failed for ready status broadcast:`, retryError);
+          }
+        }, 2000);
+      }
+
     } catch (error) {
       console.error('[WebSocket] Error updating ready status:', error);
-      socket.emit('error', { message: 'Failed to update ready status' });
+
+      // Try HTTP API fallback as last resort
+      if (dbUpdateSuccess) {
+        await this.triggerHttpFallbackForReadyStatus(gameId, effectiveUserId, isReady, null);
+      }
+
+      socket.emit('error', {
+        message: 'Failed to update ready status',
+        details: error.message,
+        fallbackAvailable: true
+      });
+    }
+  }
+
+  /**
+   * Trigger HTTP API fallback for ready status updates
+   */
+  async triggerHttpFallbackForReadyStatus(gameId, userId, isReady, broadcastData) {
+    try {
+      console.log(`[WebSocket] Triggering HTTP fallback for ready status - gameId: ${gameId}, userId: ${userId}, isReady: ${isReady}`);
+
+      // Emit fallback notification to all clients in the room
+      this.io.to(gameId).emit('websocket-fallback-active', {
+        type: 'ready-status',
+        gameId,
+        playerId: userId,
+        isReady,
+        message: 'Using HTTP fallback for ready status update',
+        timestamp: new Date().toISOString()
+      });
+
+      // If we have broadcast data, try to send it via HTTP API simulation
+      if (broadcastData) {
+        // Simulate HTTP API response by emitting to individual sockets
+        const room = this.gameRooms.get(gameId);
+        if (room) {
+          for (const [playerId, player] of room.players.entries()) {
+            const playerSocketId = this.userSockets.get(playerId);
+            if (playerSocketId && this.io.sockets.sockets.has(playerSocketId)) {
+              const playerSocket = this.io.sockets.sockets.get(playerSocketId);
+              try {
+                playerSocket.emit('player-ready-changed-fallback', broadcastData);
+              } catch (fallbackError) {
+                console.error(`[WebSocket] Fallback failed for player ${playerId}:`, fallbackError);
+              }
+            }
+          }
+        }
+      }
+
+    } catch (fallbackError) {
+      console.error(`[WebSocket] HTTP fallback failed for ready status:`, fallbackError);
     }
   }
 

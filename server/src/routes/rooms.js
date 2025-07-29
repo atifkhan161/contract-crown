@@ -305,28 +305,92 @@ router.post('/:roomId/ready', auth, async (req, res) => {
         await room.setPlayerReady(userId, !!isReady);
 
         // Also update WebSocket room data if it exists
+        let wsUpdateSuccess = false;
         if (req.socketManager) {
             const wsRoom = req.socketManager.gameRooms.get(roomId);
             if (wsRoom && wsRoom.players.has(userId)) {
                 const wsPlayer = wsRoom.players.get(userId);
                 wsPlayer.isReady = !!isReady;
+                wsPlayer.lastReadyUpdate = new Date().toISOString();
+                wsUpdateSuccess = true;
                 console.log(`[HTTP API] Updated WebSocket room data for ${wsPlayer.username}: ready=${!!isReady}`);
+                
+                // Calculate enhanced game start validation
+                const players = Array.from(wsRoom.players.values());
+                const connectedPlayers = players.filter(p => p.isConnected);
+                const readyCount = connectedPlayers.filter(p => p.isReady).length;
+                const allConnectedReady = connectedPlayers.every(p => p.isReady) && connectedPlayers.length >= 2;
+                
+                let canStartGame = false;
+                let gameStartReason = '';
+                
+                if (connectedPlayers.length < 2) {
+                    gameStartReason = 'Need at least 2 connected players';
+                } else if (!allConnectedReady) {
+                    gameStartReason = `${readyCount}/${connectedPlayers.length} players ready`;
+                } else if (connectedPlayers.length === 4) {
+                    const hasTeamAssignments = connectedPlayers.every(p => p.teamAssignment !== null);
+                    if (!hasTeamAssignments) {
+                        gameStartReason = 'Teams must be formed for 4-player games';
+                    } else {
+                        canStartGame = true;
+                        gameStartReason = 'Ready to start!';
+                    }
+                } else {
+                    canStartGame = true;
+                    gameStartReason = 'Ready to start!';
+                }
+
+                // Emit enhanced ready status update to all players in room
+                try {
+                    req.io.to(roomId).emit('player-ready-changed', {
+                        gameId: roomId,
+                        playerId: userId,
+                        playerName: wsPlayer.username,
+                        isReady: !!isReady,
+                        players: players.map(p => ({
+                            userId: p.userId,
+                            username: p.username,
+                            isReady: p.isReady,
+                            teamAssignment: p.teamAssignment,
+                            isConnected: p.isConnected
+                        })),
+                        readyCount,
+                        totalPlayers: wsRoom.players.size,
+                        connectedPlayers: connectedPlayers.length,
+                        allReady: allConnectedReady,
+                        canStartGame,
+                        gameStartReason,
+                        source: 'http_api',
+                        dbSynced: true,
+                        timestamp: new Date().toISOString()
+                    });
+                } catch (emitError) {
+                    console.error(`[HTTP API] Failed to emit ready status change:`, emitError);
+                    wsUpdateSuccess = false;
+                }
             }
         }
 
-        // Emit ready status update to all players in room
-        req.io.to(`room_${roomId}`).emit('playerReadyStatusChanged', {
-            roomId: room.room_id,
-            playerId: userId,
-            isReady: !!isReady,
-            players: room.players,
-            canStartGame: room.canStartGame()
-        });
+        // Fallback to legacy emit if websocket room not found
+        if (!wsUpdateSuccess) {
+            req.io.to(`room_${roomId}`).emit('playerReadyStatusChanged', {
+                roomId: room.room_id,
+                playerId: userId,
+                isReady: !!isReady,
+                players: room.players,
+                canStartGame: room.canStartGame(),
+                source: 'http_api_legacy',
+                timestamp: new Date().toISOString()
+            });
+        }
 
         res.json({
             success: true,
             message: `Ready status updated to ${!!isReady}`,
-            room: room.toApiResponse()
+            room: room.toApiResponse(),
+            wsUpdateSuccess,
+            timestamp: new Date().toISOString()
         });
     } catch (error) {
         console.error('Error updating ready status:', error);

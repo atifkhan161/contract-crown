@@ -26,48 +26,38 @@ class ReliableSocketManager {
      * Wrap socket manager methods to use reliable event delivery
      */
     wrapSocketManagerMethods() {
-        // Wrap handlePlayerReady
+        // Wrap handlePlayerReady with enhanced reliability
         const originalHandlePlayerReady = this.socketManager.handlePlayerReady.bind(this.socketManager);
         this.socketManager.handlePlayerReady = async (socket, data) => {
             try {
-                // Execute original method
+                // Execute original method (which now includes fallback handling)
                 await originalHandlePlayerReady(socket, data);
                 
-                // Use reliable delivery for the response
-                const room = this.socketManager.gameRooms.get(data.gameId);
-                if (room) {
-                    const players = Array.from(room.players.values());
-                    const connectedPlayers = players.filter(p => p.isConnected);
-                    const readyCount = connectedPlayers.filter(p => p.isReady).length;
-                    const allConnectedReady = connectedPlayers.every(p => p.isReady) && connectedPlayers.length >= 2;
-
-                    await this.reliabilityLayer.emitWithRetry(
-                        data.gameId,
-                        'player-ready-changed',
-                        {
-                            gameId: data.gameId,
-                            playerId: data.userId || socket.userId,
-                            playerName: data.username || socket.username,
-                            isReady: data.isReady,
-                            players: players.map(p => ({
-                                userId: p.userId,
-                                username: p.username,
-                                isReady: p.isReady,
-                                teamAssignment: p.teamAssignment,
-                                isConnected: p.isConnected
-                            })),
-                            readyCount,
-                            totalPlayers: room.players.size,
-                            connectedPlayers: connectedPlayers.length,
-                            allReady: allConnectedReady,
-                            canStartGame: allConnectedReady && connectedPlayers.length >= 2,
-                            timestamp: new Date().toISOString()
-                        }
-                    );
-                }
+                // The original method now handles its own broadcasting and fallback
+                // This wrapper just adds additional reliability monitoring
+                console.log(`[ReliableSocketManager] Ready status update completed for ${data.userId || socket.userId}`);
+                
             } catch (error) {
                 console.error('[ReliableSocketManager] Error in handlePlayerReady:', error);
-                socket.emit('error', { message: 'Failed to update ready status' });
+                
+                // Try to provide fallback through HTTP API notification
+                try {
+                    socket.emit('ready-status-fallback-required', {
+                        gameId: data.gameId,
+                        userId: data.userId || socket.userId,
+                        isReady: data.isReady,
+                        error: error.message,
+                        timestamp: new Date().toISOString()
+                    });
+                } catch (fallbackError) {
+                    console.error('[ReliableSocketManager] Fallback notification failed:', fallbackError);
+                }
+                
+                socket.emit('error', { 
+                    message: 'Failed to update ready status',
+                    fallbackAvailable: true,
+                    details: error.message 
+                });
             }
         };
 
@@ -453,6 +443,123 @@ class ReliableSocketManager {
         return await this.reliabilityLayer.emitWithRetry(target, eventType, eventData, {
             maxRetries: 0 // Force immediate delivery without retries
         });
+    }
+
+    /**
+     * Validate and synchronize ready status across all clients in a room
+     * @param {string} gameId - Game ID
+     * @returns {Promise<Object>} Synchronization result
+     */
+    async validateAndSyncReadyStatus(gameId) {
+        try {
+            const room = this.socketManager.gameRooms.get(gameId);
+            if (!room) {
+                throw new Error(`Room ${gameId} not found`);
+            }
+
+            // Get current room state
+            const players = Array.from(room.players.values());
+            const connectedPlayers = players.filter(p => p.isConnected);
+            const readyCount = connectedPlayers.filter(p => p.isReady).length;
+            const allConnectedReady = connectedPlayers.every(p => p.isReady) && connectedPlayers.length >= 2;
+            
+            // Enhanced game start validation
+            let canStartGame = false;
+            let gameStartReason = '';
+            
+            if (connectedPlayers.length < 2) {
+                gameStartReason = 'Need at least 2 connected players';
+            } else if (!allConnectedReady) {
+                gameStartReason = `${readyCount}/${connectedPlayers.length} players ready`;
+            } else if (connectedPlayers.length === 4) {
+                const hasTeamAssignments = connectedPlayers.every(p => p.teamAssignment !== null);
+                if (!hasTeamAssignments) {
+                    gameStartReason = 'Teams must be formed for 4-player games';
+                } else {
+                    canStartGame = true;
+                    gameStartReason = 'Ready to start!';
+                }
+            } else {
+                canStartGame = true;
+                gameStartReason = 'Ready to start!';
+            }
+
+            const syncData = {
+                gameId,
+                players: players.map(p => ({
+                    userId: p.userId,
+                    username: p.username,
+                    isReady: p.isReady,
+                    teamAssignment: p.teamAssignment,
+                    isConnected: p.isConnected
+                })),
+                readyCount,
+                totalPlayers: room.players.size,
+                connectedPlayers: connectedPlayers.length,
+                allReady: allConnectedReady,
+                canStartGame,
+                gameStartReason,
+                syncType: 'validation',
+                timestamp: new Date().toISOString()
+            };
+
+            // Broadcast synchronized state to all clients
+            await this.reliabilityLayer.emitWithRetry(
+                gameId,
+                'ready-status-synchronized',
+                syncData
+            );
+
+            console.log(`[ReliableSocketManager] Ready status synchronized for room ${gameId}`);
+            return syncData;
+
+        } catch (error) {
+            console.error(`[ReliableSocketManager] Ready status sync failed for room ${gameId}:`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Handle ready status conflict resolution
+     * @param {string} gameId - Game ID
+     * @param {string} playerId - Player ID
+     * @param {boolean} clientReady - Client's ready state
+     * @param {boolean} serverReady - Server's ready state
+     */
+    async resolveReadyStatusConflict(gameId, playerId, clientReady, serverReady) {
+        try {
+            console.log(`[ReliableSocketManager] Resolving ready status conflict for ${playerId} in room ${gameId}: client=${clientReady}, server=${serverReady}`);
+            
+            const room = this.socketManager.gameRooms.get(gameId);
+            if (!room || !room.players.has(playerId)) {
+                throw new Error(`Player ${playerId} not found in room ${gameId}`);
+            }
+
+            // Use server state as source of truth
+            const player = room.players.get(playerId);
+            player.isReady = serverReady;
+            player.lastReadyUpdate = new Date().toISOString();
+
+            // Notify the specific client about the resolution
+            const playerSocketId = this.socketManager.userSockets.get(playerId);
+            if (playerSocketId && this.socketManager.io.sockets.sockets.has(playerSocketId)) {
+                const playerSocket = this.socketManager.io.sockets.sockets.get(playerSocketId);
+                playerSocket.emit('ready-status-conflict-resolved', {
+                    gameId,
+                    playerId,
+                    resolvedReady: serverReady,
+                    reason: 'server_state_authority',
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            // Trigger full room synchronization
+            await this.validateAndSyncReadyStatus(gameId);
+
+        } catch (error) {
+            console.error(`[ReliableSocketManager] Ready status conflict resolution failed:`, error);
+            throw error;
+        }
     }
 
     /**
