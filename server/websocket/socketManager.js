@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import GameStateManager from './gameStateManager.js';
 import ConnectionStatusManager from './connectionStatus.js';
+import EnhancedConnectionStatusManager from './enhancedConnectionStatusManager.js';
 import ConnectionDiagnostics from './connectionDiagnostics.js';
 import Room from '../src/models/Room.js';
 import { authenticateSocket } from '../src/middlewares/socketAuth.js';
@@ -22,6 +23,9 @@ class SocketManager {
 
     // Initialize connection status manager
     this.connectionStatusManager = new ConnectionStatusManager(this);
+    
+    // Initialize enhanced connection status manager
+    this.enhancedConnectionStatusManager = new EnhancedConnectionStatusManager(this);
 
     // Initialize connection diagnostics
     this.connectionDiagnostics = new ConnectionDiagnostics(this, this.connectionStatusManager);
@@ -66,11 +70,20 @@ class SocketManager {
     this.userSockets.set(userId, socket.id);
     this.socketUsers.set(socket.id, userId);
 
+    // Check if this is a reconnection
+    const isReconnection = this.enhancedConnectionStatusManager.playerConnections.has(userId);
+    
+    if (isReconnection) {
+      // Handle reconnection with state restoration
+      this.enhancedConnectionStatusManager.handlePlayerReconnection(userId, socket);
+    }
+
     // Send connection confirmation
     socket.emit('connection-confirmed', {
       userId,
       username,
       socketId: socket.id,
+      isReconnection,
       timestamp: new Date().toISOString()
     });
 
@@ -1093,6 +1106,11 @@ class SocketManager {
    * Handle socket disconnection
    */
   handleDisconnection(socket, reason) {
+    if (!socket) {
+      console.warn('[WebSocket] Attempted to handle disconnection for null socket');
+      return;
+    }
+
     const { userId, username } = socket;
 
     console.log(`[WebSocket] Client disconnected: ${username} (${socket.id}), reason: ${reason}`);
@@ -1100,6 +1118,10 @@ class SocketManager {
     // Clean up user-socket mappings
     this.userSockets.delete(userId);
     this.socketUsers.delete(socket.id);
+
+    // Handle disconnection through enhanced connection status manager
+    // This will update connection status and broadcast to all rooms
+    this.enhancedConnectionStatusManager.handlePlayerDisconnection(userId, reason);
 
     // Find and update any game rooms the user was in
     for (const [gameId, room] of this.gameRooms.entries()) {
@@ -1112,23 +1134,6 @@ class SocketManager {
 
         // Update game state for disconnection
         this.gameStateManager.handlePlayerDisconnection(gameId, userId);
-
-        // Broadcast player disconnection to other players in the room
-        this.io.to(gameId).emit('player-disconnected', {
-          gameId,
-          playerId: userId,
-          playerName: username,
-          players: Array.from(room.players.values()).map(p => ({
-            userId: p.userId,
-            username: p.username,
-            isReady: p.isReady,
-            teamAssignment: p.teamAssignment,
-            isConnected: p.isConnected
-          })),
-          playerCount: room.players.size,
-          connectedCount: Array.from(room.players.values()).filter(p => p.isConnected).length,
-          timestamp: new Date().toISOString()
-        });
 
         console.log(`[WebSocket] Player ${username} disconnected from game ${gameId}`);
 

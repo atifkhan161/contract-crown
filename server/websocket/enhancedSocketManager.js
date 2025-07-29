@@ -12,6 +12,9 @@ class EnhancedSocketManager {
         this.reconciliationIntervals = new Map(); // gameId -> intervalId
         this.reconciliationEnabled = true;
         
+        // Get reference to enhanced connection status manager
+        this.enhancedConnectionStatusManager = socketManager.enhancedConnectionStatusManager;
+        
         // Wrap original methods with reconciliation
         this.wrapSocketManagerMethods();
     }
@@ -371,15 +374,8 @@ class EnhancedSocketManager {
      */
     async handlePlayerDisconnection(gameId, playerId) {
         try {
-            // Update websocket state
-            const room = this.socketManager.gameRooms.get(gameId);
-            if (room && room.players.has(playerId)) {
-                const player = room.players.get(playerId);
-                player.isConnected = false;
-                player.disconnectedAt = new Date().toISOString();
-            }
-
-            // Trigger reconciliation to ensure consistent state
+            // The enhanced connection status manager handles the actual disconnection
+            // We just need to trigger reconciliation to ensure consistent state
             await this.reconcileAndBroadcast(gameId, 'player_disconnect');
             
         } catch (error) {
@@ -394,15 +390,8 @@ class EnhancedSocketManager {
      */
     async handlePlayerReconnection(gameId, playerId) {
         try {
-            // Update websocket state
-            const room = this.socketManager.gameRooms.get(gameId);
-            if (room && room.players.has(playerId)) {
-                const player = room.players.get(playerId);
-                player.isConnected = true;
-                player.reconnectedAt = new Date().toISOString();
-            }
-
-            // Trigger reconciliation to restore consistent state
+            // The enhanced connection status manager handles the actual reconnection
+            // We just need to trigger reconciliation to restore consistent state
             const reconciledState = await this.reconcileAndBroadcast(gameId, 'player_reconnect');
             
             // Send full state to reconnected player
