@@ -3,12 +3,13 @@
  * Handles room management, user stats, and real-time updates
  */
 
+import { AuthManager } from '../core/auth.js';
 import { SocketManager } from '../core/SocketManager.js';
 import { RoomManager } from '../core/RoomManager.js';
 
 class DashboardManager {
     constructor() {
-        this.authManager = new window.AuthManager();
+        this.authManager = new AuthManager();
         this.socketManager = new SocketManager(this.authManager);
         this.roomManager = new RoomManager(this.authManager);
         

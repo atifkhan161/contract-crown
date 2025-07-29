@@ -4,11 +4,12 @@
  * Requirements: 3.1, 3.2, 10.1, 10.2, 11.3, 11.4
  */
 
+import { AuthManager } from '../core/auth.js';
 import { SocketManager } from '../core/SocketManager.js';
 
 class LobbyManager {
     constructor() {
-        this.authManager = new window.AuthManager();
+        this.authManager = new AuthManager();
         this.socketManager = new SocketManager(this.authManager);
         this.roomId = null;
         this.currentUser = null;

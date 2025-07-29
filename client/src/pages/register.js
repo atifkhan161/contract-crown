@@ -3,6 +3,8 @@
  * Handles registration form submission and UI interactions
  */
 
+import { AuthManager } from '../core/auth.js';
+
 document.addEventListener('DOMContentLoaded', function () {
     const authManager = new AuthManager();
     const registerForm = document.getElementById('register-form');

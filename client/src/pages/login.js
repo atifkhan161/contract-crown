@@ -3,8 +3,10 @@
  * Handles login form submission and UI interactions
  */
 
+import { AuthManager } from '../core/auth.js';
+
 document.addEventListener('DOMContentLoaded', function() {
-    const authManager = new window.AuthManager();
+    const authManager = new AuthManager();
     const loginForm = document.getElementById('login-form');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');

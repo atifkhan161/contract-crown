@@ -3,6 +3,8 @@
  * Handles real-time communication with the server using Socket.IO
  */
 
+import { AuthManager } from './auth.js';
+
 class WebSocketManager {
     constructor() {
         this.socket = null;
@@ -234,7 +236,7 @@ class WebSocketManager {
      */
     handleAuthRequired() {
         // Try to authenticate with stored token
-        if (typeof AuthManager !== 'undefined') {
+        try {
             const authManager = new AuthManager();
             const token = authManager.getToken();
             
@@ -243,7 +245,8 @@ class WebSocketManager {
             } else {
                 this.emit('authRequired');
             }
-        } else {
+        } catch (error) {
+            console.error('Error accessing AuthManager:', error);
             this.emit('authRequired');
         }
     }
@@ -449,6 +452,9 @@ class WebSocketManager {
 }
 
 // Export for use in other modules
+export { WebSocketManager };
+
+// Fallback exports for compatibility
 if (typeof window !== 'undefined') {
     window.WebSocketManager = WebSocketManager;
 }
