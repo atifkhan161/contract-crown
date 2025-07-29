@@ -4,6 +4,7 @@ import GameStateManager from './gameStateManager.js';
 import ConnectionStatusManager from './connectionStatus.js';
 import ConnectionDiagnostics from './connectionDiagnostics.js';
 import Room from '../src/models/Room.js';
+import { authenticateSocket } from '../src/middlewares/socketAuth.js';
 
 /**
  * WebSocket Manager for Contract Crown game
@@ -35,54 +36,16 @@ class SocketManager {
    * Set up Socket.IO connection handling and middleware
    */
   setupSocketIO() {
-    // Authentication middleware
-    this.io.use(this.authenticateSocket.bind(this));
+    // Use enhanced authentication middleware
+    this.io.use(authenticateSocket);
 
     // Connection handler
     this.io.on('connection', this.handleConnection.bind(this));
 
-    console.log('[WebSocket] Socket manager initialized');
+    console.log('[WebSocket] Socket manager initialized with enhanced authentication');
   }
 
-  /**
-   * Authenticate socket connections using JWT
-   */
-  async authenticateSocket(socket, next) {
-    try {
-      const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
 
-      if (!token) {
-        return next(new Error('Authentication token required'));
-      }
-
-      // Verify JWT token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-
-      console.log('[WebSocket] DEBUG - Decoded token:', decoded);
-
-      // Handle both 'id' and 'userId' fields - JWT token uses 'id' field
-      const userId = decoded.id || decoded.userId;
-      const username = decoded.username;
-
-      console.log('[WebSocket] DEBUG - Extracted userId:', userId, 'username:', username);
-
-      // Validate required fields
-      if (!userId || !username) {
-        console.error('[WebSocket] Token missing required user information:', decoded);
-        return next(new Error('User information is required'));
-      }
-
-      // Attach user info to socket
-      socket.userId = userId;
-      socket.username = username;
-
-      console.log(`[WebSocket] User authenticated: ${socket.username} (${socket.userId})`);
-      next();
-    } catch (error) {
-      console.error('[WebSocket] Authentication failed:', error.message);
-      next(new Error('Invalid authentication token'));
-    }
-  }
 
   /**
    * Handle new socket connections
@@ -193,7 +156,8 @@ class SocketManager {
     const { userId, username } = socket;
 
     // Use data from request if provided, otherwise use socket auth data
-    const effectiveUserId = dataUserId || userId;
+    // Normalize all user IDs to strings for consistent comparisons
+    const effectiveUserId = String(dataUserId || userId || '');
     const effectiveUsername = dataUsername || username;
 
     console.log(`[WebSocket] Join room request - gameId: ${gameId}, socketUserId: ${userId}, socketUsername: ${username}, dataUserId: ${dataUserId}, dataUsername: ${dataUsername}`);
@@ -229,13 +193,17 @@ class SocketManager {
           console.log(`[WebSocket] Could not load room from database: ${error.message}`);
         }
 
+        // Normalize host ID to string for consistent comparisons
+        const hostId = String(dbRoom ? dbRoom.owner_id : effectiveUserId);
+        console.log(`[WebSocket] Setting room hostId: "${hostId}" (type: ${typeof hostId}) from ${dbRoom ? 'database' : 'effectiveUserId'}`);
+
         const roomData = {
           gameId,
           players: new Map(),
           teams: { team1: [], team2: [] },
           createdAt: new Date().toISOString(),
           status: 'waiting',
-          hostId: dbRoom ? dbRoom.owner_id : effectiveUserId // Use database owner if available
+          hostId: hostId
         };
         this.gameRooms.set(gameId, roomData);
 
@@ -243,7 +211,7 @@ class SocketManager {
         this.gameStateManager.initializeGameState(gameId, {
           status: 'waiting',
           phase: 'lobby',
-          hostId: dbRoom ? dbRoom.owner_id : effectiveUserId,
+          hostId: String(dbRoom ? dbRoom.owner_id : effectiveUserId),
           players: {},
           teams: { team1: [], team2: [] }
         });
@@ -414,8 +382,8 @@ class SocketManager {
 
         // Transfer host if the leaving player was the host
         let newHostId = room.hostId;
-        if (room.hostId === userId && room.players.size > 0) {
-          newHostId = Array.from(room.players.keys())[0];
+        if (String(room.hostId) === String(userId) && room.players.size > 0) {
+          newHostId = String(Array.from(room.players.keys())[0]);
           room.hostId = newHostId;
         }
 
@@ -462,7 +430,8 @@ class SocketManager {
     const { userId, username } = socket;
 
     // Use data from request if provided, otherwise use socket auth data
-    const effectiveUserId = dataUserId || userId;
+    // Normalize user IDs to strings for consistent comparisons
+    const effectiveUserId = String(dataUserId || userId || '');
     const effectiveUsername = dataUsername || username;
 
     console.log(`[WebSocket] Player ready request - gameId: ${gameId}, isReady: ${isReady}, socketUserId: ${userId}, socketUsername: ${username}, dataUserId: ${dataUserId}, dataUsername: ${dataUsername}`);
@@ -488,7 +457,7 @@ class SocketManager {
 
         // Retry the ready status update after a brief delay
         setTimeout(() => {
-          this.handlePlayerReady(socket, data);
+          this.handlePlayerReady(socket, { ...data, userId: effectiveUserId, username: effectiveUsername });
         }, 500);
         return;
       }
@@ -501,7 +470,7 @@ class SocketManager {
 
         // Retry the ready status update after a brief delay
         setTimeout(() => {
-          this.handlePlayerReady(socket, data);
+          this.handlePlayerReady(socket, { ...data, userId: effectiveUserId, username: effectiveUsername });
         }, 500);
         return;
       }
@@ -562,6 +531,9 @@ class SocketManager {
     const { gameId } = data;
     const { userId, username } = socket;
 
+    console.log(`[WebSocket] Form teams request from ${username} (${userId}) for game ${gameId}`);
+    console.log(`[WebSocket] Socket userId type: ${typeof userId}, value: "${userId}"`);
+
     if (!gameId) {
       socket.emit('error', { message: 'Game ID is required' });
       return;
@@ -570,12 +542,23 @@ class SocketManager {
     try {
       const room = this.gameRooms.get(gameId);
       if (!room || !room.players.has(userId)) {
+        console.log(`[WebSocket] Room check - room exists: ${!!room}, player in room: ${room ? room.players.has(userId) : false}`);
+        if (room) {
+          console.log(`[WebSocket] Room players: ${Array.from(room.players.keys())}`);
+          console.log(`[WebSocket] Looking for userId: "${userId}"`);
+        }
         socket.emit('error', { message: 'Player not in game room' });
         return;
       }
 
-      // Check if user is the host
-      if (room.hostId !== userId) {
+      // Check if user is the host (normalize both to strings for comparison)
+      const normalizedHostId = String(room.hostId || '');
+      const normalizedUserId = String(userId || '');
+
+      console.log(`[WebSocket] Form teams host check - room.hostId: "${normalizedHostId}", userId: "${normalizedUserId}"`);
+
+      if (normalizedHostId !== normalizedUserId) {
+        console.log(`[WebSocket] Host check failed - room.hostId: ${normalizedHostId}, userId: ${normalizedUserId}`);
         socket.emit('error', { message: 'Only the host can form teams' });
         return;
       }
@@ -638,6 +621,21 @@ class SocketManager {
   }
 
   /**
+   * Refresh player connection status based on active sockets
+   */
+  refreshPlayerConnectionStatus(room) {
+    for (const [userId, player] of room.players.entries()) {
+      const socketId = this.userSockets.get(userId);
+      const isSocketConnected = socketId && this.io.sockets.sockets.has(socketId);
+
+      if (player.isConnected !== isSocketConnected) {
+        console.log(`[WebSocket] Updating connection status for ${player.username}: ${player.isConnected} -> ${isSocketConnected}`);
+        player.isConnected = isSocketConnected;
+      }
+    }
+  }
+
+  /**
    * Handle game start request
    */
   handleStartGame(socket, data) {
@@ -669,12 +667,20 @@ class SocketManager {
         console.log(`[WebSocket]   - ${player.username} (${playerId}): connected=${player.isConnected}, ready=${player.isReady}`);
       }
 
-      // Check if user is the host
-      if (room.hostId !== userId) {
-        console.log(`[WebSocket] Host check failed - room.hostId: ${room.hostId}, userId: ${userId}`);
+      // Check if user is the host (normalize both to strings for comparison)
+      const normalizedHostId = String(room.hostId || '');
+      const normalizedUserId = String(userId || '');
+
+      console.log(`[WebSocket] Start game host check - room.hostId: "${normalizedHostId}", userId: "${normalizedUserId}"`);
+
+      if (normalizedHostId !== normalizedUserId) {
+        console.log(`[WebSocket] Host check failed - room.hostId: ${normalizedHostId}, userId: ${normalizedUserId}`);
         socket.emit('error', { message: 'Only the host can start the game' });
         return;
       }
+
+      // Refresh player connection status before checking
+      this.refreshPlayerConnectionStatus(room);
 
       // Check if all connected players are ready and minimum players present
       const players = Array.from(room.players.values());
@@ -1160,8 +1166,8 @@ class SocketManager {
 
     // Transfer host if needed
     let newHostId = room.hostId;
-    if (room.hostId === userId && room.players.size > 0) {
-      newHostId = Array.from(room.players.keys())[0];
+    if (String(room.hostId) === String(userId) && room.players.size > 0) {
+      newHostId = String(Array.from(room.players.keys())[0]);
       room.hostId = newHostId;
     }
 

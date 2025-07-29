@@ -224,7 +224,8 @@ class AuthManager {
      */
     getUserId() {
         const user = this.getCurrentUser();
-        return user ? user.id : null;
+        // Normalize user ID field access - database uses user_id, JWT uses id
+        return user ? (user.user_id || user.id) : null;
     }
 
     /**

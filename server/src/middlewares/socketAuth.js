@@ -1,19 +1,23 @@
-import jwt from 'jsonwebtoken';
+import JWTValidator from '../utils/jwtValidator.js';
+import UserIdNormalizer from '../utils/userIdNormalizer.js';
 
 /**
- * WebSocket Authentication Middleware
- * Handles JWT token verification for Socket.IO connections
+ * Enhanced WebSocket Authentication Middleware
+ * Handles JWT token verification with database user validation for Socket.IO connections
  */
 
+// Create JWT validator instance
+const jwtValidator = new JWTValidator();
+
 /**
- * Middleware to authenticate Socket.IO connections
+ * Enhanced middleware to authenticate Socket.IO connections with database verification
  * @param {Object} socket - Socket.IO socket instance
  * @param {Function} next - Next middleware function
  */
 export const authenticateSocket = async (socket, next) => {
   try {
     // Extract token from various possible locations
-    const token = extractToken(socket);
+    const token = jwtValidator.extractToken(socket);
 
     if (!token) {
       console.error('[SocketAuth] No token provided');
@@ -22,44 +26,55 @@ export const authenticateSocket = async (socket, next) => {
       return next(error);
     }
 
-    // Verify JWT token
-    const decoded = verifyToken(token);
+    // Validate token with database user verification
+    const validatedUser = await jwtValidator.validateWebsocketToken(token);
 
-    console.log('[SocketAuth] DEBUG - Raw decoded token:', decoded);
-    console.log('[SocketAuth] DEBUG - decoded.id:', decoded.id);
-    console.log('[SocketAuth] DEBUG - decoded.userId:', decoded.userId);
-    console.log('[SocketAuth] DEBUG - decoded.username:', decoded.username);
+    console.log('[SocketAuth] DEBUG - Validated user:', {
+      userId: validatedUser.userId,
+      username: validatedUser.username,
+      email: validatedUser.email
+    });
 
-    // Validate decoded token has required fields (handle both 'id' and 'userId')
-    const userId = decoded.userId || decoded.id;
-    const username = decoded.username;
+    // Create normalized user data
+    const normalizedUser = UserIdNormalizer.createNormalizedUserData(validatedUser);
 
-    console.log('[SocketAuth] DEBUG - Final extracted userId:', userId);
-    console.log('[SocketAuth] DEBUG - Final extracted username:', username);
-
-    if (!userId || !username) {
-      console.error('[SocketAuth] Token missing required fields:', decoded);
-      const error = new Error('Invalid token - missing user information');
-      error.data = { code: 'INVALID_TOKEN_DATA' };
+    if (!normalizedUser || !normalizedUser.userId || !normalizedUser.username) {
+      console.error('[SocketAuth] Failed to normalize user data:', validatedUser);
+      const error = new Error('Invalid user data after normalization');
+      error.data = { code: 'NORMALIZATION_FAILED' };
       return next(error);
     }
 
-    // Attach user information to socket
-    socket.userId = userId;
-    socket.username = username;
-    socket.email = decoded.email;
+    // Validate user ID format
+    const userIdValidation = UserIdNormalizer.validateUserIdFormat(normalizedUser.userId);
+    if (!userIdValidation.isValid) {
+      console.error('[SocketAuth] Invalid user ID format:', userIdValidation.error);
+      const error = new Error(`Invalid user ID format: ${userIdValidation.error}`);
+      error.data = { code: 'INVALID_USER_ID_FORMAT' };
+      return next(error);
+    }
 
-    // Log successful authentication
-    console.log(`[SocketAuth] User authenticated: ${socket.username} (${socket.userId})`);
+    // Attach validated and normalized user information to socket
+    socket.userId = normalizedUser.userId;
+    socket.username = normalizedUser.username;
+    socket.email = normalizedUser.email;
+
+    // Create authentication context for debugging and monitoring
+    socket.authContext = jwtValidator.createAuthContext(validatedUser);
+
+    // Log successful authentication with enhanced details
+    console.log(`[SocketAuth] User authenticated and verified: ${socket.username} (${socket.userId}) - Format: ${userIdValidation.format}`);
 
     next();
   } catch (error) {
     console.error('[SocketAuth] Authentication failed:', error.message);
 
-    const authError = new Error('Invalid authentication token');
+    // Create enhanced error with specific codes for better error handling
+    const authError = new Error(error.message || 'Invalid authentication token');
     authError.data = {
-      code: 'INVALID_TOKEN',
-      message: error.message
+      code: error.code || 'INVALID_TOKEN',
+      message: error.message,
+      timestamp: new Date().toISOString()
     };
 
     next(authError);
@@ -105,7 +120,8 @@ function verifyToken(token) {
     const decoded = jwt.verify(token, secret);
 
     // Validate required fields (handle both 'id' and 'userId')
-    const userId = decoded.userId || decoded.id;
+    // JWT tokens use 'id' field, normalize to string for consistency
+    const userId = String(decoded.id || decoded.userId || '');
     if (!userId || !decoded.username) {
       throw new Error('Token missing required user information');
     }
