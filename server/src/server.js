@@ -5,6 +5,7 @@ import createApp from './app.js';
 import DatabaseInitializer from '../database/init.js';
 import SocketManager from '../websocket/socketManager.js';
 import ConnectionStatusManager from '../websocket/connectionStatus.js';
+import PeriodicStateReconciliationService from './services/PeriodicStateReconciliationService.js';
 
 // Load environment variables
 dotenv.config();
@@ -17,7 +18,7 @@ class GameServer {
     this.setupSocketIO();
     
     // Create Express app with dependencies
-    this.app = createApp(this.io, this.socketManager, this.connectionStatusManager);
+    this.app = createApp(this.io, this.socketManager, this.connectionStatusManager, this.periodicReconciliationService);
     
     // Create HTTP server with Express app
     this.server = createServer(this.app);
@@ -44,6 +45,9 @@ class GameServer {
     
     // Initialize Connection Status Manager
     this.connectionStatusManager = new ConnectionStatusManager(this.socketManager);
+    
+    // Initialize Periodic State Reconciliation Service
+    this.periodicReconciliationService = new PeriodicStateReconciliationService(this.socketManager);
     
     console.log('[WebSocket] Enhanced Socket.IO setup complete with authentication and room management');
   }
@@ -75,6 +79,10 @@ class GameServer {
       this.server.listen(this.port, () => {
         console.log(`[Server] Contract Crown server running on port ${this.port}`);
         console.log(`[Server] Environment: ${process.env.NODE_ENV || 'development'}`);
+        
+        // Start periodic reconciliation service
+        this.periodicReconciliationService.start();
+        console.log('[Server] Periodic state reconciliation service started');
       });
     } catch (error) {
       console.error('[Server] Failed to start server:', error.message);

@@ -21,16 +21,17 @@ const __dirname = path.dirname(__filename);
  * @param {Object} io - Socket.IO server instance
  * @param {Object} socketManager - Socket manager instance
  * @param {Object} connectionStatusManager - Connection status manager instance
+ * @param {Object} periodicReconciliationService - Periodic reconciliation service instance
  * @returns {Object} Configured Express app
  */
-export function createApp(io, socketManager, connectionStatusManager) {
+export function createApp(io, socketManager, connectionStatusManager, periodicReconciliationService) {
   const app = express();
 
   // Setup middleware
   setupMiddleware(app);
   
   // Setup routes with dependencies
-  setupRoutes(app, io, socketManager, connectionStatusManager);
+  setupRoutes(app, io, socketManager, connectionStatusManager, periodicReconciliationService);
   
   // Setup error handling
   setupErrorHandling(app);
@@ -89,7 +90,7 @@ function setupMiddleware(app) {
   });
 }
 
-function setupRoutes(app, io, socketManager, connectionStatusManager) {
+function setupRoutes(app, io, socketManager, connectionStatusManager, periodicReconciliationService) {
   // Make io instance available to routes
   app.use((req, res, next) => {
     req.io = io;
@@ -100,6 +101,7 @@ function setupRoutes(app, io, socketManager, connectionStatusManager) {
   app.use((req, res, next) => {
     req.socketManager = socketManager;
     req.connectionStatusManager = connectionStatusManager;
+    req.periodicReconciliationService = periodicReconciliationService;
     next();
   });
 
@@ -198,6 +200,110 @@ function setupRoutes(app, io, socketManager, connectionStatusManager) {
       console.error('[API] WebSocket detailed status error:', error);
       res.status(500).json({
         error: 'Failed to get detailed WebSocket status',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Periodic reconciliation status endpoint
+  app.get('/api/reconciliation/status', (req, res) => {
+    try {
+      const status = req.periodicReconciliationService ? 
+        req.periodicReconciliationService.getStatus() : 
+        { error: 'Periodic reconciliation service not available' };
+      
+      res.status(200).json({
+        reconciliation: status,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Reconciliation status error:', error);
+      res.status(500).json({
+        error: 'Failed to get reconciliation status',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Force reconciliation for a specific room
+  app.post('/api/reconciliation/force/:gameId', async (req, res) => {
+    try {
+      const { gameId } = req.params;
+      
+      if (!req.periodicReconciliationService) {
+        return res.status(503).json({
+          error: 'Periodic reconciliation service not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const result = await req.periodicReconciliationService.forceReconciliation(gameId);
+      
+      res.status(200).json({
+        message: 'Reconciliation completed',
+        gameId,
+        result,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Force reconciliation error:', error);
+      res.status(500).json({
+        error: 'Failed to force reconciliation',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Update reconciliation configuration
+  app.put('/api/reconciliation/config', (req, res) => {
+    try {
+      if (!req.periodicReconciliationService) {
+        return res.status(503).json({
+          error: 'Periodic reconciliation service not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const config = req.body;
+      req.periodicReconciliationService.updateConfig(config);
+      
+      res.status(200).json({
+        message: 'Configuration updated',
+        config,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Update reconciliation config error:', error);
+      res.status(500).json({
+        error: 'Failed to update configuration',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Reset reconciliation statistics
+  app.post('/api/reconciliation/reset-stats', (req, res) => {
+    try {
+      if (!req.periodicReconciliationService) {
+        return res.status(503).json({
+          error: 'Periodic reconciliation service not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      req.periodicReconciliationService.resetStats();
+      
+      res.status(200).json({
+        message: 'Statistics reset successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Reset reconciliation stats error:', error);
+      res.status(500).json({
+        error: 'Failed to reset statistics',
+        details: error.message,
         timestamp: new Date().toISOString()
       });
     }

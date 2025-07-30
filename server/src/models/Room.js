@@ -21,6 +21,7 @@ class Room {
         this.updated_at = roomData.updated_at;
         this.started_at = roomData.started_at;
         this.finished_at = roomData.finished_at;
+        this.version = roomData.version || 1;
 
         // These will be populated separately
         this.players = [];
@@ -58,10 +59,22 @@ class Room {
             });
 
             // Insert room into database
-            await dbConnection.query(`
-                INSERT INTO rooms (room_id, name, max_players, owner_id, status, is_private, invite_code, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-            `, [room.room_id, room.name, room.max_players, room.owner_id, room.status, room.is_private, room.invite_code]);
+            try {
+                await dbConnection.query(`
+                    INSERT INTO rooms (room_id, name, max_players, owner_id, status, is_private, invite_code, version, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                `, [room.room_id, room.name, room.max_players, room.owner_id, room.status, room.is_private, room.invite_code, room.version]);
+            } catch (columnError) {
+                // Add version column if it doesn't exist and retry
+                console.log('[Room] Adding version column to rooms table');
+                await dbConnection.query(`
+                    ALTER TABLE rooms ADD COLUMN version INT DEFAULT 1
+                `);
+                await dbConnection.query(`
+                    INSERT INTO rooms (room_id, name, max_players, owner_id, status, is_private, invite_code, version, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                `, [room.room_id, room.name, room.max_players, room.owner_id, room.status, room.is_private, room.invite_code, room.version]);
+            }
 
             // Add owner as first player
             await dbConnection.query(`
@@ -281,14 +294,95 @@ class Room {
 
     async updateStatus(status) {
         try {
-            await dbConnection.query(`
-                UPDATE rooms SET status = ?, updated_at = NOW() WHERE room_id = ?
-            `, [status, this.room_id]);
-
-            this.status = status;
+            await this.updateWithVersionControl({ status });
             console.log(`[Room] Updated room ${this.room_id} status to ${status}`);
         } catch (error) {
             console.error('[Room] UpdateStatus error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Update room with optimistic concurrency control
+     * @param {Object} updates - Fields to update
+     * @param {number} expectedVersion - Expected current version (optional)
+     * @returns {Promise<Room>} Updated room instance
+     */
+    async updateWithVersionControl(updates, expectedVersion = null) {
+        try {
+            const currentVersion = expectedVersion || this.version;
+            const newVersion = currentVersion + 1;
+            
+            // Build update query dynamically
+            const updateFields = [];
+            const updateValues = [];
+            
+            for (const [field, value] of Object.entries(updates)) {
+                if (field !== 'version') {
+                    updateFields.push(`${field} = ?`);
+                    updateValues.push(value);
+                }
+            }
+            
+            if (updateFields.length === 0) {
+                throw new Error('No fields to update');
+            }
+            
+            // Add version and timestamp updates
+            updateFields.push('version = ?', 'updated_at = NOW()');
+            updateValues.push(newVersion, this.room_id, currentVersion);
+            
+            const query = `
+                UPDATE rooms 
+                SET ${updateFields.join(', ')} 
+                WHERE room_id = ? AND version = ?
+            `;
+            
+            const result = await dbConnection.query(query, updateValues);
+            
+            if (result.affectedRows === 0) {
+                // Version mismatch - room was updated by another process
+                const currentRoom = await Room.findById(this.room_id);
+                throw new Error(`Optimistic concurrency conflict. Expected version ${currentVersion}, current version is ${currentRoom ? currentRoom.version : 'unknown'}`);
+            }
+            
+            // Update local instance
+            Object.assign(this, updates);
+            this.version = newVersion;
+            this.updated_at = new Date();
+            
+            return this;
+            
+        } catch (error) {
+            console.error('[Room] UpdateWithVersionControl error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Increment version without other changes (for state synchronization)
+     */
+    async incrementVersion() {
+        try {
+            const newVersion = this.version + 1;
+            
+            const result = await dbConnection.query(`
+                UPDATE rooms 
+                SET version = ?, updated_at = NOW() 
+                WHERE room_id = ? AND version = ?
+            `, [newVersion, this.room_id, this.version]);
+            
+            if (result.affectedRows === 0) {
+                throw new Error(`Version increment failed - concurrent update detected`);
+            }
+            
+            this.version = newVersion;
+            this.updated_at = new Date();
+            
+            return this;
+            
+        } catch (error) {
+            console.error('[Room] IncrementVersion error:', error.message);
             throw error;
         }
     }
@@ -336,26 +430,32 @@ class Room {
                 throw new Error('User is not in this room');
             }
 
-            // Try to update ready status, add column if it doesn't exist
-            try {
-                await dbConnection.query(`
-                    UPDATE room_players SET is_ready = ? WHERE room_id = ? AND user_id = ?
-                `, [isReady, this.room_id, userId]);
-            } catch (columnError) {
-                // Add column if it doesn't exist and retry
-                console.log('[Room] Adding is_ready column to room_players table');
-                await dbConnection.query(`
-                    ALTER TABLE room_players ADD COLUMN is_ready BOOLEAN DEFAULT FALSE
-                `);
-                await dbConnection.query(`
-                    UPDATE room_players SET is_ready = ? WHERE room_id = ? AND user_id = ?
-                `, [isReady, this.room_id, userId]);
-            }
+            // Use transaction for atomic update with version control
+            await dbConnection.transaction(async (connection) => {
+                // Try to update ready status, add column if it doesn't exist
+                try {
+                    await connection.execute(`
+                        UPDATE room_players SET is_ready = ? WHERE room_id = ? AND user_id = ?
+                    `, [isReady, this.room_id, userId]);
+                } catch (columnError) {
+                    // Add column if it doesn't exist and retry
+                    console.log('[Room] Adding is_ready column to room_players table');
+                    await connection.execute(`
+                        ALTER TABLE room_players ADD COLUMN is_ready BOOLEAN DEFAULT FALSE
+                    `);
+                    await connection.execute(`
+                        UPDATE room_players SET is_ready = ? WHERE room_id = ? AND user_id = ?
+                    `, [isReady, this.room_id, userId]);
+                }
+
+                // Increment room version to track state change
+                await this.incrementVersion();
+            });
 
             // Reload players to get updated status
             await this.loadPlayers();
 
-            console.log(`[Room] User ${userId} ready status set to ${isReady} in room ${this.room_id}`);
+            console.log(`[Room] User ${userId} ready status set to ${isReady} in room ${this.room_id} (version ${this.version})`);
             return this;
         } catch (error) {
             console.error('[Room] SetPlayerReady error:', error.message);
@@ -381,45 +481,51 @@ class Room {
             const team1Players = shuffledPlayers.slice(0, 2);
             const team2Players = shuffledPlayers.slice(2, 4);
 
-            // Try to update team assignments, add column if it doesn't exist
-            try {
-                // Update team assignments in database
-                for (const player of team1Players) {
-                    await dbConnection.query(`
-                        UPDATE room_players SET team_assignment = 1 WHERE room_id = ? AND user_id = ?
-                    `, [this.room_id, player.id]);
+            // Use transaction for atomic update with version control
+            await dbConnection.transaction(async (connection) => {
+                // Try to update team assignments, add column if it doesn't exist
+                try {
+                    // Update team assignments in database
+                    for (const player of team1Players) {
+                        await connection.execute(`
+                            UPDATE room_players SET team_assignment = 1 WHERE room_id = ? AND user_id = ?
+                        `, [this.room_id, player.id]);
+                    }
+
+                    for (const player of team2Players) {
+                        await connection.execute(`
+                            UPDATE room_players SET team_assignment = 2 WHERE room_id = ? AND user_id = ?
+                        `, [this.room_id, player.id]);
+                    }
+                } catch (columnError) {
+                    // Add column if it doesn't exist and retry
+                    console.log('[Room] Adding team_assignment column to room_players table');
+                    await connection.execute(`
+                        ALTER TABLE room_players ADD COLUMN team_assignment INT NULL CHECK (team_assignment IN (1, 2))
+                    `);
+
+                    // Retry team assignments
+                    for (const player of team1Players) {
+                        await connection.execute(`
+                            UPDATE room_players SET team_assignment = 1 WHERE room_id = ? AND user_id = ?
+                        `, [this.room_id, player.id]);
+                    }
+
+                    for (const player of team2Players) {
+                        await connection.execute(`
+                            UPDATE room_players SET team_assignment = 2 WHERE room_id = ? AND user_id = ?
+                        `, [this.room_id, player.id]);
+                    }
                 }
 
-                for (const player of team2Players) {
-                    await dbConnection.query(`
-                        UPDATE room_players SET team_assignment = 2 WHERE room_id = ? AND user_id = ?
-                    `, [this.room_id, player.id]);
-                }
-            } catch (columnError) {
-                // Add column if it doesn't exist and retry
-                console.log('[Room] Adding team_assignment column to room_players table');
-                await dbConnection.query(`
-                    ALTER TABLE room_players ADD COLUMN team_assignment INT NULL CHECK (team_assignment IN (1, 2))
-                `);
-
-                // Retry team assignments
-                for (const player of team1Players) {
-                    await dbConnection.query(`
-                        UPDATE room_players SET team_assignment = 1 WHERE room_id = ? AND user_id = ?
-                    `, [this.room_id, player.id]);
-                }
-
-                for (const player of team2Players) {
-                    await dbConnection.query(`
-                        UPDATE room_players SET team_assignment = 2 WHERE room_id = ? AND user_id = ?
-                    `, [this.room_id, player.id]);
-                }
-            }
+                // Increment room version to track state change
+                await this.incrementVersion();
+            });
 
             // Reload players to get updated team assignments
             await this.loadPlayers();
 
-            console.log(`[Room] Teams formed in room ${this.room_id}`);
+            console.log(`[Room] Teams formed in room ${this.room_id} (version ${this.version})`);
             return {
                 team1: team1Players.map(p => ({ id: p.id, username: p.username })),
                 team2: team2Players.map(p => ({ id: p.id, username: p.username }))
