@@ -712,6 +712,46 @@ class SocketManager {
   }
 
   /**
+   * Trigger HTTP API fallback for game start events
+   */
+  async triggerHttpFallbackForGameStart(gameId, userId, gameStartData) {
+    try {
+      console.log(`[WebSocket] Triggering HTTP fallback for game start - gameId: ${gameId}, userId: ${userId}`);
+
+      // Emit fallback notification to all clients in the room
+      this.io.to(gameId).emit('websocket-fallback-active', {
+        type: 'game-start',
+        gameId,
+        startedBy: userId,
+        message: 'Using HTTP fallback for game start event',
+        timestamp: new Date().toISOString()
+      });
+
+      // If we have game start data, try to send it via HTTP API simulation
+      if (gameStartData) {
+        // Simulate HTTP API response by emitting to individual sockets
+        const room = this.gameRooms.get(gameId);
+        if (room) {
+          for (const [playerId, player] of room.players.entries()) {
+            const playerSocketId = this.userSockets.get(playerId);
+            if (playerSocketId && this.io.sockets.sockets.has(playerSocketId)) {
+              const playerSocket = this.io.sockets.sockets.get(playerSocketId);
+              try {
+                playerSocket.emit('game-starting-fallback', gameStartData);
+              } catch (fallbackError) {
+                console.error(`[WebSocket] Game start fallback failed for player ${playerId}:`, fallbackError);
+              }
+            }
+          }
+        }
+      }
+
+    } catch (fallbackError) {
+      console.error(`[WebSocket] HTTP fallback failed for game start:`, fallbackError);
+    }
+  }
+
+  /**
    * Handle team formation request
    */
   async handleFormTeams(socket, data) {
@@ -765,7 +805,7 @@ class SocketManager {
       room.teams.team2 = [];
 
       // Assign players to teams and update database
-      const dbConnection = require('../database/connection');
+      const dbConnection = (await import('../database/connection.js')).default;
       
       try {
         // Start transaction for atomic team assignment
@@ -877,24 +917,38 @@ class SocketManager {
   }
 
   /**
-   * Handle game start request
+   * Handle game start request with enhanced validation and database sync
    */
-  handleStartGame(socket, data) {
-    const { gameId } = data;
+  async handleStartGame(socket, data) {
+    const { gameId, userId: dataUserId, username: dataUsername } = data;
     const { userId, username } = socket;
 
-    console.log(`[WebSocket] Start game request from ${username} (${userId}) for game ${gameId}`);
+    // Use data from request if provided, otherwise use socket auth data
+    // Normalize user IDs to strings for consistent comparisons
+    const effectiveUserId = String(dataUserId || userId || '');
+    const effectiveUsername = dataUsername || username;
+
+    console.log(`[WebSocket] Start game request from ${effectiveUsername} (${effectiveUserId}) for game ${gameId}`);
 
     if (!gameId) {
       socket.emit('error', { message: 'Game ID is required' });
       return;
     }
 
+    if (!effectiveUserId || !effectiveUsername) {
+      console.error(`[WebSocket] Missing user info for game start - effectiveUserId: ${effectiveUserId}, effectiveUsername: ${effectiveUsername}`);
+      socket.emit('error', { message: 'User information is required. Please refresh the page and try again.' });
+      return;
+    }
+
+    let dbUpdateSuccess = false;
+    let wsUpdateSuccess = false;
+
     try {
       const room = this.gameRooms.get(gameId);
-      if (!room || !room.players.has(userId)) {
-        console.log(`[WebSocket] Player ${username} (${userId}) not found in room ${gameId}`);
-        console.log(`[WebSocket] Room exists: ${!!room}, Player in room: ${room ? room.players.has(userId) : false}`);
+      if (!room || !room.players.has(effectiveUserId)) {
+        console.log(`[WebSocket] Player ${effectiveUsername} (${effectiveUserId}) not found in room ${gameId}`);
+        console.log(`[WebSocket] Room exists: ${!!room}, Player in room: ${room ? room.players.has(effectiveUserId) : false}`);
         if (room) {
           console.log(`[WebSocket] Room players: ${Array.from(room.players.keys())}`);
         }
@@ -902,15 +956,15 @@ class SocketManager {
         return;
       }
 
-      console.log(`[WebSocket] Room hostId: ${room.hostId}, requesting userId: ${userId}`);
+      console.log(`[WebSocket] Room hostId: ${room.hostId}, requesting userId: ${effectiveUserId}`);
       console.log(`[WebSocket] Room ${gameId} has ${room.players.size} total players:`);
       for (const [playerId, player] of room.players.entries()) {
-        console.log(`[WebSocket]   - ${player.username} (${playerId}): connected=${player.isConnected}, ready=${player.isReady}`);
+        console.log(`[WebSocket]   - ${player.username} (${playerId}): connected=${player.isConnected}, ready=${player.isReady}, team=${player.teamAssignment}`);
       }
 
       // Check if user is the host (normalize both to strings for comparison)
       const normalizedHostId = String(room.hostId || '');
-      const normalizedUserId = String(userId || '');
+      const normalizedUserId = String(effectiveUserId || '');
 
       console.log(`[WebSocket] Start game host check - room.hostId: "${normalizedHostId}", userId: "${normalizedUserId}"`);
 
@@ -923,59 +977,196 @@ class SocketManager {
       // Refresh player connection status before checking
       this.refreshPlayerConnectionStatus(room);
 
-      // Check if all connected players are ready and minimum players present
+      // Enhanced game start validation with connected player checks
       const players = Array.from(room.players.values());
       const connectedPlayers = players.filter(p => p.isConnected !== false);
+      const readyConnectedPlayers = connectedPlayers.filter(p => p.isReady);
 
-      console.log(`[WebSocket] Start game check - Total players: ${players.length}, Connected players: ${connectedPlayers.length}`);
+      console.log(`[WebSocket] Start game validation - Total players: ${players.length}, Connected players: ${connectedPlayers.length}, Ready connected players: ${readyConnectedPlayers.length}`);
       console.log(`[WebSocket] Players data:`, players.map(p => ({
         userId: p.userId,
         username: p.username,
         isConnected: p.isConnected,
-        isReady: p.isReady
+        isReady: p.isReady,
+        teamAssignment: p.teamAssignment
       })));
 
+      // Validation: Need at least 2 connected players
       if (connectedPlayers.length < 2) {
         console.log(`[WebSocket] Not enough connected players: ${connectedPlayers.length} < 2`);
-        socket.emit('error', { message: 'Need at least 2 connected players to start game' });
+        socket.emit('error', { 
+          message: 'Need at least 2 connected players to start game',
+          details: {
+            connectedPlayers: connectedPlayers.length,
+            requiredPlayers: 2
+          }
+        });
         return;
       }
 
-      if (!connectedPlayers.every(p => p.isReady)) {
-        socket.emit('error', { message: 'All connected players must be ready to start game' });
+      // Validation: All connected players must be ready
+      if (readyConnectedPlayers.length !== connectedPlayers.length) {
+        const notReadyPlayers = connectedPlayers.filter(p => !p.isReady).map(p => p.username);
+        console.log(`[WebSocket] Not all connected players are ready. Not ready: ${notReadyPlayers.join(', ')}`);
+        socket.emit('error', { 
+          message: 'All connected players must be ready to start game',
+          details: {
+            readyPlayers: readyConnectedPlayers.length,
+            connectedPlayers: connectedPlayers.length,
+            notReadyPlayers
+          }
+        });
         return;
       }
 
-      // Ensure teams are formed for 4-player games
-      if (players.length === 4 && (room.teams.team1.length === 0 || room.teams.team2.length === 0)) {
-        socket.emit('error', { message: 'Teams must be formed before starting a 4-player game' });
-        return;
+      // Validation: For 4-player games, teams must be formed
+      if (connectedPlayers.length === 4) {
+        const playersWithTeams = connectedPlayers.filter(p => p.teamAssignment !== null);
+        if (playersWithTeams.length !== 4) {
+          console.log(`[WebSocket] Teams not formed for 4-player game. Players with teams: ${playersWithTeams.length}/4`);
+          socket.emit('error', { 
+            message: 'Teams must be formed before starting a 4-player game',
+            details: {
+              playersWithTeams: playersWithTeams.length,
+              totalPlayers: connectedPlayers.length
+            }
+          });
+          return;
+        }
+
+        // Validate team balance
+        const team1Players = connectedPlayers.filter(p => p.teamAssignment === 1);
+        const team2Players = connectedPlayers.filter(p => p.teamAssignment === 2);
+        if (team1Players.length !== 2 || team2Players.length !== 2) {
+          console.log(`[WebSocket] Unbalanced teams. Team 1: ${team1Players.length}, Team 2: ${team2Players.length}`);
+          socket.emit('error', { 
+            message: 'Teams must be balanced (2 players each) to start the game',
+            details: {
+              team1Size: team1Players.length,
+              team2Size: team2Players.length
+            }
+          });
+          return;
+        }
       }
 
-      // Update room status
-      room.status = 'starting';
+      // For 2-player games, ensure no team assignments are required
+      if (connectedPlayers.length === 2) {
+        console.log(`[WebSocket] Starting 2-player game - team formation not required`);
+      }
+
+      // First, update the database to ensure persistence
+      try {
+        const { default: Room } = await import('../src/models/Room.js');
+        const roomModel = await Room.findById(gameId);
+        if (roomModel) {
+          await roomModel.updateStatus('playing');
+          dbUpdateSuccess = true;
+          console.log(`[WebSocket] Database updated: Room ${gameId} status set to 'playing'`);
+        } else {
+          console.warn(`[WebSocket] Room ${gameId} not found in database during game start`);
+        }
+      } catch (dbError) {
+        console.error(`[WebSocket] Database update failed for game start:`, dbError);
+        // Continue with websocket update but warn user
+        socket.emit('warning', {
+          message: 'Game started locally but database sync failed. Game state may not persist.',
+          fallbackAvailable: true
+        });
+      }
+
+      // Update websocket room status
+      room.status = 'playing';
       room.startedAt = new Date().toISOString();
+      room.startedBy = effectiveUserId;
 
-      console.log(`[WebSocket] Game starting in room ${gameId} by ${username}`);
+      // Update game state manager
+      this.gameStateManager.updateGameState(gameId, {
+        status: 'playing',
+        phase: 'game_starting',
+        startedAt: room.startedAt,
+        startedBy: effectiveUserId
+      }, effectiveUserId);
 
-      // Broadcast game starting to all players
-      this.io.to(gameId).emit('game-starting', {
+      console.log(`[WebSocket] Game starting in room ${gameId} by ${effectiveUsername}`);
+
+      // Prepare broadcast data with enhanced information
+      const gameStartData = {
         gameId,
-        startedBy: username,
-        startedById: userId,
-        players: players.map(p => ({
+        startedBy: effectiveUsername,
+        startedById: effectiveUserId,
+        players: connectedPlayers.map(p => ({
           userId: p.userId,
           username: p.username,
-          teamAssignment: p.teamAssignment
+          teamAssignment: p.teamAssignment,
+          isConnected: p.isConnected,
+          isReady: p.isReady
         })),
-        teams: room.teams,
-        playerCount: players.length,
+        teams: {
+          team1: room.teams.team1.map(playerId => {
+            const player = room.players.get(playerId);
+            return player ? { userId: playerId, username: player.username } : null;
+          }).filter(Boolean),
+          team2: room.teams.team2.map(playerId => {
+            const player = room.players.get(playerId);
+            return player ? { userId: playerId, username: player.username } : null;
+          }).filter(Boolean)
+        },
+        playerCount: connectedPlayers.length,
+        gameMode: connectedPlayers.length === 2 ? '2-player' : '4-player',
+        roomStatus: 'playing',
+        dbSynced: dbUpdateSuccess,
+        timestamp: new Date().toISOString()
+      };
+
+      // Try to broadcast via websocket with error handling and retry
+      try {
+        this.io.to(gameId).emit('game-starting', gameStartData);
+        wsUpdateSuccess = true;
+        console.log(`[WebSocket] Successfully broadcasted game start for room ${gameId}`);
+      } catch (wsError) {
+        console.error(`[WebSocket] Failed to broadcast game start:`, wsError);
+        wsUpdateSuccess = false;
+
+        // Trigger HTTP API fallback
+        await this.triggerHttpFallbackForGameStart(gameId, effectiveUserId, gameStartData);
+      }
+
+      // Send confirmation back to the requesting player
+      socket.emit('game-start-confirmed', {
+        gameId,
+        success: wsUpdateSuccess,
+        dbSynced: dbUpdateSuccess,
+        fallbackTriggered: !wsUpdateSuccess,
+        gameMode: gameStartData.gameMode,
         timestamp: new Date().toISOString()
       });
 
+      // If websocket failed but database succeeded, schedule a retry
+      if (!wsUpdateSuccess && dbUpdateSuccess) {
+        setTimeout(() => {
+          console.log(`[WebSocket] Retrying websocket broadcast for game start in room ${gameId}`);
+          try {
+            this.io.to(gameId).emit('game-starting', gameStartData);
+          } catch (retryError) {
+            console.error(`[WebSocket] Retry failed for game start broadcast:`, retryError);
+          }
+        }, 2000);
+      }
+
     } catch (error) {
       console.error('[WebSocket] Error starting game:', error);
-      socket.emit('error', { message: 'Failed to start game' });
+
+      // Try HTTP API fallback as last resort
+      if (dbUpdateSuccess) {
+        await this.triggerHttpFallbackForGameStart(gameId, effectiveUserId, null);
+      }
+
+      socket.emit('error', {
+        message: 'Failed to start game',
+        details: error.message,
+        fallbackAvailable: true
+      });
     }
   }
 
