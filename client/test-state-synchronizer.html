@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend State Synchronizer Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .status {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status.connected {
+            background: #28a745;
+        }
+
+        .status.disconnected {
+            background: #dc3545;
+        }
+
+        .status.fallback {
+            background: #ffc107;
+        }
+
+        .status.connecting {
+            background: #17a2b8;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Frontend State Synchronizer Test</h1>
+
+    <div class="test-container">
+        <h2>Test Status</h2>
+        <div id="test-status">
+            <span class="status connecting"></span>
+            <span>Initializing tests...</span>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>State Synchronizer Demo</h2>
+        <div>
+            <strong>Connection Status:</strong>
+            <span class="status" id="connection-status"></span>
+            <span id="connection-text">Unknown</span>
+        </div>
+        <div>
+            <strong>Fallback Mode:</strong>
+            <span id="fallback-mode">No</span>
+        </div>
+        <div>
+            <strong>Pending Operations:</strong>
+            <span id="pending-ops">0</span>
+        </div>
+        <div>
+            <strong>Ready Status:</strong>
+            <span id="ready-status">Not Ready</span>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <button id="toggle-ready" onclick="toggleReady()">Toggle Ready</button>
+            <button id="simulate-disconnect" onclick="simulateDisconnect()">Simulate Disconnect</button>
+            <button id="simulate-reconnect" onclick="simulateReconnect()">Simulate Reconnect</button>
+            <button id="run-tests" onclick="runAllTests()">Run All Tests</button>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <script type="module">
+        // Import the test module
+        import { runTests } from './src/core/FrontendStateSynchronizer.test.js';
+
+        // Global variables for demo
+        let synchronizer = null;
+        let mockSocket = null;
+        let mockAuth = null;
+        let mockRoom = null;
+        let isReady = false;
+
+        // Mock classes for demo
+        class MockSocketManager {
+            constructor() {
+                this.connected = true;
+                this.listeners = new Map();
+            }
+
+            isSocketConnected() {
+                return this.connected;
+            }
+
+            on(event, callback) {
+                if (!this.listeners.has(event)) {
+                    this.listeners.set(event, []);
+                }
+                this.listeners.get(event).push(callback);
+            }
+
+            emit(event, data) {
+                if (this.listeners.has(event)) {
+                    this.listeners.get(event).forEach(cb => cb(data));
+                }
+            }
+
+            emitToServer(event, data) {
+                addTestResult(`[MockSocket] Emitting to server: ${event}`, 'info');
+
+                // Simulate server response after delay
+                setTimeout(() => {
+                    if (event === 'toggle-ready') {
+                        this.emit('playerReadyStatusChanged', {
+                            gameId: data.gameId,
+                            playerId: 'user123',
+                            isReady: data.isReady,
+                            players: [
+                                { userId: 'user123', username: 'TestUser', isReady: data.isReady }
+                            ]
+                        });
+                    }
+                }, 100);
+            }
+
+            disconnect() {
+                this.connected = false;
+                this.emit('disconnect');
+            }
+
+            connect() {
+                this.connected = true;
+                this.emit('connect');
+            }
+        }
+
+        class MockAuthManager {
+            getCurrentUser() {
+                return { user_id: 'user123', username: 'TestUser' };
+            }
+
+            getUserId() {
+                return 'user123';
+            }
+
+            getToken() {
+                return 'mock-token';
+            }
+        }
+
+        class MockRoomManager {
+            // Mock room manager
+        }
+
+        // Initialize demo
+        async function initDemo() {
+            try {
+                // Mock URL params for room ID (avoid modifying actual location)
+                const originalURLSearchParams = window.URLSearchParams;
+                window.URLSearchParams = class MockURLSearchParams {
+                    constructor() {}
+                    get(key) {
+                        if (key === 'room') return 'room123';
+                        return null;
+                    }
+                };
+
+                // Create mock dependencies
+                mockSocket = new MockSocketManager();
+                mockAuth = new MockAuthManager();
+                mockRoom = new MockRoomManager();
+
+                // Import and create synchronizer
+                const { FrontendStateSynchronizer } = await import('./src/core/FrontendStateSynchronizer.js');
+                synchronizer = new FrontendStateSynchronizer(mockSocket, mockAuth, mockRoom);
+
+                // Initialize room state
+                const roomData = {
+                    room: { id: 'room123', name: 'Test Room' },
+                    players: [
+                        { userId: 'user123', username: 'TestUser', isReady: false }
+                    ]
+                };
+
+                synchronizer.initializeRoomState(roomData);
+
+                // Set up event listeners
+                synchronizer.on('stateChanged', (data) => {
+                    addTestResult(`State changed: ${data.type}`, 'info');
+                    updateUI();
+                });
+
+                synchronizer.on('fallbackModeChanged', (data) => {
+                    addTestResult(`Fallback mode: ${data.fallbackMode}`, data.fallbackMode ? 'error' : 'success');
+                    updateUI();
+                });
+
+                synchronizer.on('operationConfirmed', (data) => {
+                    addTestResult(`Operation confirmed: ${data.operation}`, 'success');
+                    updateUI();
+                });
+
+                synchronizer.on('operationRolledBack', (data) => {
+                    addTestResult(`Operation rolled back: ${data.operation}`, 'error');
+                    updateUI();
+                });
+
+                updateUI();
+                updateTestStatus('connected', 'Demo initialized successfully');
+                addTestResult('Frontend State Synchronizer demo initialized', 'success');
+
+            } catch (error) {
+                console.error('Demo initialization failed:', error);
+                updateTestStatus('disconnected', 'Demo initialization failed');
+                addTestResult(`Initialization error: ${error.message}`, 'error');
+            }
+        }
+
+        // UI update functions
+        function updateUI() {
+            if (!synchronizer) return;
+
+            const state = synchronizer.getLocalState();
+            const fallbackMode = synchronizer.isInFallbackMode();
+            const pendingOps = synchronizer.getPendingOperationsCount();
+
+            // Update connection status
+            const connectionStatus = mockSocket?.connected ? 'connected' : 'disconnected';
+            document.getElementById('connection-status').className = `status ${connectionStatus}`;
+            document.getElementById('connection-text').textContent =
+                connectionStatus.charAt(0).toUpperCase() + connectionStatus.slice(1);
+
+            // Update fallback mode
+            document.getElementById('fallback-mode').textContent = fallbackMode ? 'Yes' : 'No';
+
+            // Update pending operations
+            document.getElementById('pending-ops').textContent = pendingOps;
+
+            // Update ready status
+            const currentPlayer = state.players?.find(p => p.userId === 'user123');
+            isReady = currentPlayer?.isReady || false;
+            document.getElementById('ready-status').textContent = isReady ? 'Ready' : 'Not Ready';
+
+            // Update button text
+            const toggleBtn = document.getElementById('toggle-ready');
+            if (toggleBtn) {
+                toggleBtn.textContent = isReady ? 'Set Not Ready' : 'Set Ready';
+            }
+        }
+
+        function updateTestStatus(status, message) {
+            const statusEl = document.getElementById('test-status');
+            statusEl.innerHTML = `<span class="status ${status}"></span><span>${message}</span>`;
+        }
+
+        function addTestResult(message, type = 'info') {
+            const resultsEl = document.getElementById('test-results');
+            const resultEl = document.createElement('div');
+            resultEl.className = `test-result ${type}`;
+            resultEl.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            resultsEl.appendChild(resultEl);
+            resultsEl.scrollTop = resultsEl.scrollHeight;
+        }
+
+        // Demo functions
+        window.toggleReady = async function () {
+            if (!synchronizer) return;
+
+            try {
+                const newStatus = !isReady;
+                addTestResult(`Toggling ready status to: ${newStatus}`, 'info');
+
+                const operationId = await synchronizer.toggleReadyStatus(newStatus);
+                addTestResult(`Ready toggle operation started: ${operationId}`, 'info');
+
+            } catch (error) {
+                addTestResult(`Ready toggle failed: ${error.message}`, 'error');
+            }
+        };
+
+        window.simulateDisconnect = function () {
+            if (!mockSocket) return;
+
+            addTestResult('Simulating WebSocket disconnect', 'info');
+            mockSocket.disconnect();
+            updateUI();
+        };
+
+        window.simulateReconnect = function () {
+            if (!mockSocket) return;
+
+            addTestResult('Simulating WebSocket reconnect', 'info');
+            mockSocket.connect();
+            updateUI();
+        };
+
+        window.runAllTests = async function () {
+            addTestResult('Running comprehensive tests...', 'info');
+            try {
+                // Import and run the simple tests instead
+                const { runSimpleTests } = await import('./src/core/FrontendStateSynchronizer.simple-test.js');
+                const success = await runSimpleTests();
+                if (success) {
+                    addTestResult('All tests completed successfully!', 'success');
+                } else {
+                    addTestResult('Some tests failed - check console for details', 'error');
+                }
+            } catch (error) {
+                addTestResult(`Tests failed: ${error.message}`, 'error');
+                console.error('Test error:', error);
+            }
+        };
+
+        // Initialize when page loads
+        initDemo();
+    </script>
+</body>
+
+</html>

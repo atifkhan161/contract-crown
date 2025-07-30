@@ -6,11 +6,19 @@
 
 import { AuthManager } from '../core/auth.js';
 import { SocketManager } from '../core/SocketManager.js';
+import { RoomManager } from '../core/RoomManager.js';
+import { FrontendStateSynchronizer } from '../core/FrontendStateSynchronizer.js';
 
 class LobbyManager {
     constructor() {
         this.authManager = new AuthManager();
         this.socketManager = new SocketManager(this.authManager);
+        this.roomManager = new RoomManager(this.authManager);
+        this.stateSynchronizer = new FrontendStateSynchronizer(
+            this.socketManager, 
+            this.authManager, 
+            this.roomManager
+        );
         this.roomId = null;
         this.currentUser = null;
         this.room = null;
@@ -56,6 +64,9 @@ class LobbyManager {
             console.log('[Lobby] Initializing WebSocket...');
             await this.initializeWebSocket();
             this.updateConnectionStatus('connecting');
+
+            console.log('[Lobby] Setting up state synchronizer...');
+            this.setupStateSynchronizer();
 
             console.log('[Lobby] Loading room data...');
             // Load room data
@@ -294,6 +305,95 @@ class LobbyManager {
         });
     }
 
+    setupStateSynchronizer() {
+        // Initialize state synchronizer with current room data
+        if (this.room) {
+            this.stateSynchronizer.initializeRoomState({
+                room: this.room,
+                players: this.players
+            });
+        }
+
+        // Listen for state changes from the synchronizer
+        this.stateSynchronizer.on('stateChanged', (data) => {
+            console.log('[Lobby] State synchronizer state changed:', data.type);
+            this.handleStateSynchronizerUpdate(data);
+        });
+
+        // Listen for fallback mode changes
+        this.stateSynchronizer.on('fallbackModeChanged', (data) => {
+            console.log('[Lobby] Fallback mode changed:', data.fallbackMode);
+            this.handleFallbackModeChange(data.fallbackMode);
+        });
+
+        // Listen for operation confirmations
+        this.stateSynchronizer.on('operationConfirmed', (data) => {
+            console.log('[Lobby] Operation confirmed:', data.operation);
+            this.addMessage('Action completed successfully!', 'success');
+        });
+
+        // Listen for operation rollbacks
+        this.stateSynchronizer.on('operationRolledBack', (data) => {
+            console.log('[Lobby] Operation rolled back:', data.operation);
+            this.addMessage('Action failed and was reverted. Please try again.', 'warning');
+        });
+
+        // Listen for conflict resolutions
+        this.stateSynchronizer.on('conflictsResolved', (data) => {
+            console.log('[Lobby] Conflicts resolved:', data.conflicts);
+            this.addMessage('State synchronized with server.', 'info');
+        });
+    }
+
+    handleStateSynchronizerUpdate(data) {
+        // Update local state from synchronizer
+        const syncState = data.state;
+        
+        if (syncState.room) {
+            this.room = syncState.room;
+        }
+        
+        if (syncState.players) {
+            this.players = syncState.players;
+        }
+
+        // Update UI based on the change type
+        switch (data.type) {
+            case 'toggleReady':
+            case 'playerReady':
+                this.updatePlayersDisplay();
+                this.updateReadyStatus();
+                break;
+            case 'playerJoined':
+            case 'playerLeft':
+                this.updatePlayersDisplay();
+                this.updateTeamsDisplay();
+                this.updateControlsDisplay();
+                break;
+            case 'teamsFormed':
+                this.updateTeamsDisplay();
+                break;
+            case 'serverSync':
+            case 'rollback':
+                this.updateRoomDisplay();
+                this.updatePlayersDisplay();
+                this.updateTeamsDisplay();
+                this.updateControlsDisplay();
+                this.updateReadyStatus();
+                break;
+        }
+    }
+
+    handleFallbackModeChange(fallbackMode) {
+        if (fallbackMode) {
+            this.addMessage('Using backup connection mode due to network issues.', 'warning');
+            this.updateConnectionStatus('fallback');
+        } else {
+            this.addMessage('Real-time connection restored!', 'success');
+            this.updateConnectionStatus('connected');
+        }
+    }
+
     joinRoom() {
         if (this.socketManager.isSocketConnected()) {
             console.log('[Lobby] Joining room via WebSocket:', this.roomId);
@@ -521,7 +621,12 @@ class LobbyManager {
 
     updateConnectionStatus(status) {
         this.connectionStatus = status;
-        const statusTexts = { connected: 'Connected', connecting: 'Connecting...', disconnected: 'Disconnected' };
+        const statusTexts = { 
+            connected: 'Connected', 
+            connecting: 'Connecting...', 
+            disconnected: 'Disconnected',
+            fallback: 'Backup Mode'
+        };
 
         if (this.elements.statusindicator && this.elements.statustext) {
             this.elements.statusindicator.className = `status-indicator ${status}`;
@@ -774,63 +879,16 @@ class LobbyManager {
                 console.log('[Lobby] Button disabled, sending ready status:', newReadyStatus);
             }
 
-            // Always try WebSocket first, with better error handling
-            if (this.socketManager.isSocketConnected() && this.isWebSocketRoomJoined) {
-                console.log('[Lobby] Sending ready status via WebSocket');
-                console.log('[Lobby] Socket connected:', this.socketManager.isSocketConnected());
-                console.log('[Lobby] WebSocket room joined:', this.isWebSocketRoomJoined);
-                console.log('[Lobby] Current user:', this.currentUser);
-                console.log('[Lobby] Room ID:', this.roomId);
-                console.log('[Lobby] New ready status:', newReadyStatus);
-
-                const userId = String(this.currentUser.user_id || this.currentUser.id || '');
-                this.socketManager.emitToServer('player-ready', {
-                    gameId: this.roomId,
-                    userId: userId,
-                    username: this.currentUser.username,
-                    isReady: newReadyStatus
-                });
-                this.addMessage(`Setting ready status to ${newReadyStatus ? 'ready' : 'not ready'}...`, 'info');
-
-                // Set a timeout to fallback to HTTP API if no response
-                const fallbackTimeout = setTimeout(async () => {
-                    console.log('[Lobby] WebSocket timeout, falling back to HTTP API');
-                    try {
-                        await this.updateReadyStatusViaAPI(newReadyStatus);
-                    } catch (fallbackError) {
-                        console.error('[Lobby] HTTP API fallback failed:', fallbackError);
-                        this.showError('Failed to update ready status. Please refresh the page.');
-                    }
-                }, 3000);
-
-                // Clear timeout if we get a response
-                this.readyFallbackTimeout = fallbackTimeout;
-
-            } else {
-                console.log('[Lobby] WebSocket not connected or room not joined, using HTTP API');
-                console.log('[Lobby] Socket connected:', this.socketManager.isSocketConnected());
-                console.log('[Lobby] WebSocket room joined:', this.isWebSocketRoomJoined);
-                // If not joined to WebSocket room, try to join first
-                if (this.socketManager.isSocketConnected() && !this.isWebSocketRoomJoined) {
-                    console.log('[Lobby] Attempting to rejoin WebSocket room...');
-                    this.joinRoom();
-                }
-
-                // Use HTTP API as primary method
-                await this.updateReadyStatusViaAPI(newReadyStatus);
-            }
+            // Use state synchronizer for optimistic updates with fallback
+            console.log('[Lobby] Using state synchronizer for ready status update');
+            const operationId = await this.stateSynchronizer.toggleReadyStatus(newReadyStatus);
+            
+            console.log(`[Lobby] Ready status operation initiated with ID: ${operationId}`);
+            this.addMessage(`Setting ready status to ${newReadyStatus ? 'ready' : 'not ready'}...`, 'info');
 
         } catch (error) {
             console.error('Error toggling ready status:', error);
-
-            // Always try HTTP API as fallback on any error
-            try {
-                console.log('[Lobby] Trying HTTP API fallback due to error');
-                await this.updateReadyStatusViaAPI(newReadyStatus);
-            } catch (fallbackError) {
-                console.error('[Lobby] HTTP API fallback also failed:', fallbackError);
-                this.showError('Failed to update ready status. Please refresh the page.');
-            }
+            this.showError('Failed to update ready status. Please try again.');
         } finally {
             // Re-enable button after a short delay to prevent double-clicks
             setTimeout(() => {
@@ -1186,6 +1244,11 @@ class LobbyManager {
         if (this.readyFallbackTimeout) {
             clearTimeout(this.readyFallbackTimeout);
             this.readyFallbackTimeout = null;
+        }
+
+        // Cleanup state synchronizer
+        if (this.stateSynchronizer) {
+            this.stateSynchronizer.cleanup();
         }
 
         // Disconnect socket if connected
