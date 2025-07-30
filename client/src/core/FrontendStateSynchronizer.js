@@ -1,3 +1,6 @@
+import errorHandler from './ErrorHandler.js';
+import userFeedbackManager from './UserFeedbackManager.js';
+
 /**
  * Frontend State Synchronizer
  * Handles client-side state synchronization with server state validation,
@@ -73,12 +76,14 @@ export class FrontendStateSynchronizer {
         // Connection events
         this.socketManager.on('connect', () => {
             console.log('[StateSynchronizer] WebSocket connected - exiting fallback mode');
+            userFeedbackManager.showConnectionStatus(true, false);
             this.exitFallbackMode();
             this.syncWithServer();
         });
 
         this.socketManager.on('disconnect', () => {
             console.log('[StateSynchronizer] WebSocket disconnected - entering fallback mode');
+            userFeedbackManager.showConnectionStatus(false, false);
             this.enterFallbackMode();
         });
 
@@ -130,6 +135,8 @@ export class FrontendStateSynchronizer {
         this.fallbackMode = true;
         console.log('[StateSynchronizer] Entering fallback mode');
         
+        userFeedbackManager.showWarning('Connection lost. Using backup mode...', 0);
+        
         // Start HTTP polling
         this.startFallbackPolling();
         
@@ -145,6 +152,9 @@ export class FrontendStateSynchronizer {
         
         this.fallbackMode = false;
         console.log('[StateSynchronizer] Exiting fallback mode');
+        
+        userFeedbackManager.clearNotificationsByType('warning');
+        userFeedbackManager.showSuccess('Connection restored!', 3000);
         
         // Stop HTTP polling
         this.stopFallbackPolling();
@@ -165,7 +175,11 @@ export class FrontendStateSynchronizer {
             try {
                 await this.syncWithServerViaHttp();
             } catch (error) {
-                console.error('[StateSynchronizer] Fallback polling error:', error);
+                errorHandler.handleError(error, {
+                    type: 'api',
+                    operation: 'fallback-polling',
+                    retryOperation: () => this.syncWithServerViaHttp()
+                });
             }
         }, this.fallbackPollInterval);
     }
@@ -230,7 +244,11 @@ export class FrontendStateSynchronizer {
             console.log('[StateSynchronizer] Requested state sync from server');
             return true;
         } catch (error) {
-            console.error('[StateSynchronizer] Sync error:', error);
+            errorHandler.handleError(error, {
+                type: 'websocket',
+                operation: 'sync-with-server',
+                retryOperation: () => this.syncWithServer()
+            });
             return false;
         }
     }
@@ -293,7 +311,11 @@ export class FrontendStateSynchronizer {
             console.log('[StateSynchronizer] HTTP sync completed');
             return true;
         } catch (error) {
-            console.error('[StateSynchronizer] HTTP sync error:', error);
+            errorHandler.handleError(error, {
+                type: 'api',
+                operation: 'http-sync',
+                retryOperation: () => this.syncWithServerViaHttp()
+            });
             return false;
         }
     }
@@ -444,7 +466,11 @@ export class FrontendStateSynchronizer {
             });
             
         } catch (error) {
-            console.error(`[StateSynchronizer] Error applying ${operation}:`, error);
+            errorHandler.handleError(error, {
+                type: 'validation',
+                operation: `apply-${operation}`,
+                retryOperation: () => this.applyStateUpdate(operation, data, isOptimistic)
+            });
             // Restore previous state on error
             this.localState = previousState;
         }
@@ -592,7 +618,11 @@ export class FrontendStateSynchronizer {
             });
             
         } catch (error) {
-            console.error(`[StateSynchronizer] Error applying server update ${eventType}:`, error);
+            errorHandler.handleError(error, {
+                type: 'websocket',
+                operation: `server-update-${eventType}`,
+                retryOperation: () => this.handleServerStateUpdate(eventType, data)
+            });
             // Restore previous state on error
             this.localState = previousState;
         }
@@ -863,7 +893,12 @@ export class FrontendStateSynchronizer {
             
             return operationId;
         } catch (error) {
-            console.error('[StateSynchronizer] Toggle ready failed:', error);
+            errorHandler.handleError(error, {
+                type: 'websocket',
+                operation: 'toggle-ready',
+                retryOperation: () => this.toggleReadyStatus(roomId, isReady),
+                fallbackOperation: () => this.toggleReadyStatusViaHttp(roomId, isReady)
+            });
             this.rollbackOptimisticUpdate(operationId);
             throw error;
         }
