@@ -65,12 +65,12 @@ class LobbyManager {
             await this.initializeWebSocket();
             this.updateConnectionStatus('connecting');
 
-            console.log('[Lobby] Setting up state synchronizer...');
-            this.setupStateSynchronizer();
-
             console.log('[Lobby] Loading room data...');
             // Load room data
             await this.loadRoomData();
+
+            console.log('[Lobby] Setting up state synchronizer...');
+            this.setupStateSynchronizer();
 
             console.log('[Lobby] Updating teams display...');
             // Update teams display initially
@@ -798,12 +798,12 @@ class LobbyManager {
         if (this.elements.readycount) this.elements.readycount.textContent = readyCount;
         if (this.elements.totalplayers) this.elements.totalplayers.textContent = maxPlayers;
 
+        // Normalize user ID access for consistency
+        const currentUserId = String(this.currentUser.user_id || this.currentUser.id || '');
         const currentPlayer = this.findCurrentPlayer();
 
         // Debug if current player is not found
         if (!currentPlayer) {
-            // Normalize user ID access for consistency
-            const currentUserId = String(this.currentUser.user_id || this.currentUser.id || '');
             console.log(`[Lobby] Looking for current user ID: "${currentUserId}"`);
             console.log(`[Lobby] Current user object:`, this.currentUser);
             console.log(`[Lobby] Players data:`, this.players.map(p => ({

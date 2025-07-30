@@ -12,7 +12,7 @@ export class UserFeedbackManager {
         this.notificationCounter = 0;
         this.defaultDuration = 5000; // 5 seconds
         this.maxNotifications = 5;
-        
+
         this.init();
     }
 
@@ -29,7 +29,7 @@ export class UserFeedbackManager {
      */
     createNotificationContainer() {
         if (document.getElementById('notification-container')) return;
-        
+
         const container = document.createElement('div');
         container.id = 'notification-container';
         container.className = 'notification-container';
@@ -143,7 +143,7 @@ export class UserFeedbackManager {
     showNotification(message, type = 'info', duration = null, options = {}) {
         const id = ++this.notificationCounter;
         const actualDuration = duration !== null ? duration : this.defaultDuration;
-        
+
         // Limit number of notifications
         if (this.notifications.size >= this.maxNotifications) {
             const oldestId = Math.min(...this.notifications.keys());
@@ -334,7 +334,7 @@ export class UserFeedbackManager {
      */
     handleWebsocketError(error, context = '') {
         console.error('Websocket error:', error, context);
-        
+
         const contextMessage = context ? ` (${context})` : '';
         this.showError(`Connection issue${contextMessage}. Trying to reconnect...`, 6000);
     }
@@ -344,7 +344,7 @@ export class UserFeedbackManager {
      */
     handleAuthError(error, context = '') {
         console.error('Auth error:', error, context);
-        
+
         this.showError('Authentication failed. Please refresh the page and try again.', 0);
     }
 
@@ -353,9 +353,9 @@ export class UserFeedbackManager {
      */
     handleApiError(error, context = '') {
         console.error('API error:', error, context);
-        
+
         let message = 'An error occurred. Please try again.';
-        
+
         if (error.status === 401) {
             message = 'Session expired. Please refresh the page.';
         } else if (error.status === 403) {
@@ -377,9 +377,9 @@ export class UserFeedbackManager {
      */
     handleRoomError(error, operation = '') {
         console.error('Room error:', error, operation);
-        
+
         let message = 'Room operation failed. Please try again.';
-        
+
         if (operation === 'join') {
             message = 'Failed to join room. Please check the room code and try again.';
         } else if (operation === 'ready') {
@@ -481,4 +481,3 @@ if (typeof window !== 'undefined') {
 }
 
 export default userFeedbackManager;
-export { UserFeedbackManager };

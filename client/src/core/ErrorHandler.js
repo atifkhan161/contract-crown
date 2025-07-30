@@ -31,7 +31,7 @@ export class ErrorHandler {
         this.errorListeners = new Map();
         this.retryAttempts = new Map();
         this.activeRetries = new Set();
-        
+
         this.setupRetryFeedback();
     }
 
@@ -79,19 +79,19 @@ export class ErrorHandler {
             case this.errorTypes.AUTHENTICATION:
                 userFeedbackManager.handleAuthError(errorInfo, context.operation || '');
                 break;
-            
+
             case this.errorTypes.WEBSOCKET:
                 userFeedbackManager.handleWebsocketError(errorInfo, context.operation || '');
                 break;
-            
+
             case this.errorTypes.API:
                 userFeedbackManager.handleApiError(errorInfo, context.operation || '');
                 break;
-            
+
             case this.errorTypes.CONNECTION:
                 userFeedbackManager.showConnectionStatus(false, false);
                 break;
-            
+
             default:
                 // Show generic error message
                 const duration = errorInfo.severity === 'high' ? 0 : 8000;
@@ -120,7 +120,7 @@ export class ErrorHandler {
         };
 
         // Authentication errors
-        if (error.message?.includes('authentication') || 
+        if (error.message?.includes('authentication') ||
             error.message?.includes('token') ||
             error.message?.includes('unauthorized') ||
             context.type === 'auth') {
@@ -132,9 +132,9 @@ export class ErrorHandler {
 
         // Connection errors
         else if (error.message?.includes('connection') ||
-                 error.message?.includes('connect') ||
-                 error.name === 'NetworkError' ||
-                 context.type === 'connection') {
+            error.message?.includes('connect') ||
+            error.name === 'NetworkError' ||
+            context.type === 'connection') {
             errorInfo.type = this.errorTypes.CONNECTION;
             errorInfo.severity = 'high';
             errorInfo.retryable = true;
@@ -143,8 +143,8 @@ export class ErrorHandler {
 
         // WebSocket specific errors
         else if (error.message?.includes('websocket') ||
-                 error.message?.includes('socket') ||
-                 context.type === 'websocket') {
+            error.message?.includes('socket') ||
+            context.type === 'websocket') {
             errorInfo.type = this.errorTypes.WEBSOCKET;
             errorInfo.severity = 'medium';
             errorInfo.retryable = true;
@@ -162,8 +162,8 @@ export class ErrorHandler {
 
         // Timeout errors
         else if (error.message?.includes('timeout') ||
-                 error.name === 'TimeoutError' ||
-                 context.type === 'timeout') {
+            error.name === 'TimeoutError' ||
+            context.type === 'timeout') {
             errorInfo.type = this.errorTypes.TIMEOUT;
             errorInfo.severity = 'medium';
             errorInfo.retryable = true;
@@ -172,8 +172,8 @@ export class ErrorHandler {
 
         // Validation errors
         else if (error.message?.includes('validation') ||
-                 error.message?.includes('invalid') ||
-                 context.type === 'validation') {
+            error.message?.includes('invalid') ||
+            context.type === 'validation') {
             errorInfo.type = this.errorTypes.VALIDATION;
             errorInfo.severity = 'low';
             errorInfo.retryable = false;
@@ -182,8 +182,8 @@ export class ErrorHandler {
 
         // Permission errors
         else if (error.message?.includes('permission') ||
-                 error.message?.includes('forbidden') ||
-                 error.status === 403) {
+            error.message?.includes('forbidden') ||
+            error.status === 403) {
             errorInfo.type = this.errorTypes.PERMISSION;
             errorInfo.severity = 'medium';
             errorInfo.retryable = false;
@@ -215,7 +215,7 @@ export class ErrorHandler {
             },
             [this.errorTypes.API]: {
                 title: 'Server Error',
-                message: errorInfo.code >= 500 
+                message: errorInfo.code >= 500
                     ? 'The server is experiencing issues. Please try again.'
                     : 'Request failed. Please check your input and try again.',
                 action: errorInfo.retryable ? 'Retrying...' : 'Please try again'
@@ -316,7 +316,7 @@ export class ErrorHandler {
                     }
                 }
                 break;
-            
+
             case 'fallback':
                 if (context.fallbackOperation) {
                     userFeedbackManager.showInfo('Switching to backup mode...');
@@ -328,14 +328,14 @@ export class ErrorHandler {
                     }
                 }
                 break;
-            
+
             case 'reauth':
                 userFeedbackManager.showWarning('Redirecting to login...', 3000);
                 setTimeout(() => {
                     window.location.href = '/login.html';
                 }, option.delay);
                 break;
-            
+
             case 'refresh':
                 userFeedbackManager.showWarning('Page will refresh in 5 seconds...', 5000);
                 setTimeout(() => {
@@ -350,14 +350,14 @@ export class ErrorHandler {
      */
     async executeRetry(operation, context = {}) {
         const operationKey = context.key || 'default';
-        
+
         if (this.activeRetries.has(operationKey)) {
             console.log(`[ErrorHandler] Retry already in progress for ${operationKey}`);
             return false;
         }
 
         const currentAttempts = this.retryAttempts.get(operationKey) || 0;
-        
+
         if (currentAttempts >= this.retryConfig.maxRetries) {
             console.log(`[ErrorHandler] Max retries exceeded for ${operationKey}`);
             this.retryAttempts.delete(operationKey);
@@ -369,31 +369,31 @@ export class ErrorHandler {
         this.retryAttempts.set(operationKey, currentAttempts + 1);
 
         const delay = this.calculateRetryDelay(operationKey, currentAttempts);
-        
+
         console.log(`[ErrorHandler] Retrying ${operationKey} (attempt ${currentAttempts + 1}/${this.retryConfig.maxRetries}) after ${delay}ms`);
-        
-        this.emit('retryStarted', { 
-            operationKey, 
-            attempt: currentAttempts + 1, 
+
+        this.emit('retryStarted', {
+            operationKey,
+            attempt: currentAttempts + 1,
             maxAttempts: this.retryConfig.maxRetries,
-            delay 
+            delay
         });
 
         try {
             await this.delay(delay);
             const result = await operation();
-            
+
             // Success - reset retry count
             this.retryAttempts.delete(operationKey);
             this.activeRetries.delete(operationKey);
-            
+
             this.emit('retrySucceeded', { operationKey, attempts: currentAttempts + 1 });
             return result;
         } catch (error) {
             this.activeRetries.delete(operationKey);
-            
+
             console.error(`[ErrorHandler] Retry ${currentAttempts + 1} failed for ${operationKey}:`, error);
-            
+
             // Try again if we haven't exceeded max retries
             if (currentAttempts + 1 < this.retryConfig.maxRetries) {
                 return this.executeRetry(operation, context);
@@ -412,7 +412,7 @@ export class ErrorHandler {
         const baseDelay = this.retryConfig.baseDelay;
         const backoffDelay = baseDelay * Math.pow(this.retryConfig.backoffMultiplier, attempt);
         const jitter = Math.random() * 0.1 * backoffDelay; // Add 10% jitter
-        
+
         return Math.min(backoffDelay + jitter, this.retryConfig.maxDelay);
     }
 
@@ -534,9 +534,8 @@ export class ErrorHandler {
         this.activeRetries.clear();
     }
 }
-// Create g
-lobal instance
+
+// Create global instance
 const errorHandler = new ErrorHandler();
 
 export default errorHandler;
-export { ErrorHandler };

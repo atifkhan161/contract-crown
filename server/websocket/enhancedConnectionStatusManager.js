@@ -376,11 +376,11 @@ class EnhancedConnectionStatusManager {
             // Import Room model to fetch current state
             const Room = (await import('../src/models/Room.js')).default;
             
-            // Find all rooms where this player is a member
-            const rooms = await Room.findByPlayerId(userId);
+            // Find the active room where this player is a member
+            const room = await Room.findUserActiveRoom(userId);
             
-            for (const room of rooms) {
-                const gameId = room.id;
+            if (room) {
+                const gameId = room.room_id;
                 const wsRoom = this.socketManager.gameRooms.get(gameId);
                 
                 if (wsRoom) {
