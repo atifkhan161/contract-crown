@@ -334,19 +334,44 @@ class WebsocketReliabilityLayer {
      */
     async fallbackTeamsFormed(eventData) {
         try {
+            // Use the HTTP API to form teams, which will sync with websocket state
             const response = await axios.post(
                 `${this.httpFallbackConfig.baseURL}/api/rooms/${eventData.gameId}/form-teams`,
-                {
-                    teams: eventData.teams
-                },
+                {},
                 {
                     timeout: this.httpFallbackConfig.timeout,
-                    headers: this.httpFallbackConfig.headers
+                    headers: {
+                        ...this.httpFallbackConfig.headers,
+                        'Authorization': `Bearer ${eventData.authToken || ''}`
+                    }
                 }
             );
 
+            // After successful HTTP fallback, ensure websocket state is synchronized
+            if (response.data.success && this.socketManager) {
+                const gameRoom = this.socketManager.gameRooms?.get(eventData.gameId);
+                if (gameRoom && response.data.teams) {
+                    // Update websocket room state with HTTP API result
+                    gameRoom.teams.team1 = response.data.teams.team1?.map(p => p.id) || [];
+                    gameRoom.teams.team2 = response.data.teams.team2?.map(p => p.id) || [];
+                    
+                    // Update player team assignments
+                    if (response.data.room?.players) {
+                        response.data.room.players.forEach(player => {
+                            const wsPlayer = gameRoom.players.get(player.id);
+                            if (wsPlayer) {
+                                wsPlayer.teamAssignment = player.teamAssignment;
+                            }
+                        });
+                    }
+                    
+                    console.log(`[WebsocketReliabilityLayer] Synchronized websocket state after HTTP team formation fallback for room ${eventData.gameId}`);
+                }
+            }
+
             return { success: true, data: response.data };
         } catch (error) {
+            console.error('[WebsocketReliabilityLayer] HTTP fallback for team formation failed:', error);
             return { success: false, error: error.message };
         }
     }

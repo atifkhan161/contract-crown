@@ -244,6 +244,35 @@ class SocketManager {
         existingPlayer.socketId = socket.id;
         existingPlayer.isConnected = true;
         existingPlayer.reconnectedAt = new Date().toISOString();
+        
+        // Restore team assignment from database on reconnection
+        try {
+          const dbConnection = require('../database/connection');
+          const [rows] = await dbConnection.query(`
+            SELECT team_assignment FROM room_players WHERE room_id = ? AND user_id = ?
+          `, [gameId, effectiveUserId]);
+          
+          if (rows.length > 0 && rows[0].team_assignment !== null) {
+            const dbTeamAssignment = rows[0].team_assignment;
+            existingPlayer.teamAssignment = dbTeamAssignment;
+            
+            // Update room teams structure
+            if (dbTeamAssignment === 1 && !room.teams.team1.includes(effectiveUserId)) {
+              room.teams.team1.push(effectiveUserId);
+              // Remove from team2 if present
+              room.teams.team2 = room.teams.team2.filter(id => id !== effectiveUserId);
+            } else if (dbTeamAssignment === 2 && !room.teams.team2.includes(effectiveUserId)) {
+              room.teams.team2.push(effectiveUserId);
+              // Remove from team1 if present
+              room.teams.team1 = room.teams.team1.filter(id => id !== effectiveUserId);
+            }
+            
+            console.log(`[WebSocket] Restored team assignment ${dbTeamAssignment} for ${effectiveUsername} on reconnection`);
+          }
+        } catch (dbError) {
+          console.error(`[WebSocket] Failed to restore team assignment for ${effectiveUsername}:`, dbError);
+        }
+        
         console.log(`[WebSocket] Player ${effectiveUsername} now marked as connected: ${existingPlayer.isConnected}`);
 
         // If player was disconnected and is now reconnecting, broadcast the reconnection
@@ -260,6 +289,16 @@ class SocketManager {
               teamAssignment: p.teamAssignment,
               isConnected: p.isConnected
             })),
+            teams: {
+              team1: room.teams.team1.map(playerId => {
+                const player = room.players.get(playerId);
+                return { userId: playerId, username: player ? player.username : 'Unknown' };
+              }),
+              team2: room.teams.team2.map(playerId => {
+                const player = room.players.get(playerId);
+                return { userId: playerId, username: player ? player.username : 'Unknown' };
+              })
+            },
             timestamp: new Date().toISOString()
           });
         }
@@ -675,7 +714,7 @@ class SocketManager {
   /**
    * Handle team formation request
    */
-  handleFormTeams(socket, data) {
+  async handleFormTeams(socket, data) {
     const { gameId } = data;
     const { userId, username } = socket;
 
@@ -725,21 +764,69 @@ class SocketManager {
       room.teams.team1 = [];
       room.teams.team2 = [];
 
-      // Assign players to teams
-      shuffledPlayers.forEach((player, index) => {
-        if (index < team1Size) {
-          room.teams.team1.push(player.userId);
-          player.teamAssignment = 1;
-        } else {
-          room.teams.team2.push(player.userId);
-          player.teamAssignment = 2;
-        }
-      });
+      // Assign players to teams and update database
+      const dbConnection = require('../database/connection');
+      
+      try {
+        // Start transaction for atomic team assignment
+        await dbConnection.query('START TRANSACTION');
 
-      console.log(`[WebSocket] Teams formed in room ${gameId} by ${username}`);
+        for (let i = 0; i < shuffledPlayers.length; i++) {
+          const player = shuffledPlayers[i];
+          const teamAssignment = i < team1Size ? 1 : 2;
+          
+          // Update websocket state
+          player.teamAssignment = teamAssignment;
+          if (teamAssignment === 1) {
+            room.teams.team1.push(player.userId);
+          } else {
+            room.teams.team2.push(player.userId);
+          }
+
+          // Update database - ensure team_assignment column exists
+          try {
+            await dbConnection.query(`
+              UPDATE room_players SET team_assignment = ? WHERE room_id = ? AND user_id = ?
+            `, [teamAssignment, gameId, player.userId]);
+          } catch (columnError) {
+            if (columnError.code === 'ER_BAD_FIELD_ERROR') {
+              // Add column if it doesn't exist
+              console.log('[WebSocket] Adding team_assignment column to room_players table');
+              await dbConnection.query(`
+                ALTER TABLE room_players ADD COLUMN team_assignment INT NULL CHECK (team_assignment IN (1, 2))
+              `);
+              // Retry the update
+              await dbConnection.query(`
+                UPDATE room_players SET team_assignment = ? WHERE room_id = ? AND user_id = ?
+              `, [teamAssignment, gameId, player.userId]);
+            } else {
+              throw columnError;
+            }
+          }
+        }
+
+        // Commit transaction
+        await dbConnection.query('COMMIT');
+        console.log(`[WebSocket] Teams formed and persisted to database in room ${gameId} by ${username}`);
+
+      } catch (dbError) {
+        // Rollback transaction on error
+        await dbConnection.query('ROLLBACK');
+        console.error('[WebSocket] Database error during team formation:', dbError);
+        
+        // Revert websocket state changes
+        room.teams.team1 = [];
+        room.teams.team2 = [];
+        players.forEach(player => {
+          player.teamAssignment = null;
+        });
+        
+        socket.emit('error', { message: 'Failed to persist team assignments to database' });
+        return;
+      }
 
       // Broadcast team formation to all players including the host
-      this.io.in(gameId).emit('teams-formed', {
+      const teamFormationData = {
         gameId,
         teams: {
           team1: room.teams.team1.map(playerId => {
@@ -760,7 +847,13 @@ class SocketManager {
         })),
         formedBy: username,
         timestamp: new Date().toISOString()
-      });
+      };
+
+      // Use reliable broadcast to ensure all players receive the update
+      this.io.in(gameId).emit('teams-formed', teamFormationData);
+      
+      // Also emit the legacy event name for backward compatibility
+      this.io.in(gameId).emit('teamsFormed', teamFormationData);
 
     } catch (error) {
       console.error('[WebSocket] Error forming teams:', error);

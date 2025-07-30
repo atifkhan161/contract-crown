@@ -427,12 +427,39 @@ router.post('/:roomId/form-teams', auth, async (req, res) => {
         // Form teams
         const teams = await room.formTeams();
 
-        // Emit team formation update to all players in room
-        req.io.to(`room_${roomId}`).emit('teamsFormed', {
+        // Sync with websocket state if websocket room exists
+        const wsRoom = req.io.sockets.adapter.rooms.get(`room_${roomId}`);
+        if (wsRoom && req.io.socketManager && req.io.socketManager.gameRooms) {
+            const gameRoom = req.io.socketManager.gameRooms.get(roomId);
+            if (gameRoom) {
+                // Update websocket room teams structure
+                gameRoom.teams.team1 = teams.team1.map(p => p.id);
+                gameRoom.teams.team2 = teams.team2.map(p => p.id);
+                
+                // Update player team assignments in websocket state
+                for (const player of room.players) {
+                    const wsPlayer = gameRoom.players.get(player.id);
+                    if (wsPlayer) {
+                        wsPlayer.teamAssignment = player.teamAssignment;
+                    }
+                }
+                
+                console.log(`[HTTP API] Synced team formation with websocket state for room ${roomId}`);
+            }
+        }
+
+        // Emit team formation update to all players in room with both event names
+        const teamFormationData = {
             roomId: room.room_id,
+            gameId: roomId,
             teams: teams,
-            players: room.players
-        });
+            players: room.players,
+            formedBy: req.user.username || 'Host',
+            timestamp: new Date().toISOString()
+        };
+        
+        req.io.to(`room_${roomId}`).emit('teamsFormed', teamFormationData);
+        req.io.to(`room_${roomId}`).emit('teams-formed', teamFormationData);
 
         res.json({
             success: true,

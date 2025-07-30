@@ -72,33 +72,34 @@ class ReliableSocketManager {
                 const room = this.socketManager.gameRooms.get(data.gameId);
                 if (room) {
                     const players = Array.from(room.players.values());
+                    const teamFormationData = {
+                        gameId: data.gameId,
+                        teams: {
+                            team1: room.teams.team1.map(playerId => {
+                                const player = room.players.get(playerId);
+                                return { userId: playerId, username: player ? player.username : 'Unknown' };
+                            }),
+                            team2: room.teams.team2.map(playerId => {
+                                const player = room.players.get(playerId);
+                                return { userId: playerId, username: player ? player.username : 'Unknown' };
+                            })
+                        },
+                        players: players.map(p => ({
+                            userId: p.userId,
+                            username: p.username,
+                            isReady: p.isReady,
+                            teamAssignment: p.teamAssignment,
+                            isConnected: p.isConnected
+                        })),
+                        formedBy: socket.username,
+                        timestamp: new Date().toISOString()
+                    };
                     
-                    await this.reliabilityLayer.emitWithRetry(
-                        data.gameId,
-                        'teams-formed',
-                        {
-                            gameId: data.gameId,
-                            teams: {
-                                team1: room.teams.team1.map(playerId => {
-                                    const player = room.players.get(playerId);
-                                    return { userId: playerId, username: player.username };
-                                }),
-                                team2: room.teams.team2.map(playerId => {
-                                    const player = room.players.get(playerId);
-                                    return { userId: playerId, username: player.username };
-                                })
-                            },
-                            players: players.map(p => ({
-                                userId: p.userId,
-                                username: p.username,
-                                isReady: p.isReady,
-                                teamAssignment: p.teamAssignment,
-                                isConnected: p.isConnected
-                            })),
-                            formedBy: socket.username,
-                            timestamp: new Date().toISOString()
-                        }
-                    );
+                    // Send both event names for backward compatibility
+                    await Promise.all([
+                        this.reliabilityLayer.emitWithRetry(data.gameId, 'teams-formed', teamFormationData),
+                        this.reliabilityLayer.emitWithRetry(data.gameId, 'teamsFormed', teamFormationData)
+                    ]);
                 }
             } catch (error) {
                 console.error('[ReliableSocketManager] Error in handleFormTeams:', error);
