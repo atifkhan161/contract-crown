@@ -6,6 +6,9 @@ import DatabaseInitializer from '../database/init.js';
 import SocketManager from '../websocket/socketManager.js';
 import ConnectionStatusManager from '../websocket/connectionStatus.js';
 import PeriodicStateReconciliationService from './services/PeriodicStateReconciliationService.js';
+import MonitoringService from './services/MonitoringService.js';
+import DiagnosticTools from './services/DiagnosticTools.js';
+import PerformanceMonitor from './services/PerformanceMonitor.js';
 
 // Load environment variables
 dotenv.config();
@@ -18,7 +21,7 @@ class GameServer {
     this.setupSocketIO();
     
     // Create Express app with dependencies
-    this.app = createApp(this.io, this.socketManager, this.connectionStatusManager, this.periodicReconciliationService);
+    this.app = createApp(this.io, this.socketManager, this.connectionStatusManager, this.periodicReconciliationService, this.monitoringService, this.diagnosticTools, this.performanceMonitor);
     
     // Create HTTP server with Express app
     this.server = createServer(this.app);
@@ -48,6 +51,11 @@ class GameServer {
     
     // Initialize Periodic State Reconciliation Service
     this.periodicReconciliationService = new PeriodicStateReconciliationService(this.socketManager);
+    
+    // Initialize Monitoring Services
+    this.monitoringService = new MonitoringService(this.socketManager, this.connectionStatusManager, this.periodicReconciliationService);
+    this.diagnosticTools = new DiagnosticTools(this.socketManager, this.connectionStatusManager, this.monitoringService);
+    this.performanceMonitor = new PerformanceMonitor(this.socketManager);
     
     console.log('[WebSocket] Enhanced Socket.IO setup complete with authentication and room management');
   }
@@ -83,6 +91,11 @@ class GameServer {
         // Start periodic reconciliation service
         this.periodicReconciliationService.start();
         console.log('[Server] Periodic state reconciliation service started');
+        
+        // Start monitoring services
+        this.monitoringService.start();
+        this.performanceMonitor.start();
+        console.log('[Server] Monitoring and performance services started');
       });
     } catch (error) {
       console.error('[Server] Failed to start server:', error.message);

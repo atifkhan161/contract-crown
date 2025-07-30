@@ -22,16 +22,19 @@ const __dirname = path.dirname(__filename);
  * @param {Object} socketManager - Socket manager instance
  * @param {Object} connectionStatusManager - Connection status manager instance
  * @param {Object} periodicReconciliationService - Periodic reconciliation service instance
+ * @param {Object} monitoringService - Monitoring service instance
+ * @param {Object} diagnosticTools - Diagnostic tools instance
+ * @param {Object} performanceMonitor - Performance monitor instance
  * @returns {Object} Configured Express app
  */
-export function createApp(io, socketManager, connectionStatusManager, periodicReconciliationService) {
+export function createApp(io, socketManager, connectionStatusManager, periodicReconciliationService, monitoringService, diagnosticTools, performanceMonitor) {
   const app = express();
 
   // Setup middleware
   setupMiddleware(app);
   
   // Setup routes with dependencies
-  setupRoutes(app, io, socketManager, connectionStatusManager, periodicReconciliationService);
+  setupRoutes(app, io, socketManager, connectionStatusManager, periodicReconciliationService, monitoringService, diagnosticTools, performanceMonitor);
   
   // Setup error handling
   setupErrorHandling(app);
@@ -90,7 +93,7 @@ function setupMiddleware(app) {
   });
 }
 
-function setupRoutes(app, io, socketManager, connectionStatusManager, periodicReconciliationService) {
+function setupRoutes(app, io, socketManager, connectionStatusManager, periodicReconciliationService, monitoringService, diagnosticTools, performanceMonitor) {
   // Make io instance available to routes
   app.use((req, res, next) => {
     req.io = io;
@@ -102,6 +105,9 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
     req.socketManager = socketManager;
     req.connectionStatusManager = connectionStatusManager;
     req.periodicReconciliationService = periodicReconciliationService;
+    req.monitoringService = monitoringService;
+    req.diagnosticTools = diagnosticTools;
+    req.performanceMonitor = performanceMonitor;
     next();
   });
 
@@ -303,6 +309,391 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
       console.error('[API] Reset reconciliation stats error:', error);
       res.status(500).json({
         error: 'Failed to reset statistics',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Monitoring API endpoints
+  
+  // Get comprehensive monitoring dashboard
+  app.get('/api/monitoring/dashboard', (req, res) => {
+    try {
+      if (!req.monitoringService) {
+        return res.status(503).json({
+          error: 'Monitoring service not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const dashboardData = req.monitoringService.getDashboardData();
+      
+      res.status(200).json({
+        dashboard: dashboardData,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Monitoring dashboard error:', error);
+      res.status(500).json({
+        error: 'Failed to get monitoring dashboard',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Get monitoring metrics export
+  app.get('/api/monitoring/metrics', (req, res) => {
+    try {
+      if (!req.monitoringService) {
+        return res.status(503).json({
+          error: 'Monitoring service not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const metrics = req.monitoringService.exportMetrics();
+      
+      res.status(200).json({
+        metrics,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Monitoring metrics error:', error);
+      res.status(500).json({
+        error: 'Failed to get monitoring metrics',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Get room diagnostics
+  app.get('/api/monitoring/room/:gameId/diagnostics', (req, res) => {
+    try {
+      const { gameId } = req.params;
+      
+      if (!req.monitoringService) {
+        return res.status(503).json({
+          error: 'Monitoring service not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const roomDiagnostics = req.monitoringService.getRoomDiagnostics(gameId);
+      
+      res.status(200).json({
+        gameId,
+        diagnostics: roomDiagnostics,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Room diagnostics error:', error);
+      res.status(500).json({
+        error: 'Failed to get room diagnostics',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Reset monitoring metrics
+  app.post('/api/monitoring/reset', (req, res) => {
+    try {
+      if (!req.monitoringService) {
+        return res.status(503).json({
+          error: 'Monitoring service not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      req.monitoringService.resetMetrics();
+      
+      res.status(200).json({
+        message: 'Monitoring metrics reset successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Reset monitoring metrics error:', error);
+      res.status(500).json({
+        error: 'Failed to reset monitoring metrics',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Diagnostic Tools API endpoints
+  
+  // Run comprehensive lobby diagnostics
+  app.post('/api/diagnostics/lobby/:gameId', async (req, res) => {
+    try {
+      const { gameId } = req.params;
+      
+      if (!req.diagnosticTools) {
+        return res.status(503).json({
+          error: 'Diagnostic tools not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const diagnostic = await req.diagnosticTools.runLobbyDiagnostics(gameId);
+      
+      res.status(200).json({
+        diagnostic,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Lobby diagnostics error:', error);
+      res.status(500).json({
+        error: 'Failed to run lobby diagnostics',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Run connection test for a user
+  app.post('/api/diagnostics/connection/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      if (!req.diagnosticTools) {
+        return res.status(503).json({
+          error: 'Diagnostic tools not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const diagnostic = await req.diagnosticTools.runConnectionTest(userId);
+      
+      res.status(200).json({
+        diagnostic,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Connection test error:', error);
+      res.status(500).json({
+        error: 'Failed to run connection test',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Get diagnostic result by ID
+  app.get('/api/diagnostics/result/:diagnosticId', (req, res) => {
+    try {
+      const { diagnosticId } = req.params;
+      
+      if (!req.diagnosticTools) {
+        return res.status(503).json({
+          error: 'Diagnostic tools not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const result = req.diagnosticTools.getDiagnosticResult(diagnosticId);
+      
+      if (!result) {
+        return res.status(404).json({
+          error: 'Diagnostic result not found',
+          diagnosticId,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      res.status(200).json({
+        result,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Get diagnostic result error:', error);
+      res.status(500).json({
+        error: 'Failed to get diagnostic result',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Get all diagnostic results
+  app.get('/api/diagnostics/results', (req, res) => {
+    try {
+      if (!req.diagnosticTools) {
+        return res.status(503).json({
+          error: 'Diagnostic tools not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const results = req.diagnosticTools.getAllDiagnosticResults();
+      const summary = req.diagnosticTools.getDiagnosticSummary();
+      
+      res.status(200).json({
+        results,
+        summary,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Get diagnostic results error:', error);
+      res.status(500).json({
+        error: 'Failed to get diagnostic results',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Performance Monitor API endpoints
+  
+  // Get performance summary
+  app.get('/api/performance/summary', (req, res) => {
+    try {
+      if (!req.performanceMonitor) {
+        return res.status(503).json({
+          error: 'Performance monitor not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const summary = req.performanceMonitor.getPerformanceSummary();
+      
+      res.status(200).json({
+        performance: summary,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Performance summary error:', error);
+      res.status(500).json({
+        error: 'Failed to get performance summary',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Get room performance profile
+  app.get('/api/performance/room/:gameId', (req, res) => {
+    try {
+      const { gameId } = req.params;
+      
+      if (!req.performanceMonitor) {
+        return res.status(503).json({
+          error: 'Performance monitor not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const profile = req.performanceMonitor.getRoomProfile(gameId);
+      
+      if (!profile) {
+        return res.status(404).json({
+          error: 'Room performance profile not found',
+          gameId,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      res.status(200).json({
+        gameId,
+        profile,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Room performance profile error:', error);
+      res.status(500).json({
+        error: 'Failed to get room performance profile',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Get user performance profile
+  app.get('/api/performance/user/:userId', (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      if (!req.performanceMonitor) {
+        return res.status(503).json({
+          error: 'Performance monitor not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const profile = req.performanceMonitor.getUserProfile(userId);
+      
+      if (!profile) {
+        return res.status(404).json({
+          error: 'User performance profile not found',
+          userId,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      res.status(200).json({
+        userId,
+        profile,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] User performance profile error:', error);
+      res.status(500).json({
+        error: 'Failed to get user performance profile',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Export performance data
+  app.get('/api/performance/export', (req, res) => {
+    try {
+      if (!req.performanceMonitor) {
+        return res.status(503).json({
+          error: 'Performance monitor not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      const performanceData = req.performanceMonitor.exportPerformanceData();
+      
+      res.status(200).json({
+        export: performanceData,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Performance export error:', error);
+      res.status(500).json({
+        error: 'Failed to export performance data',
+        details: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Reset performance metrics
+  app.post('/api/performance/reset', (req, res) => {
+    try {
+      if (!req.performanceMonitor) {
+        return res.status(503).json({
+          error: 'Performance monitor not available',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      req.performanceMonitor.resetMetrics();
+      
+      res.status(200).json({
+        message: 'Performance metrics reset successfully',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('[API] Reset performance metrics error:', error);
+      res.status(500).json({
+        error: 'Failed to reset performance metrics',
         details: error.message,
         timestamp: new Date().toISOString()
       });

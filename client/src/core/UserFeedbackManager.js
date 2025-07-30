@@ -471,8 +471,8 @@ export class UserFeedbackManager {
         return this.notifications.size;
     }
 }
-/
-/ Create global instance
+
+// Create global instance
 const userFeedbackManager = new UserFeedbackManager();
 
 // Make it available globally for HTML onclick handlers
