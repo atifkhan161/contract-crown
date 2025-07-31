@@ -6,13 +6,19 @@
 
 
 
+
   - Build waiting-room.html with 4 player slots and connection status widget
   - Create responsive layout with mobile-first design approach
   - Add room code display and host controls section
   - Implement basic CSS styling using existing theme consistency
   - _Requirements: 1.3, 3.1, 3.3, 7.1, 10.1, 10.5_
 
-- [ ] 2. Implement WaitingRoomManager core controller
+- [x] 2. Implement WaitingRoomManager core controller
+
+
+
+
+
   - Create client/src/pages/waiting-room.js with initialization and state management
   - Add room data loading and URL parameter parsing for room ID
   - Implement player join/leave event handling and navigation management
@@ -20,6 +26,7 @@
   - _Requirements: 1.1, 1.2, 2.1, 7.1, 7.4_
 
 - [ ] 3. Build WaitingRoomSocketManager for real-time communication
+
   - Create client/src/core/WaitingRoomSocketManager.js with WebSocket lifecycle management
   - Implement room joining, ready status toggling, and game start events
   - Add connection status monitoring with reconnection handling
