@@ -19,6 +19,7 @@
 
 
 
+
   - Create client/src/pages/waiting-room.js with initialization and state management
   - Add room data loading and URL parameter parsing for room ID
   - Implement player join/leave event handling and navigation management
@@ -27,13 +28,17 @@
 
 - [ ] 3. Build WaitingRoomSocketManager for real-time communication
 
+
+
   - Create client/src/core/WaitingRoomSocketManager.js with WebSocket lifecycle management
   - Implement room joining, ready status toggling, and game start events
   - Add connection status monitoring with reconnection handling
   - Create fallback mechanisms for connection issues
   - _Requirements: 2.3, 4.2, 6.1, 6.2, 6.5, 7.2, 8.1, 8.3, 8.4_
 
-- [ ] 4. Create WaitingRoomUI for visual management
+- [-] 4. Create WaitingRoomUI for visual management
+
+
   - Build client/src/ui/WaitingRoomUI.js with player slot rendering
   - Implement ready status indicators and host control visibility
   - Add connection status display with color-coded indicators
@@ -41,6 +46,7 @@
   - _Requirements: 3.1, 3.2, 3.4, 4.3, 8.2, 8.5, 10.2, 10.3, 10.4_
 
 - [ ] 5. Implement server-side WaitingRoomSocketHandler
+
   - Create server/src/websocket/WaitingRoomSocketHandler.js for WebSocket event handling
   - Add join-waiting-room, leave-waiting-room, and toggle-ready-status events
   - Implement start-game-request and player-disconnected event handling
@@ -48,6 +54,7 @@
   - _Requirements: 2.3, 4.2, 5.4, 6.1, 6.2, 6.3, 6.4_
 
 - [ ] 6. Build waiting room API endpoints
+
   - Create server/src/routes/waiting-rooms.js with HTTP fallback endpoints
   - Implement GET /api/waiting-rooms/:roomId for room data retrieval
   - Add POST endpoints for join, leave, ready status, and game start operations
@@ -55,6 +62,7 @@
   - _Requirements: 1.5, 2.1, 2.2, 5.3, 7.3, 9.1, 9.4_
 
 - [ ] 7. Extend Room model for waiting room functionality
+
   - Enhance server/src/models/Room.js with ready status tracking
   - Add team formation logic and game start validation methods
   - Implement player connection status management
@@ -62,6 +70,7 @@
   - _Requirements: 1.5, 2.4, 4.5, 5.1, 5.2, 5.3_
 
 - [ ] 8. Implement ready status management system
+
   - Add ready status toggle functionality with real-time synchronization
   - Create ready count tracking and game start button state management
   - Implement ready status persistence (in-memory only as specified)

@@ -4,6 +4,7 @@
  */
 
 import { AuthManager } from '../core/auth.js';
+import { WaitingRoomSocketManager } from '../core/WaitingRoomSocketManager.js';
 
 class WaitingRoomManager {
     constructor() {
@@ -130,9 +131,8 @@ class WaitingRoomManager {
             // Load room data
             await this.loadRoomData();
 
-            // Initialize socket manager and UI manager (will be implemented in later tasks)
-            // this.initializeSocketManager();
-            // this.initializeUIManager();
+            // Initialize socket manager for real-time communication
+            await this.initializeSocketManager();
 
         } catch (error) {
             console.error('[WaitingRoom] Initialization error:', error);
@@ -201,6 +201,169 @@ class WaitingRoomManager {
             throw error;
         } finally {
             this.showLoading(false);
+        }
+    }
+
+    async initializeSocketManager() {
+        try {
+            console.log('[WaitingRoom] Initializing socket manager...');
+            
+            // Create socket manager instance
+            this.socketManager = new WaitingRoomSocketManager(this.authManager, this.roomId);
+            
+            // Set up socket event listeners
+            this.setupSocketEventListeners();
+            
+            // Connect to WebSocket server
+            await this.socketManager.connect();
+            
+            console.log('[WaitingRoom] Socket manager initialized successfully');
+            
+        } catch (error) {
+            console.error('[WaitingRoom] Failed to initialize socket manager:', error);
+            this.showError('Failed to connect to real-time updates. Some features may not work properly.');
+            
+            // Continue without socket connection - fallback to HTTP polling could be implemented here
+        }
+    }
+
+    setupSocketEventListeners() {
+        if (!this.socketManager) return;
+
+        // Connection status events
+        this.socketManager.on('connection-status-changed', (data) => {
+            this.updateConnectionStatus(data.status);
+        });
+
+        this.socketManager.on('reconnecting', (data) => {
+            this.updateConnectionStatus('reconnecting');
+            this.showMessage(`Reconnecting... (attempt ${data.attempt}/${data.maxAttempts})`);
+        });
+
+        this.socketManager.on('reconnected', (data) => {
+            this.showMessage('Reconnected successfully!');
+        });
+
+        this.socketManager.on('reconnect-failed', (data) => {
+            this.showError('Failed to reconnect. Please refresh the page.');
+        });
+
+        this.socketManager.on('connection-lost', () => {
+            this.showMessage('Connection lost. Attempting to reconnect...');
+        });
+
+        // Room events
+        this.socketManager.on('room-joined', (data) => {
+            console.log('[WaitingRoom] Successfully joined room via socket:', data);
+            if (data.room) {
+                this.roomData = data.room;
+                this.updateRoomDisplay();
+            }
+        });
+
+        this.socketManager.on('room-join-error', (error) => {
+            console.error('[WaitingRoom] Failed to join room via socket:', error);
+            this.showError(error.message || 'Failed to join room');
+        });
+
+        this.socketManager.on('room-updated', (data) => {
+            console.log('[WaitingRoom] Room updated:', data);
+            if (data.room) {
+                this.roomData = data.room;
+                this.updateRoomDisplay();
+            }
+        });
+
+        // Player events
+        this.socketManager.on('player-joined', (data) => {
+            this.handlePlayerJoin(data.player || data);
+        });
+
+        this.socketManager.on('player-left', (data) => {
+            this.handlePlayerLeave(data.playerId || data.userId);
+        });
+
+        this.socketManager.on('player-ready-changed', (data) => {
+            this.handleReadyStatusChange(data.playerId || data.userId, data.isReady);
+        });
+
+        this.socketManager.on('player-disconnected', (data) => {
+            console.log('[WaitingRoom] Player disconnected:', data);
+            // Update player connection status but don't remove them
+            const playerId = data.playerId || data.userId;
+            const playerIndex = this.players.findIndex(player =>
+                player.id === playerId || player.user_id === playerId
+            );
+            
+            if (playerIndex !== -1) {
+                this.players[playerIndex].isConnected = false;
+                this.updatePlayersDisplay();
+                const playerName = this.players[playerIndex].username || this.players[playerIndex].name;
+                this.showMessage(`${playerName} disconnected`);
+            }
+        });
+
+        // Game events
+        this.socketManager.on('game-starting', (data) => {
+            this.handleGameStart(data);
+        });
+
+        this.socketManager.on('teams-formed', (data) => {
+            console.log('[WaitingRoom] Teams formed:', data);
+            this.showMessage('Teams have been formed! Starting game...');
+        });
+
+        // Error events
+        this.socketManager.on('waiting-room-error', (error) => {
+            console.error('[WaitingRoom] Waiting room error:', error);
+            this.showError(error.message || 'An error occurred in the waiting room');
+        });
+
+        this.socketManager.on('ready-toggle-error', (error) => {
+            console.error('[WaitingRoom] Ready toggle error:', error);
+            this.showError(error.message || 'Failed to update ready status');
+        });
+
+        this.socketManager.on('game-start-error', (error) => {
+            console.error('[WaitingRoom] Game start error:', error);
+            this.showError(error.message || 'Failed to start game');
+            this.setStartGameLoading(false);
+        });
+
+        this.socketManager.on('auth_error', (error) => {
+            console.error('[WaitingRoom] Authentication error:', error);
+            this.showError('Authentication failed. Please log in again.');
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 2000);
+        });
+    }
+
+    updateConnectionStatus(status) {
+        const statusElement = this.elements.statusText;
+        const indicatorElement = this.elements.statusIndicator;
+        
+        // Remove all status classes
+        indicatorElement.className = 'status-indicator';
+        
+        switch (status) {
+            case 'connected':
+                statusElement.textContent = 'Connected';
+                indicatorElement.classList.add('connected');
+                break;
+            case 'connecting':
+                statusElement.textContent = 'Connecting...';
+                indicatorElement.classList.add('connecting');
+                break;
+            case 'reconnecting':
+                statusElement.textContent = 'Reconnecting...';
+                indicatorElement.classList.add('reconnecting');
+                break;
+            case 'disconnected':
+            default:
+                statusElement.textContent = 'Disconnected';
+                indicatorElement.classList.add('disconnected');
+                break;
         }
     }
 
@@ -301,8 +464,12 @@ class WaitingRoomManager {
             try {
                 this.showLoading(true, 'Leaving room...');
 
-                // TODO: Implement socket-based leave room when WaitingRoomSocketManager is available
-                // For now, just redirect to dashboard
+                // Leave room via socket if connected
+                if (this.socketManager && this.socketManager.isReady()) {
+                    this.socketManager.leaveRoom();
+                }
+
+                // Clean up and redirect
                 await this.cleanup();
                 window.location.href = 'dashboard.html';
 
@@ -337,23 +504,29 @@ class WaitingRoomManager {
 
     async handleReadyToggle() {
         try {
-            // TODO: Implement socket-based ready toggle when WaitingRoomSocketManager is available
-            // For now, just toggle local state
-            this.isReady = !this.isReady;
-            this.updateReadyButton();
+            const newReadyStatus = !this.isReady;
+            
+            // Use socket manager if available
+            if (this.socketManager && this.socketManager.isReady()) {
+                this.socketManager.toggleReady(newReadyStatus);
+                console.log('[WaitingRoom] Ready status toggle sent via socket:', newReadyStatus);
+            } else {
+                // Fallback to local state update if socket not available
+                console.warn('[WaitingRoom] Socket not available, updating local state only');
+                this.isReady = newReadyStatus;
+                this.updateReadyButton();
 
-            // Update the current user's ready status in the players array
-            const currentUserId = this.currentUser.user_id || this.currentUser.id;
-            const playerIndex = this.players.findIndex(player =>
-                player.id === currentUserId || player.user_id === currentUserId
-            );
+                // Update the current user's ready status in the players array
+                const currentUserId = this.currentUser.user_id || this.currentUser.id;
+                const playerIndex = this.players.findIndex(player =>
+                    player.id === currentUserId || player.user_id === currentUserId
+                );
 
-            if (playerIndex !== -1) {
-                this.players[playerIndex].isReady = this.isReady;
-                this.updatePlayersDisplay();
+                if (playerIndex !== -1) {
+                    this.players[playerIndex].isReady = this.isReady;
+                    this.updatePlayersDisplay();
+                }
             }
-
-            console.log('[WaitingRoom] Ready status toggled:', this.isReady);
 
         } catch (error) {
             console.error('[WaitingRoom] Error toggling ready status:', error);
@@ -376,13 +549,18 @@ class WaitingRoomManager {
         try {
             this.setStartGameLoading(true);
 
-            // TODO: Implement socket-based game start when WaitingRoomSocketManager is available
-            // For now, just redirect to game page
-            console.log('[WaitingRoom] Starting game...');
-
-            setTimeout(() => {
-                window.location.href = `game.html?room=${this.roomId}`;
-            }, 1000);
+            // Use socket manager if available
+            if (this.socketManager && this.socketManager.isReady()) {
+                this.socketManager.startGame();
+                console.log('[WaitingRoom] Game start request sent via socket');
+            } else {
+                // Fallback to direct redirect if socket not available
+                console.warn('[WaitingRoom] Socket not available, redirecting directly');
+                this.showMessage('Starting game...');
+                setTimeout(() => {
+                    window.location.href = `game.html?room=${this.roomId}`;
+                }, 1000);
+            }
 
         } catch (error) {
             console.error('[WaitingRoom] Error starting game:', error);
@@ -458,23 +636,30 @@ class WaitingRoomManager {
         }
     }
 
-    handleGameStart() {
-        console.log('[WaitingRoom] Game starting...');
+    handleGameStart(data) {
+        console.log('[WaitingRoom] Game starting:', data);
         this.showMessage('Game is starting! Redirecting...');
 
+        // Use redirect URL from server if provided, otherwise construct it
+        const redirectUrl = data?.redirectUrl || `game.html?room=${this.roomId}`;
+        
         setTimeout(() => {
-            window.location.href = `game.html?room=${this.roomId}`;
+            window.location.href = redirectUrl;
         }, 1500);
     }
     // Navigation management
     handlePageHidden() {
         console.log('[WaitingRoom] Page hidden - maintaining connection');
-        // TODO: Implement connection management when socket manager is available
+        // Socket manager handles connection maintenance automatically
     }
 
     handlePageVisible() {
         console.log('[WaitingRoom] Page visible - checking connection');
-        // TODO: Implement connection check when socket manager is available
+        // Check connection status and attempt reconnection if needed
+        if (this.socketManager && !this.socketManager.isReady()) {
+            console.log('[WaitingRoom] Connection lost while page was hidden, attempting reconnection');
+            this.socketManager.handleReconnection();
+        }
     }
 
     // Cleanup methods for proper resource management
@@ -482,8 +667,11 @@ class WaitingRoomManager {
         console.log('[WaitingRoom] Cleaning up resources...');
 
         try {
-            // TODO: Cleanup socket connections when WaitingRoomSocketManager is available
-            // this.socketManager?.disconnect();
+            // Cleanup socket connections
+            if (this.socketManager) {
+                this.socketManager.disconnect();
+                this.socketManager = null;
+            }
 
             // Clear any timers or intervals
             if (this.reconnectTimer) {
