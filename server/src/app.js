@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 import authRoutes from './routes/auth.js';
 import roomsRoutes from './routes/rooms.js';
+import waitingRoomsRoutes from './routes/waiting-rooms.js';
 import usersRoutes from './routes/users.js';
 import testAuthRoutes from './routes/test-auth.js';
 
@@ -710,6 +711,9 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   
   // Rooms routes
   app.use('/api/rooms', roomsRoutes);
+  
+  // Waiting room routes
+  app.use('/api/waiting-rooms', waitingRoomsRoutes);
   
   // Users routes
   app.use('/api/users', usersRoutes);

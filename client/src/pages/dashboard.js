@@ -358,7 +358,7 @@ class DashboardManager {
             this.hideCreateRoomModal();
             
             // Immediately redirect to lobby
-            window.location.href = `lobby.html?room=${createdRoom.id}`;
+            window.location.href = `waiting-room.html?room=${createdRoom.id}`;
             
         } catch (error) {
             console.error('Create room error:', error);
@@ -374,7 +374,7 @@ class DashboardManager {
             
             // Hide loading and redirect to lobby
             this.showLoading(false);
-            window.location.href = `lobby.html?room=${response.roomId}`;
+            window.location.href = `waiting-room.html?room=${response.roomId}`;
             
         } catch (error) {
             console.error('Join room error:', error);
@@ -409,14 +409,14 @@ class DashboardManager {
         // Auto-redirect to lobby if user created the room
         if (room.owner === (this.currentUser.user_id || this.currentUser.id)) {
             setTimeout(() => {
-                window.location.href = `lobby.html?room=${room.id}`;
+                window.location.href = `waiting-room.html?room=${room.id}`;
             }, 500);
         }
     }
 
     handleRoomJoined(roomData) {
         // Redirect to lobby page for the room
-        window.location.href = `lobby.html?room=${roomData.roomId}`;
+        window.location.href = `waiting-room.html?room=${roomData.roomId}`;
     }
 
     handleRoomError(error) {

@@ -4,6 +4,7 @@ import GameStateManager from './gameStateManager.js';
 import ConnectionStatusManager from './connectionStatus.js';
 import EnhancedConnectionStatusManager from './enhancedConnectionStatusManager.js';
 import ConnectionDiagnostics from './connectionDiagnostics.js';
+import WaitingRoomSocketHandler from '../src/websocket/WaitingRoomSocketHandler.js';
 import Room from '../src/models/Room.js';
 import { authenticateSocket } from '../src/middlewares/socketAuth.js';
 
@@ -29,6 +30,9 @@ class SocketManager {
 
     // Initialize connection diagnostics
     this.connectionDiagnostics = new ConnectionDiagnostics(this, this.connectionStatusManager);
+
+    // Initialize waiting room handler
+    this.waitingRoomHandler = new WaitingRoomSocketHandler(this);
 
     this.setupSocketIO();
 
@@ -89,6 +93,9 @@ class SocketManager {
 
     // Set up event handlers
     this.setupSocketEvents(socket);
+    
+    // Set up waiting room specific event handlers
+    this.waitingRoomHandler.setupWaitingRoomEvents(socket);
 
     // Handle disconnection
     socket.on('disconnect', (reason) => {

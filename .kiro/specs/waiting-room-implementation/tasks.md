@@ -49,7 +49,7 @@
   - Create mobile-responsive layout adjustments
   - _Requirements: 3.1, 3.2, 3.4, 4.3, 8.2, 8.5, 10.2, 10.3, 10.4_
 
-- [ ] 5. Implement server-side WaitingRoomSocketHandler
+- [x] 5. Implement server-side WaitingRoomSocketHandler
 
   - Create server/src/websocket/WaitingRoomSocketHandler.js for WebSocket event handling
   - Add join-waiting-room, leave-waiting-room, and toggle-ready-status events
@@ -57,7 +57,7 @@
   - Create room state synchronization and broadcast mechanisms
   - _Requirements: 2.3, 4.2, 5.4, 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 6. Build waiting room API endpoints
+- [x] 6. Build waiting room API endpoints
 
   - Create server/src/routes/waiting-rooms.js with HTTP fallback endpoints
   - Implement GET /api/waiting-rooms/:roomId for room data retrieval
