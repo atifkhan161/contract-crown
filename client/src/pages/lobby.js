@@ -28,6 +28,10 @@ class LobbyManager {
         this.connectionStatus = 'connecting';
         this.isWebSocketRoomJoined = false;
         this.elements = {};
+        
+        // Make lobby manager globally accessible for state synchronizer
+        window.lobbyManager = this;
+        
         this.init();
     }
 
@@ -207,6 +211,16 @@ class LobbyManager {
             }, 100);
         });
 
+        // If socket is already connected when setting up listeners, join room immediately
+        if (this.socketManager.isSocketConnected()) {
+            console.log('[Lobby] Socket already connected, joining room immediately');
+            this.isWebSocketRoomJoined = false; // Reset flag
+            this.startHeartbeat();
+            setTimeout(() => {
+                this.joinRoom();
+            }, 100);
+        }
+
         // Handle connection confirmation
         this.socketManager.on('connectionConfirmed', (data) => {
             console.log('[Lobby] Connection confirmed:', data);
@@ -233,17 +247,10 @@ class LobbyManager {
             }, 100);
         });
 
-        // Real-time lobby events
-        this.socketManager.on('playerJoined', (data) => this.handlePlayerJoined(data));
-        this.socketManager.on('playerLeft', (data) => this.handlePlayerLeft(data));
-        this.socketManager.on('playerDisconnected', (data) => this.handlePlayerDisconnected(data));
-        this.socketManager.on('playerReconnected', (data) => this.handlePlayerReconnected(data));
-        this.socketManager.on('playerRemoved', (data) => this.handlePlayerRemoved(data));
-        this.socketManager.on('playerReadyStatusChanged', (data) => this.handlePlayerReadyStatusChanged(data));
-        this.socketManager.on('teamsFormed', (data) => this.handleTeamsFormed(data));
+        // Real-time lobby events - handled through StateSynchronizer
+        // Remove direct WebSocket listeners to avoid conflicts with StateSynchronizer
 
-        // Room join confirmation
-        this.socketManager.on('roomJoined', (data) => this.handleRoomJoined(data));
+        // Room join confirmation - handled through StateSynchronizer
 
         // Game events
         this.socketManager.on('gameStarting', (data) => this.handleGameStarting(data));
@@ -306,14 +313,9 @@ class LobbyManager {
     }
 
     setupStateSynchronizer() {
-        // Initialize state synchronizer with current room data
-        if (this.room) {
-            this.stateSynchronizer.initializeRoomState({
-                room: this.room,
-                players: this.players
-            });
-        }
-
+        // Set up event listeners for the StateSynchronizer
+        // Note: Room state initialization is done in loadRoomData()
+        
         // Listen for state changes from the synchronizer
         this.stateSynchronizer.on('stateChanged', (data) => {
             console.log('[Lobby] State synchronizer state changed:', data.type);
@@ -346,32 +348,67 @@ class LobbyManager {
     }
 
     handleStateSynchronizerUpdate(data) {
-        // Update local state from synchronizer
+        // Update local state from synchronizer - StateSynchronizer is the single source of truth
         const syncState = data.state;
         
         if (syncState.room) {
             this.room = syncState.room;
         }
         
+        // Always use StateSynchronizer's player data as the authoritative source
         if (syncState.players) {
             this.players = syncState.players;
+            console.log(`[Lobby] Updated players from StateSynchronizer (${data.type}):`, this.players.map(p => ({
+                name: p.username,
+                ready: p.isReady,
+                connected: p.isConnected
+            })));
         }
 
         // Update UI based on the change type
         switch (data.type) {
             case 'toggleReady':
             case 'playerReady':
+            case 'playerReadyStatusChanged':
                 this.updatePlayersDisplay();
                 this.updateReadyStatus();
+                // Show message for ready status changes
+                if (data.previousState && data.previousState.players) {
+                    this.showReadyStatusMessage(data.state.players, data.previousState.players);
+                }
                 break;
             case 'playerJoined':
-            case 'playerLeft':
                 this.updatePlayersDisplay();
                 this.updateTeamsDisplay();
                 this.updateControlsDisplay();
+                // Show join message
+                if (data.state.players && data.previousState && data.previousState.players) {
+                    const newPlayer = this.findNewPlayer(data.state.players, data.previousState.players);
+                    if (newPlayer) {
+                        this.addMessage(`${newPlayer.username} joined the room (${data.state.players.length}/4)`, 'info');
+                    }
+                }
+                break;
+            case 'playerLeft':
+                this.updatePlayersDisplay();
+                this.updateControlsDisplay();
+                this.updateTeamsDisplay();
+                // Show leave message
+                if (data.state.players && data.previousState && data.previousState.players) {
+                    const leftPlayer = this.findLeftPlayer(data.state.players, data.previousState.players);
+                    if (leftPlayer) {
+                        this.addMessage(`${leftPlayer.username} left the room (${data.state.players.length}/4)`, 'warning');
+                    }
+                }
                 break;
             case 'teamsFormed':
                 this.updateTeamsDisplay();
+                this.addMessage('Teams have been formed!', 'success');
+                break;
+            case 'gameStarting':
+                this.showLoading('Starting game...');
+                this.addMessage(`Game is starting! Redirecting to game page...`, 'success');
+                setTimeout(() => window.location.href = `game.html?room=${this.roomId}`, 2000);
                 break;
             case 'serverSync':
             case 'rollback':
@@ -380,6 +417,27 @@ class LobbyManager {
                 this.updateTeamsDisplay();
                 this.updateControlsDisplay();
                 this.updateReadyStatus();
+                break;
+            case 'roomUpdated':
+                this.updateRoomDisplay();
+                this.updatePlayersDisplay();
+                this.updateTeamsDisplay();
+                this.updateControlsDisplay();
+                break;
+            case 'roomJoined':
+                // Handle successful room join
+                this.isWebSocketRoomJoined = true;
+                if (this.joinRoomTimeout) {
+                    clearTimeout(this.joinRoomTimeout);
+                    this.joinRoomTimeout = null;
+                }
+                this.addMessage('Connected to real-time updates!', 'success');
+                this.updatePlayersDisplay();
+                this.updateTeamsDisplay();
+                this.updateReadyStatus();
+                break;
+            case 'roomError':
+                this.showError(data.state.message || 'An error occurred in the room');
                 break;
         }
     }
@@ -394,14 +452,49 @@ class LobbyManager {
         }
     }
 
+    // Helper method to find a new player that joined
+    findNewPlayer(currentPlayers, previousPlayers) {
+        return currentPlayers.find(current => 
+            !previousPlayers.find(prev => 
+                (prev.userId || prev.user_id || prev.id) === (current.userId || current.user_id || current.id)
+            )
+        );
+    }
+
+    // Helper method to find a player that left
+    findLeftPlayer(currentPlayers, previousPlayers) {
+        return previousPlayers.find(prev => 
+            !currentPlayers.find(current => 
+                (current.userId || current.user_id || current.id) === (prev.userId || prev.user_id || prev.id)
+            )
+        );
+    }
+
+    // Helper method to show ready status change messages
+    showReadyStatusMessage(currentPlayers, previousPlayers) {
+        currentPlayers.forEach(current => {
+            const previous = previousPlayers.find(prev => 
+                (prev.userId || prev.user_id || prev.id) === (current.userId || current.user_id || current.id)
+            );
+            
+            if (previous && previous.isReady !== current.isReady) {
+                const status = current.isReady ? 'ready' : 'not ready';
+                const readyCount = currentPlayers.filter(p => p.isReady).length;
+                const totalPlayers = currentPlayers.length;
+                const readyInfo = current.isReady && readyCount === totalPlayers ? ' - Game can start!' : ` (${readyCount}/${totalPlayers} ready)`;
+                this.addMessage(`${current.username} is now ${status}${readyInfo}`, 'info');
+            }
+        });
+    }
+
     joinRoom() {
         if (this.socketManager.isSocketConnected()) {
             console.log('[Lobby] Joining room via WebSocket:', this.roomId);
-            console.log('[Lobby] Current user:', this.currentUser);
 
             // Join the game room's socket channel with user info
             // Normalize user ID field access for consistency
             const userId = String(this.currentUser.user_id || this.currentUser.id || '');
+
             this.socketManager.emitToServer('join-game-room', {
                 gameId: this.roomId,
                 userId: userId,
@@ -447,15 +540,23 @@ class LobbyManager {
             }
 
             const data = await response.json();
-            this.room = data.room;
-            this.players = this.room.players || [];
+            
+            // Initialize StateSynchronizer with HTTP API data
+            this.stateSynchronizer.initializeRoomState({
+                room: data.room,
+                players: data.room.players || []
+            });
+            
+            // Update local references from StateSynchronizer (single source of truth)
+            this.room = this.stateSynchronizer.localState.room;
+            this.players = this.stateSynchronizer.localState.players;
 
             // Check if current user is the host using string comparison
             // Normalize user ID field access for consistency
             const currentUserId = String(this.currentUser.user_id || this.currentUser.id || '');
             this.isHost = String(this.room.owner || '') === currentUserId;
 
-            console.log(`[Lobby] Loaded room data via HTTP API - ${this.players.length} players:`, this.players.map(p => ({ id: p.user_id || p.id, name: p.username, connected: p.isConnected })));
+            console.log(`[Lobby] Loaded room data via HTTP API and initialized StateSynchronizer - ${this.players.length} players:`, this.players.map(p => ({ id: p.user_id || p.id, name: p.username, ready: p.isReady, connected: p.isConnected })));
 
             this.updateRoomDisplay();
             this.updatePlayersDisplay();
@@ -479,132 +580,9 @@ class LobbyManager {
         }
     }
 
-    handlePlayerJoined(data) {
-        if (data.gameId === this.roomId) {
-            this.players = data.players || [];
-            this.updatePlayersDisplay();
-            this.updateTeamsDisplay();
-            this.addMessage(`${data.player.username} joined the room (${data.playerCount}/4)`, 'info');
-        }
-    }
+    // Old handler methods removed - now handled through StateSynchronizer
 
-    handlePlayerLeft(data) {
-        if (data.gameId === this.roomId) {
-            this.players = data.players || [];
-            // Normalize user ID comparison for host check
-            const currentUserId = String(this.currentUser.user_id || this.currentUser.id || '');
-            this.isHost = String(data.newHostId || '') === currentUserId;
-            this.updatePlayersDisplay();
-            this.updateControlsDisplay();
-            this.updateTeamsDisplay();
-            this.addMessage(`${data.playerName || 'A player'} left the room (${data.playerCount}/4)`, 'warning');
-        }
-    }
 
-    handlePlayerDisconnected(data) {
-        if (data.gameId === this.roomId) {
-            this.players = data.players || [];
-            this.updatePlayersDisplay();
-            this.addMessage(`${data.playerName} disconnected (${data.connectedCount}/${data.playerCount} connected)`, 'warning');
-        }
-    }
-
-    handlePlayerReconnected(data) {
-        if (data.gameId === this.roomId) {
-            console.log(`[Lobby] Player ${data.playerName} reconnected`);
-            this.players = data.players || [];
-            this.updatePlayersDisplay();
-            this.updateReadyStatus(); // Update ready status since connection status changed
-            this.addMessage(`${data.playerName} reconnected`, 'success');
-        }
-    }
-
-    handlePlayerRemoved(data) {
-        if (data.gameId === this.roomId) {
-            this.players = data.players || [];
-            // Normalize user ID comparison for host check
-            const currentUserId = String(this.currentUser.user_id || this.currentUser.id || '');
-            this.isHost = String(data.newHostId || '') === currentUserId;
-            this.updatePlayersDisplay();
-            this.updateControlsDisplay();
-            this.updateTeamsDisplay();
-            this.addMessage(`${data.playerName} was removed due to ${data.reason} (${data.playerCount}/4)`, 'warning');
-        }
-    }
-
-    handleRoomUpdated(data) {
-        if (data.roomId === this.roomId) {
-            this.room = data.room;
-            this.players = this.room.players || [];
-            this.updateRoomDisplay();
-            this.updatePlayersDisplay();
-        }
-    }
-
-    handleGameStarting(data) {
-        if (data.gameId === this.roomId) {
-            this.showLoading('Starting game...');
-            this.addMessage(`Game started by ${data.startedBy}! Redirecting to game page...`, 'success');
-            setTimeout(() => window.location.href = `game.html?room=${this.roomId}`, 2000);
-        }
-    }
-
-    handleRoomError(data) {
-        this.showError(data.message || 'An error occurred in the room');
-    }
-
-    handlePlayerReadyStatusChanged(data) {
-        if (data.gameId === this.roomId) {
-            // Clear any pending fallback timeout since we got a WebSocket response
-            if (this.readyFallbackTimeout) {
-                clearTimeout(this.readyFallbackTimeout);
-                this.readyFallbackTimeout = null;
-            }
-
-            this.players = data.players || [];
-            this.updatePlayersDisplay();
-            this.updateReadyStatus();
-
-            const status = data.isReady ? 'ready' : 'not ready';
-            const readyInfo = data.canStartGame ? ' - Game can start!' : ` (${data.readyCount}/${data.totalPlayers} ready)`;
-            this.addMessage(`${data.playerName} is now ${status}${readyInfo}`, 'info');
-        }
-    }
-
-    handleTeamsFormed(data) {
-        if (data.gameId === this.roomId) {
-            this.players = data.players || [];
-            this.updatePlayersDisplay();
-            this.updateTeamsDisplay();
-            this.addMessage(`Teams formed by ${data.formedBy}!`, 'success');
-        }
-    }
-
-    handleRoomJoined(data) {
-        if (data.gameId === this.roomId) {
-            console.log('[Lobby] Successfully joined WebSocket room:', data);
-            console.log('[Lobby] Current user ID:', String(this.currentUser?.user_id || this.currentUser?.id || ''));
-            console.log('[Lobby] Players in room:', data.players?.map(p => ({ id: p.userId, name: p.username })));
-            this.isWebSocketRoomJoined = true;
-
-            // Clear the join timeout
-            if (this.joinRoomTimeout) {
-                clearTimeout(this.joinRoomTimeout);
-                this.joinRoomTimeout = null;
-            }
-
-            this.addMessage('Connected to real-time updates!', 'success');
-
-            // Update players from WebSocket data if available
-            if (data.players) {
-                console.log(`[Lobby] Updating players from WebSocket room-joined event - ${data.players.length} players:`, data.players.map(p => ({ id: p.userId, name: p.username, connected: p.isConnected })));
-                this.players = data.players;
-                this.updatePlayersDisplay();
-                this.updateTeamsDisplay();
-                this.updateReadyStatus(); // Also update ready status since player data changed
-            }
-        }
-    }
 
     updateRoomDisplay() {
         if (this.elements.gamecode && this.room) {
@@ -834,6 +812,17 @@ class LobbyManager {
             console.warn('[Lobby] Current player not found in players list');
             console.warn('[Lobby] Available player IDs:', this.players.map(p => p.userId || p.user_id || p.id));
             console.warn('[Lobby] Looking for ID:', currentUserId);
+            
+            // If current player is not found, disable the ready button and reset state
+            if (this.elements.readytogglebtn) {
+                this.elements.readytogglebtn.disabled = true;
+                const btnText = this.elements.readytogglebtn.querySelector('.btn-text');
+                if (btnText) {
+                    btnText.textContent = 'Ready Up';
+                }
+                this.isReady = false;
+                console.log('[Lobby] Ready button disabled - current player not in room');
+            }
         }
 
         if (this.isHost && this.elements.startgamebtn) {
@@ -871,6 +860,28 @@ class LobbyManager {
     async toggleReady() {
         try {
             console.log('[Lobby] Toggle ready clicked, current status:', this.isReady);
+            
+            // Check if current player exists in the room
+            const currentPlayer = this.findCurrentPlayer();
+            if (!currentPlayer) {
+                console.error('[Lobby] Cannot toggle ready - current player not found in room');
+                this.showError('You are not currently in this room. Please refresh the page.');
+                return;
+            }
+            
+            // Check if WebSocket is connected and room is joined
+            if (!this.socketManager.isSocketConnected()) {
+                console.error('[Lobby] Cannot toggle ready - WebSocket not connected');
+                this.showError('Connection lost. Please wait for reconnection.');
+                return;
+            }
+            
+            if (!this.isWebSocketRoomJoined) {
+                console.error('[Lobby] Cannot toggle ready - not joined to WebSocket room');
+                this.showError('Not connected to room. Please refresh the page.');
+                return;
+            }
+            
             const newReadyStatus = !this.isReady;
 
             // Disable button while processing
@@ -892,7 +903,7 @@ class LobbyManager {
         } finally {
             // Re-enable button after a short delay to prevent double-clicks
             setTimeout(() => {
-                if (this.elements.readytogglebtn) {
+                if (this.elements.readytogglebtn && this.findCurrentPlayer()) {
                     this.elements.readytogglebtn.disabled = false;
                     console.log('[Lobby] Button re-enabled');
                 }

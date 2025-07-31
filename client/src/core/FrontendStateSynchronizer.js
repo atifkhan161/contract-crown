@@ -100,8 +100,8 @@ export class FrontendStateSynchronizer {
             this.handleServerStateUpdate('playerLeft', data);
         });
 
-        this.socketManager.on('playerReadyStatusChanged', (data) => {
-            this.handleServerStateUpdate('playerReady', data);
+        this.socketManager.on('player-ready-changed', (data) => {
+            this.handleServerStateUpdate('playerReadyStatusChanged', data);
         });
 
         this.socketManager.on('teamsFormed', (data) => {
@@ -110,6 +110,33 @@ export class FrontendStateSynchronizer {
 
         this.socketManager.on('gameStarting', (data) => {
             this.handleServerStateUpdate('gameStarting', data);
+        });
+
+        this.socketManager.on('roomJoined', (data) => {
+            this.handleServerStateUpdate('roomJoined', data);
+        });
+
+        // Additional room events
+        this.socketManager.on('playerJoined', (data) => {
+            this.handleServerStateUpdate('playerJoined', data);
+        });
+
+        this.socketManager.on('playerLeft', (data) => {
+            this.handleServerStateUpdate('playerLeft', data);
+        });
+
+        this.socketManager.on('roomUpdated', (data) => {
+            this.handleServerStateUpdate('roomUpdated', data);
+        });
+
+        this.socketManager.on('roomError', (data) => {
+            this.handleServerStateUpdate('roomError', data);
+        });
+
+        // Listen for ready status confirmations
+        this.socketManager.on('ready-status-confirmed', (data) => {
+            console.log('[StateSynchronizer] Received ready status confirmation:', data);
+            this.handleReadyStatusConfirmation(data);
         });
     }
 
@@ -235,13 +262,10 @@ export class FrontendStateSynchronizer {
                 return false;
             }
 
-            // Request current state from server
-            this.socketManager.emitToServer('request-room-state', {
-                gameId: roomId,
-                clientVersion: this.localState.version
-            });
-
-            console.log('[StateSynchronizer] Requested state sync from server');
+            // Since the server doesn't have a request-room-state handler,
+            // we'll rely on the existing WebSocket events to keep state in sync
+            // The room join process will provide the initial state
+            console.log('[StateSynchronizer] WebSocket connected - relying on event-based sync');
             return true;
         } catch (error) {
             errorHandler.handleError(error, {
@@ -317,6 +341,32 @@ export class FrontendStateSynchronizer {
                 retryOperation: () => this.syncWithServerViaHttp()
             });
             return false;
+        }
+    }
+
+    /**
+     * Handle ready status confirmation from server
+     */
+    handleReadyStatusConfirmation(data) {
+        const { gameId, isReady, success, playerId } = data;
+        
+        // Find the matching pending operation
+        const matchingOperation = Array.from(this.pendingOperations.values()).find(op => 
+            op.operation === 'toggleReady' && 
+            op.data.roomId === gameId &&
+            op.data.isReady === isReady
+        );
+        
+        if (matchingOperation) {
+            if (success) {
+                console.log(`[StateSynchronizer] Ready status confirmed for operation ${matchingOperation.id}`);
+                this.confirmOptimisticUpdate(matchingOperation.id, data);
+            } else {
+                console.log(`[StateSynchronizer] Ready status failed for operation ${matchingOperation.id}`);
+                this.rollbackOptimisticUpdate(matchingOperation.id);
+            }
+        } else {
+            console.log('[StateSynchronizer] No matching operation found for ready status confirmation');
         }
     }
 
@@ -597,6 +647,30 @@ export class FrontendStateSynchronizer {
                         this.localState.players = data.room.players || [];
                     }
                     break;
+                case 'roomJoined':
+                    if (data.players) {
+                        console.log('[StateSynchronizer] Updating players from roomJoined event:', data.players.map(p => ({
+                            name: p.username,
+                            ready: p.isReady,
+                            connected: p.isConnected
+                        })));
+                        this.localState.players = data.players;
+                    }
+                    // Mark room as joined for WebSocket operations
+                    if (window.lobbyManager) {
+                        window.lobbyManager.isWebSocketRoomJoined = true;
+                    }
+                    break;
+                case 'playerJoined':
+                    this.applyPlayerJoinUpdate(data, false);
+                    break;
+                case 'playerLeft':
+                    this.applyPlayerLeaveUpdate(data, false);
+                    break;
+                case 'roomError':
+                    // Handle room errors
+                    console.error('[StateSynchronizer] Room error:', data);
+                    break;
                 default:
                     console.log(`[StateSynchronizer] Unknown server update type: ${eventType}`);
                     return;
@@ -858,6 +932,22 @@ export class FrontendStateSynchronizer {
         }
     }
 
+    /**
+     * Check if websocket room is joined
+     */
+    isWebSocketRoomJoined() {
+        // Check if we have a reference to the lobby manager
+        if (window.lobbyManager && typeof window.lobbyManager.isWebSocketRoomJoined === 'boolean') {
+            return window.lobbyManager.isWebSocketRoomJoined;
+        }
+        
+        // Fallback: assume joined if we have players in state and socket is connected
+        const fallbackStatus = this.socketManager.isSocketConnected() && 
+                              this.localState.players && 
+                              this.localState.players.length > 0;
+        return fallbackStatus;
+    }
+
     // Public API methods for optimistic updates
 
     /**
@@ -880,14 +970,16 @@ export class FrontendStateSynchronizer {
         });
 
         try {
-            // Try WebSocket first
-            if (this.socketManager.isSocketConnected()) {
-                this.socketManager.emitToServer('toggle-ready', {
+            // Try WebSocket first - but only if room is joined
+            if (this.socketManager.isSocketConnected() && this.isWebSocketRoomJoined()) {
+
+                this.socketManager.emitToServer('player-ready', {
                     gameId: roomId,
                     isReady
                 });
             } else {
                 // Fallback to HTTP API
+
                 await this.toggleReadyStatusViaHttp(roomId, isReady);
             }
             
@@ -896,7 +988,7 @@ export class FrontendStateSynchronizer {
             errorHandler.handleError(error, {
                 type: 'websocket',
                 operation: 'toggle-ready',
-                retryOperation: () => this.toggleReadyStatus(roomId, isReady),
+                retryOperation: () => this.toggleReadyStatus(isReady),
                 fallbackOperation: () => this.toggleReadyStatusViaHttp(roomId, isReady)
             });
             this.rollbackOptimisticUpdate(operationId);

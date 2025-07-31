@@ -247,7 +247,7 @@ class SocketManager {
         
         // Restore team assignment from database on reconnection
         try {
-          const dbConnection = require('../database/connection');
+          const dbConnection = (await import('../database/connection.js')).default;
           const [rows] = await dbConnection.query(`
             SELECT team_assignment FROM room_players WHERE room_id = ? AND user_id = ?
           `, [gameId, effectiveUserId]);
