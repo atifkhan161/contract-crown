@@ -5,12 +5,13 @@
 
 import { AuthManager } from '../core/auth.js';
 import { WaitingRoomSocketManager } from '../core/WaitingRoomSocketManager.js';
+import { WaitingRoomUI } from '../ui/WaitingRoomUI.js';
 
 class WaitingRoomManager {
     constructor() {
         this.authManager = new AuthManager();
         this.socketManager = null;
-        this.uiManager = null;
+        this.uiManager = new WaitingRoomUI();
 
         this.elements = {};
         this.currentUser = null;
@@ -193,7 +194,7 @@ class WaitingRoomManager {
 
             // Show host controls if user is host
             if (this.isHost) {
-                this.elements.hostControls.classList.remove('hidden');
+                this.uiManager.showHostControls(true, false);
             }
 
         } catch (error) {
@@ -237,19 +238,19 @@ class WaitingRoomManager {
 
         this.socketManager.on('reconnecting', (data) => {
             this.updateConnectionStatus('reconnecting');
-            this.showMessage(`Reconnecting... (attempt ${data.attempt}/${data.maxAttempts})`);
+            this.uiManager.addMessage(`Reconnecting... (attempt ${data.attempt}/${data.maxAttempts})`, 'system');
         });
 
-        this.socketManager.on('reconnected', (data) => {
-            this.showMessage('Reconnected successfully!');
+        this.socketManager.on('reconnected', () => {
+            this.uiManager.addMessage('Reconnected successfully!', 'success');
         });
 
-        this.socketManager.on('reconnect-failed', (data) => {
+        this.socketManager.on('reconnect-failed', () => {
             this.showError('Failed to reconnect. Please refresh the page.');
         });
 
         this.socketManager.on('connection-lost', () => {
-            this.showMessage('Connection lost. Attempting to reconnect...');
+            this.uiManager.addMessage('Connection lost. Attempting to reconnect...', 'error');
         });
 
         // Room events
@@ -299,7 +300,7 @@ class WaitingRoomManager {
                 this.players[playerIndex].isConnected = false;
                 this.updatePlayersDisplay();
                 const playerName = this.players[playerIndex].username || this.players[playerIndex].name;
-                this.showMessage(`${playerName} disconnected`);
+                this.uiManager.addMessage(`${playerName} disconnected`, 'system');
             }
         });
 
@@ -310,7 +311,7 @@ class WaitingRoomManager {
 
         this.socketManager.on('teams-formed', (data) => {
             console.log('[WaitingRoom] Teams formed:', data);
-            this.showMessage('Teams have been formed! Starting game...');
+            this.uiManager.addMessage('Teams have been formed! Starting game...', 'success');
         });
 
         // Error events
@@ -340,122 +341,53 @@ class WaitingRoomManager {
     }
 
     updateConnectionStatus(status) {
-        const statusElement = this.elements.statusText;
-        const indicatorElement = this.elements.statusIndicator;
-        
-        // Remove all status classes
-        indicatorElement.className = 'status-indicator';
-        
-        switch (status) {
-            case 'connected':
-                statusElement.textContent = 'Connected';
-                indicatorElement.classList.add('connected');
-                break;
-            case 'connecting':
-                statusElement.textContent = 'Connecting...';
-                indicatorElement.classList.add('connecting');
-                break;
-            case 'reconnecting':
-                statusElement.textContent = 'Reconnecting...';
-                indicatorElement.classList.add('reconnecting');
-                break;
-            case 'disconnected':
-            default:
-                statusElement.textContent = 'Disconnected';
-                indicatorElement.classList.add('disconnected');
-                break;
-        }
+        this.uiManager.updateConnectionStatus(status);
     }
 
     updateRoomDisplay() {
         if (!this.roomData) return;
 
         // Update room code display
-        this.elements.roomCode.textContent = this.roomData.id || this.roomId;
-
-        // Update players count
-        const playerCount = this.roomData.players ? this.roomData.players.length : 0;
-        this.elements.currentPlayers.textContent = playerCount;
+        this.uiManager.setRoomCode(this.roomData.id || this.roomId);
 
         // Update players list
         this.players = this.roomData.players || [];
         this.updatePlayersDisplay();
     }
     updatePlayersDisplay() {
-        // Reset all slots to empty state
-        Object.values(this.elements.playerSlots).forEach((slot, index) => {
-            const playerName = slot.querySelector('.player-name');
-            const readyText = slot.querySelector('.ready-text');
-            const readyIndicator = slot.querySelector('.ready-indicator');
-            const hostBadge = slot.querySelector('.host-badge');
+        // Prepare players data with host information
+        const playersWithHostInfo = this.players.map(player => ({
+            ...player,
+            isHost: player.id === this.roomData.owner || player.user_id === this.roomData.owner
+        }));
 
-            playerName.textContent = 'Waiting for player...';
-            readyText.textContent = 'Not Ready';
-            readyIndicator.className = 'ready-indicator';
-            hostBadge.classList.add('hidden');
-            slot.classList.remove('occupied', 'ready', 'host');
-        });
-
-        // Populate slots with current players
-        this.players.forEach((player, index) => {
-            if (index < 4) {
-                const slot = this.elements.playerSlots[index + 1];
-                const playerName = slot.querySelector('.player-name');
-                const readyText = slot.querySelector('.ready-text');
-                const readyIndicator = slot.querySelector('.ready-indicator');
-                const hostBadge = slot.querySelector('.host-badge');
-
-                playerName.textContent = player.username || player.name || 'Unknown Player';
-
-                // Update ready status
-                const isPlayerReady = player.isReady || false;
-                readyText.textContent = isPlayerReady ? 'Ready' : 'Not Ready';
-                readyIndicator.className = `ready-indicator ${isPlayerReady ? 'ready' : ''}`;
-
-                // Show host badge if this player is the host
-                const isPlayerHost = player.id === this.roomData.owner || player.user_id === this.roomData.owner;
-                if (isPlayerHost) {
-                    hostBadge.classList.remove('hidden');
-                    slot.classList.add('host');
-                }
-
-                slot.classList.add('occupied');
-                if (isPlayerReady) {
-                    slot.classList.add('ready');
-                }
-
-                // Check if this is the current user to update ready button
-                if (player.id === (this.currentUser.user_id || this.currentUser.id) ||
-                    player.user_id === (this.currentUser.user_id || this.currentUser.id)) {
-                    this.isReady = isPlayerReady;
-                    this.updateReadyButton();
-                }
-            }
-        });
+        // Update UI with player data
+        this.uiManager.updatePlayerSlots(playersWithHostInfo);
 
         // Update ready count
         const readyCount = this.players.filter(player => player.isReady).length;
-        this.elements.readyCount.textContent = readyCount;
+        this.uiManager.updateReadyStatus(readyCount, this.players.length);
+
+        // Check if current user is in the players list and update ready button
+        const currentUserId = this.currentUser.user_id || this.currentUser.id;
+        const currentPlayer = this.players.find(player =>
+            player.id === currentUserId || player.user_id === currentUserId
+        );
+
+        if (currentPlayer) {
+            this.isReady = currentPlayer.isReady || false;
+            this.updateReadyButton();
+        }
 
         // Update start game button state for host
         if (this.isHost) {
             const canStartGame = this.players.length === 4 && readyCount === 4;
-            this.elements.startGameBtn.disabled = !canStartGame;
+            this.uiManager.showHostControls(true, canStartGame);
         }
     }
 
     updateReadyButton() {
-        const btnText = this.elements.readyToggleBtn.querySelector('.btn-text');
-        if (this.isReady) {
-            btnText.textContent = 'Not Ready';
-            this.elements.readyToggleBtn.classList.add('ready');
-        } else {
-            btnText.textContent = 'Ready Up';
-            this.elements.readyToggleBtn.classList.remove('ready');
-        }
-
-        // Enable ready button once room data is loaded
-        this.elements.readyToggleBtn.disabled = false;
+        this.uiManager.updateReadyButton(this.isReady, true);
     }
 
     // Event Handlers
@@ -482,24 +414,8 @@ class WaitingRoomManager {
     }
 
     async handleCopyRoomCode() {
-        try {
-            const roomCode = this.roomData?.id || this.roomId;
-            await navigator.clipboard.writeText(roomCode);
-
-            // Show temporary feedback
-            const originalText = this.elements.copyCodeBtn.innerHTML;
-            this.elements.copyCodeBtn.innerHTML = '<span class="copy-icon">✓</span>';
-            this.elements.copyCodeBtn.style.color = '#4CAF50';
-
-            setTimeout(() => {
-                this.elements.copyCodeBtn.innerHTML = originalText;
-                this.elements.copyCodeBtn.style.color = '';
-            }, 1500);
-
-        } catch (error) {
-            console.error('[WaitingRoom] Error copying room code:', error);
-            this.showError('Failed to copy room code to clipboard.');
-        }
+        // Delegate to UI manager which handles the copy functionality
+        await this.uiManager.copyRoomCode();
     }
 
     async handleReadyToggle() {
@@ -595,7 +511,7 @@ class WaitingRoomManager {
         }
 
         this.updatePlayersDisplay();
-        this.showMessage(`${playerData.username || playerData.name} joined the room`);
+        this.uiManager.addMessage(`${playerData.username || playerData.name} joined the room`, 'system');
     }
 
     handlePlayerLeave(playerId) {
@@ -609,7 +525,7 @@ class WaitingRoomManager {
             const playerName = this.players[playerIndex].username || this.players[playerIndex].name;
             this.players.splice(playerIndex, 1);
             this.updatePlayersDisplay();
-            this.showMessage(`${playerName} left the room`);
+            this.uiManager.addMessage(`${playerName} left the room`, 'system');
         }
     }
 
@@ -632,13 +548,13 @@ class WaitingRoomManager {
             }
 
             this.updatePlayersDisplay();
-            this.showMessage(`${playerName} is ${isReady ? 'ready' : 'not ready'}`);
+            this.uiManager.addMessage(`${playerName} is ${isReady ? 'ready' : 'not ready'}`, 'system');
         }
     }
 
     handleGameStart(data) {
         console.log('[WaitingRoom] Game starting:', data);
-        this.showMessage('Game is starting! Redirecting...');
+        this.uiManager.addMessage('Game is starting! Redirecting...', 'success');
 
         // Use redirect URL from server if provided, otherwise construct it
         const redirectUrl = data?.redirectUrl || `game.html?room=${this.roomId}`;
@@ -673,6 +589,11 @@ class WaitingRoomManager {
                 this.socketManager = null;
             }
 
+            // Cleanup UI manager
+            if (this.uiManager) {
+                this.uiManager.cleanup();
+            }
+
             // Clear any timers or intervals
             if (this.reconnectTimer) {
                 clearTimeout(this.reconnectTimer);
@@ -698,57 +619,31 @@ class WaitingRoomManager {
 
     // UI Helper Methods
     showLoading(show, message = 'Loading...') {
-        const loadingText = document.getElementById('loading-text');
-        if (loadingText) {
-            loadingText.textContent = message;
-        }
-
         if (show) {
-            this.elements.loadingOverlay.classList.remove('hidden');
+            this.uiManager.showLoading(message);
         } else {
-            this.elements.loadingOverlay.classList.add('hidden');
+            this.uiManager.hideLoading();
         }
     }
 
     setStartGameLoading(loading) {
         if (loading) {
-            this.elements.startGameBtn.disabled = true;
-            this.elements.startSpinner.classList.remove('hidden');
-            const btnText = this.elements.startGameBtn.querySelector('.btn-text');
-            btnText.textContent = 'Starting...';
+            this.uiManager.showStartGameLoading();
         } else {
-            this.elements.startGameBtn.disabled = false;
-            this.elements.startSpinner.classList.add('hidden');
-            const btnText = this.elements.startGameBtn.querySelector('.btn-text');
-            btnText.textContent = 'Start Game';
+            this.uiManager.hideStartGameLoading();
         }
     }
 
     showError(message) {
-        this.elements.errorMessage.textContent = message;
-        this.elements.errorModal.classList.remove('hidden');
+        this.uiManager.displayError(message);
     }
 
     hideErrorModal() {
-        this.elements.errorModal.classList.add('hidden');
+        this.uiManager.hideError();
     }
 
     showMessage(message) {
-        const messageElement = document.createElement('div');
-        messageElement.className = 'game-message';
-        messageElement.textContent = message;
-
-        this.elements.gameMessages.appendChild(messageElement);
-
-        // Auto-remove message after 5 seconds
-        setTimeout(() => {
-            if (messageElement.parentNode) {
-                messageElement.parentNode.removeChild(messageElement);
-            }
-        }, 5000);
-
-        // Scroll to bottom of messages
-        this.elements.gameMessages.scrollTop = this.elements.gameMessages.scrollHeight;
+        this.uiManager.addMessage(message, 'system');
     }
 }
 
