@@ -184,10 +184,15 @@ router.post('/:roomId/leave', auth, async (req, res) => {
             });
         }
 
+        const wasHost = String(room.owner_id) === String(userId);
+        
         // Remove player from room
         await room.removePlayer(userId);
 
         // Update WebSocket room if available
+        let hostTransferred = false;
+        let newHostId = null;
+        
         if (req.io && req.io.socketManager && req.io.socketManager.gameRooms.has(roomId)) {
             const wsRoom = req.io.socketManager.gameRooms.get(roomId);
             wsRoom.players.delete(userId);
@@ -196,14 +201,30 @@ router.post('/:roomId/leave', auth, async (req, res) => {
             wsRoom.teams.team1 = wsRoom.teams.team1.filter(id => id !== userId);
             wsRoom.teams.team2 = wsRoom.teams.team2.filter(id => id !== userId);
 
-            // Transfer host if needed
-            let newHostId = wsRoom.hostId;
+            // Enhanced host transfer logic
             if (String(wsRoom.hostId) === String(userId) && wsRoom.players.size > 0) {
-                newHostId = String(Array.from(wsRoom.players.keys())[0]);
-                wsRoom.hostId = newHostId;
+                // Prioritize connected players for host transfer
+                const connectedPlayers = Array.from(wsRoom.players.values()).filter(p => p.isConnected);
+                const readyPlayers = connectedPlayers.filter(p => p.isReady);
+                
+                // Prefer ready players, then connected players, then any player
+                let newHost = null;
+                if (readyPlayers.length > 0) {
+                    newHost = readyPlayers[0];
+                } else if (connectedPlayers.length > 0) {
+                    newHost = connectedPlayers[0];
+                } else {
+                    newHost = Array.from(wsRoom.players.values())[0];
+                }
+                
+                if (newHost) {
+                    newHostId = String(newHost.userId);
+                    wsRoom.hostId = newHostId;
+                    hostTransferred = true;
+                }
             }
 
-            // Broadcast leave via WebSocket
+            // Broadcast leave via WebSocket with enhanced data
             req.io.to(roomId).emit('waiting-room-player-left-http', {
                 roomId,
                 playerId: userId,
@@ -211,19 +232,43 @@ router.post('/:roomId/leave', auth, async (req, res) => {
                 players: Array.from(wsRoom.players.values()),
                 newHostId,
                 playerCount: wsRoom.players.size,
+                wasHost,
+                hostTransferred,
                 source: 'http_fallback',
                 timestamp: new Date().toISOString()
             });
 
+            // Send host transfer notification if applicable
+            if (hostTransferred && newHostId) {
+                const newHost = wsRoom.players.get(newHostId);
+                if (newHost) {
+                    req.io.to(roomId).emit('waiting-room-host-transferred-http', {
+                        roomId,
+                        previousHostId: userId,
+                        previousHostName: req.user.username,
+                        newHostId,
+                        newHostName: newHost.username,
+                        reason: 'previous_host_left',
+                        source: 'http_fallback',
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            }
+
             // Clean up empty rooms
             if (wsRoom.players.size === 0) {
                 req.io.socketManager.gameRooms.delete(roomId);
+                console.log(`[WaitingRoom API] Cleaned up empty WebSocket room: ${roomId}`);
             }
         }
 
         res.json({
             success: true,
-            message: 'Left waiting room successfully'
+            message: 'Left waiting room successfully',
+            wasHost,
+            hostTransferred,
+            newHostId,
+            remainingPlayers: room.players.length
         });
     } catch (error) {
         console.error('[WaitingRoom API] Error leaving room:', error);

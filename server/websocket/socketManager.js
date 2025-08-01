@@ -1558,17 +1558,26 @@ class SocketManager {
         player.isConnected = false;
         player.disconnectedAt = new Date().toISOString();
 
-        // Update game state for disconnection
-        this.gameStateManager.handlePlayerDisconnection(gameId, userId);
+        // Handle waiting room disconnections differently from game disconnections
+        if (room.status === 'waiting') {
+          // Notify waiting room handler about disconnection
+          this.waitingRoomHandler.handlePlayerDisconnected(socket, {
+            roomId: gameId,
+            userId: userId
+          });
+        } else {
+          // Update game state for disconnection in active games
+          this.gameStateManager.handlePlayerDisconnection(gameId, userId);
 
-        console.log(`[WebSocket] Player ${username} disconnected from game ${gameId}`);
+          // Set up cleanup timer for disconnected players (remove after 5 minutes for games)
+          setTimeout(() => {
+            if (room.players.has(userId) && !room.players.get(userId).isConnected) {
+              this.handlePlayerTimeout(gameId, userId, username);
+            }
+          }, 5 * 60 * 1000); // 5 minutes for games
+        }
 
-        // Set up cleanup timer for disconnected players (remove after 5 minutes)
-        setTimeout(() => {
-          if (room.players.has(userId) && !room.players.get(userId).isConnected) {
-            this.handlePlayerTimeout(gameId, userId, username);
-          }
-        }, 5 * 60 * 1000); // 5 minutes
+        console.log(`[WebSocket] Player ${username} disconnected from ${room.status === 'waiting' ? 'waiting room' : 'game'} ${gameId}`);
       }
     }
   }

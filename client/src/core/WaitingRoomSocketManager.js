@@ -197,6 +197,16 @@ export class WaitingRoomSocketManager {
             this.emit('player-left', data);
         });
 
+        this.socket.on('waiting-room-host-transferred', (data) => {
+            console.log('[WaitingRoomSocketManager] Host transferred:', data);
+            this.emit('host-transferred', data);
+        });
+
+        this.socket.on('waiting-room-left', (data) => {
+            console.log('[WaitingRoomSocketManager] Left room confirmation:', data);
+            this.emit('room-left', data);
+        });
+
         this.socket.on('waiting-room-ready-changed', (data) => {
             console.log('[WaitingRoomSocketManager] Player ready status changed:', data);
             this.emit('player-ready-changed', data);

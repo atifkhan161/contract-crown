@@ -281,7 +281,11 @@ class WaitingRoomManager {
         });
 
         this.socketManager.on('player-left', (data) => {
-            this.handlePlayerLeave(data.playerId || data.userId);
+            this.handlePlayerLeave(data);
+        });
+
+        this.socketManager.on('host-transferred', (data) => {
+            this.handleHostTransfer(data);
         });
 
         this.socketManager.on('player-ready-changed', (data) => {
@@ -475,24 +479,113 @@ class WaitingRoomManager {
 
     // Event Handlers
     async handleLeaveRoom() {
-        if (confirm('Are you sure you want to leave the room?')) {
+        const isHost = this.isHost;
+        const playerCount = this.players.filter(p => p.isConnected !== false).length;
+        
+        // Enhanced confirmation message for hosts
+        let confirmMessage = 'Are you sure you want to leave the room?';
+        if (isHost && playerCount > 1) {
+            confirmMessage = 'You are the host. If you leave, host privileges will be transferred to another player. Are you sure you want to leave?';
+        } else if (isHost && playerCount === 1) {
+            confirmMessage = 'You are the only player in the room. Leaving will close the room. Are you sure?';
+        }
+        
+        if (confirm(confirmMessage)) {
             try {
                 this.showLoading(true, 'Leaving room...');
 
+                // Set up leave confirmation handler
+                const leaveConfirmationHandler = (data) => {
+                    console.log('[WaitingRoom] Leave confirmation received:', data);
+                    if (data.success) {
+                        this.uiManager.addMessage('Successfully left the room', 'success');
+                        setTimeout(async () => {
+                            await this.cleanup();
+                            window.location.href = 'dashboard.html';
+                        }, 1000);
+                    } else {
+                        this.showError('Failed to leave room properly, but redirecting anyway...');
+                        setTimeout(async () => {
+                            await this.cleanup();
+                            window.location.href = 'dashboard.html';
+                        }, 2000);
+                    }
+                };
+
+                // Set up error handler
+                const leaveErrorHandler = (error) => {
+                    console.error('[WaitingRoom] Leave error:', error);
+                    this.showError('Failed to leave room cleanly, but redirecting anyway...');
+                    setTimeout(async () => {
+                        await this.cleanup();
+                        window.location.href = 'dashboard.html';
+                    }, 2000);
+                };
+
                 // Leave room via socket if connected
                 if (this.socketManager && this.socketManager.isReady()) {
+                    // Set up one-time listeners for leave response
+                    this.socketManager.socket.once('waiting-room-left', leaveConfirmationHandler);
+                    this.socketManager.socket.once('waiting-room-error', leaveErrorHandler);
+                    
                     this.socketManager.leaveRoom();
+                    
+                    // Fallback timeout in case no response
+                    setTimeout(() => {
+                        this.socketManager.socket.off('waiting-room-left', leaveConfirmationHandler);
+                        this.socketManager.socket.off('waiting-room-error', leaveErrorHandler);
+                        console.warn('[WaitingRoom] Leave response timeout, redirecting anyway');
+                        this.cleanup().then(() => {
+                            window.location.href = 'dashboard.html';
+                        });
+                    }, 5000);
+                } else {
+                    // Fallback to HTTP API if socket not available
+                    console.warn('[WaitingRoom] Socket not available, using HTTP fallback for leave');
+                    await this.leaveRoomViaAPI();
                 }
-
-                // Clean up and redirect
-                await this.cleanup();
-                window.location.href = 'dashboard.html';
 
             } catch (error) {
                 console.error('[WaitingRoom] Error leaving room:', error);
                 this.showError('Failed to leave room. Please try again.');
                 this.showLoading(false);
             }
+        }
+    }
+
+    /**
+     * Fallback method to leave room via HTTP API
+     */
+    async leaveRoomViaAPI() {
+        try {
+            const token = this.authManager.getToken();
+            const response = await fetch(`/api/waiting-rooms/${this.roomId}/leave`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to leave room');
+            }
+
+            const result = await response.json();
+            console.log('[WaitingRoom] Left room via HTTP API:', result);
+            
+            this.uiManager.addMessage('Successfully left the room', 'success');
+            
+            // Clean up and redirect
+            setTimeout(async () => {
+                await this.cleanup();
+                window.location.href = 'dashboard.html';
+            }, 1000);
+
+        } catch (error) {
+            console.error('[WaitingRoom] HTTP API leave failed:', error);
+            throw error;
         }
     }
 
@@ -753,19 +846,107 @@ class WaitingRoomManager {
         this.uiManager.addMessage(`${playerData.username || playerData.name} joined the room`, 'system');
     }
 
-    handlePlayerLeave(playerId) {
-        console.log('[WaitingRoom] Player left:', playerId);
+    handlePlayerLeave(data) {
+        const playerId = data.playerId || data.userId;
+        const playerName = data.playerName || 'Unknown Player';
+        
+        console.log('[WaitingRoom] Player left:', { playerId, playerName, data });
 
-        const playerIndex = this.players.findIndex(player =>
-            player.id === playerId || player.user_id === playerId
-        );
+        // Update players list from server data if available
+        if (data.players && Array.isArray(data.players)) {
+            this.players = data.players.map(p => ({
+                id: p.userId || p.id,
+                user_id: p.userId || p.id,
+                username: p.username,
+                isReady: p.isReady || false,
+                teamAssignment: p.teamAssignment || null,
+                isConnected: p.isConnected !== false
+            }));
+        } else {
+            // Fallback: remove player from local list
+            const playerIndex = this.players.findIndex(player =>
+                player.id === playerId || player.user_id === playerId
+            );
 
-        if (playerIndex !== -1) {
-            const playerName = this.players[playerIndex].username || this.players[playerIndex].name;
-            this.players.splice(playerIndex, 1);
-            this.updatePlayersDisplay();
+            if (playerIndex !== -1) {
+                this.players.splice(playerIndex, 1);
+            }
+        }
+
+        // Handle host transfer
+        if (data.hostTransferred && data.newHostId) {
+            const currentUserId = this.currentUser.user_id || this.currentUser.id;
+            const wasCurrentUserHost = this.isHost;
+            
+            // Update room owner
+            if (this.roomData) {
+                this.roomData.owner = data.newHostId;
+            }
+            
+            // Update local host status
+            this.isHost = String(data.newHostId) === String(currentUserId);
+            
+            // Show/hide host controls based on new status
+            const gameStartInfo = this.calculateGameStartEligibility();
+            this.uiManager.showHostControls(this.isHost, gameStartInfo.canStart);
+            
+            // Add appropriate message
+            if (data.wasHost) {
+                if (this.isHost) {
+                    this.uiManager.addMessage(`${playerName} (host) left. You are now the host!`, 'success');
+                } else {
+                    const newHost = this.players.find(p => 
+                        (p.id === data.newHostId || p.user_id === data.newHostId)
+                    );
+                    const newHostName = newHost ? newHost.username : 'Unknown';
+                    this.uiManager.addMessage(`${playerName} (host) left. ${newHostName} is now the host.`, 'system');
+                }
+            } else {
+                this.uiManager.addMessage(`${playerName} left the room`, 'system');
+            }
+        } else {
             this.uiManager.addMessage(`${playerName} left the room`, 'system');
         }
+
+        // Update display with new player count and ready status
+        this.updatePlayersDisplay();
+        
+        // Update host info if current user is host
+        if (this.isHost) {
+            const gameStartInfo = this.calculateGameStartEligibility();
+            this.updateHostInfoText(gameStartInfo);
+        }
+    }
+
+    handleHostTransfer(data) {
+        console.log('[WaitingRoom] Host transfer event:', data);
+        
+        const currentUserId = this.currentUser.user_id || this.currentUser.id;
+        const wasHost = this.isHost;
+        
+        // Update room owner
+        if (this.roomData) {
+            this.roomData.owner = data.newHostId;
+        }
+        
+        // Update local host status
+        this.isHost = String(data.newHostId) === String(currentUserId);
+        
+        // Show/hide host controls
+        const gameStartInfo = this.calculateGameStartEligibility();
+        this.uiManager.showHostControls(this.isHost, gameStartInfo.canStart);
+        
+        // Add appropriate message
+        if (this.isHost && !wasHost) {
+            this.uiManager.addMessage(`You are now the host! You can start the game when all players are ready.`, 'success');
+        } else if (!this.isHost && wasHost) {
+            this.uiManager.addMessage(`Host privileges transferred to ${data.newHostName}`, 'system');
+        } else {
+            this.uiManager.addMessage(`${data.newHostName} is now the host`, 'system');
+        }
+        
+        // Update players display to show new host badge
+        this.updatePlayersDisplay();
     }
 
     handleReadyStatusChange(playerId, isReady) {

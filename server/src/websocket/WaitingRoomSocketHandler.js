@@ -166,6 +166,9 @@ class WaitingRoomSocketHandler {
 
             const room = this.socketManager.gameRooms.get(roomId);
             if (room && room.players.has(userId)) {
+                const leavingPlayer = room.players.get(userId);
+                const wasHost = String(room.hostId) === String(userId);
+                
                 // Remove player from room
                 room.players.delete(userId);
 
@@ -173,40 +176,102 @@ class WaitingRoomSocketHandler {
                 room.teams.team1 = room.teams.team1.filter(id => id !== userId);
                 room.teams.team2 = room.teams.team2.filter(id => id !== userId);
 
-                // Transfer host if the leaving player was the host
+                // Enhanced host transfer logic
                 let newHostId = room.hostId;
-                if (String(room.hostId) === String(userId) && room.players.size > 0) {
-                    newHostId = String(Array.from(room.players.keys())[0]);
-                    room.hostId = newHostId;
+                let hostTransferred = false;
+                
+                if (wasHost && room.players.size > 0) {
+                    // Prioritize connected players for host transfer
+                    const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
+                    const readyPlayers = connectedPlayers.filter(p => p.isReady);
+                    
+                    // Prefer ready players, then connected players, then any player
+                    let newHost = null;
+                    if (readyPlayers.length > 0) {
+                        newHost = readyPlayers[0];
+                    } else if (connectedPlayers.length > 0) {
+                        newHost = connectedPlayers[0];
+                    } else {
+                        newHost = Array.from(room.players.values())[0];
+                    }
+                    
+                    if (newHost) {
+                        newHostId = String(newHost.userId);
+                        room.hostId = newHostId;
+                        hostTransferred = true;
+                        console.log(`[WaitingRoom] Host transferred from ${userId} to ${newHostId} in room ${roomId}`);
+                    }
                 }
 
-                console.log(`[WaitingRoom] ${username} left room: ${roomId}`);
+                console.log(`[WaitingRoom] ${username} left room: ${roomId} (was host: ${wasHost}, host transferred: ${hostTransferred})`);
 
-                // Update database
+                // Update database with enhanced error handling
+                let dbUpdateSuccess = false;
                 try {
                     const dbRoom = await Room.findById(roomId);
                     if (dbRoom) {
                         await dbRoom.removePlayer(userId);
+                        dbUpdateSuccess = true;
+                        
+                        // Update host in database if transferred
+                        if (hostTransferred && newHostId !== room.hostId) {
+                            try {
+                                await dbRoom.updateWithVersionControl({ owner_id: newHostId });
+                                console.log(`[WaitingRoom] Database host updated to ${newHostId} for room ${roomId}`);
+                            } catch (hostUpdateError) {
+                                console.error('[WaitingRoom] Failed to update host in database:', hostUpdateError);
+                            }
+                        }
                     }
                 } catch (dbError) {
                     console.error('[WaitingRoom] Database update failed on leave:', dbError);
                 }
 
-                // Broadcast player left to remaining players
-                this.broadcastPlayerLeft(roomId, userId, username, room, newHostId);
+                // Clean up socket mappings
+                this.socketManager.userSockets.delete(userId);
+                this.socketManager.socketUsers.delete(socket.id);
+
+                // Broadcast player left to remaining players with enhanced data
+                this.broadcastPlayerLeft(roomId, userId, username, room, newHostId, {
+                    wasHost,
+                    hostTransferred,
+                    dbUpdateSuccess,
+                    remainingPlayers: room.players.size
+                });
 
                 // Clean up empty rooms
                 if (room.players.size === 0) {
                     this.socketManager.gameRooms.delete(roomId);
                     console.log(`[WaitingRoom] Cleaned up empty room: ${roomId}`);
+                    
+                    // Optionally clean up database room if empty
+                    try {
+                        const dbRoom = await Room.findById(roomId);
+                        if (dbRoom && dbRoom.players.length === 0) {
+                            await dbRoom.delete();
+                            console.log(`[WaitingRoom] Deleted empty room from database: ${roomId}`);
+                        }
+                    } catch (cleanupError) {
+                        console.error('[WaitingRoom] Failed to cleanup empty room from database:', cleanupError);
+                    }
                 }
             }
 
-            socket.emit('waiting-room-left', { roomId, timestamp: new Date().toISOString() });
+            // Send confirmation to leaving player
+            socket.emit('waiting-room-left', { 
+                roomId, 
+                success: true,
+                message: 'Successfully left the room',
+                timestamp: new Date().toISOString() 
+            });
 
         } catch (error) {
             console.error('[WaitingRoom] Error leaving waiting room:', error);
-            socket.emit('waiting-room-error', { message: 'Failed to leave waiting room' });
+            socket.emit('waiting-room-error', { 
+                message: 'Failed to leave waiting room',
+                code: 'LEAVE_ROOM_ERROR',
+                details: error.message 
+            });
         }
     }
 
@@ -458,14 +523,128 @@ class WaitingRoomSocketHandler {
             const room = this.socketManager.gameRooms.get(roomId);
             if (room && room.players.has(disconnectedUserId)) {
                 const player = room.players.get(disconnectedUserId);
+                const wasHost = String(room.hostId) === String(disconnectedUserId);
+                
                 player.isConnected = false;
                 player.disconnectedAt = new Date().toISOString();
 
                 // Broadcast disconnection to other players
                 this.broadcastPlayerDisconnected(roomId, disconnectedUserId, player.username, room);
+
+                // Set up cleanup timer for disconnected players (remove after 2 minutes in waiting room)
+                setTimeout(() => {
+                    this.handleDisconnectedPlayerCleanup(roomId, disconnectedUserId, player.username, wasHost);
+                }, 2 * 60 * 1000); // 2 minutes timeout for waiting room
             }
         } catch (error) {
             console.error('[WaitingRoom] Error handling player disconnection:', error);
+        }
+    }
+
+    /**
+     * Handle cleanup of disconnected players after timeout
+     */
+    async handleDisconnectedPlayerCleanup(roomId, userId, username, wasHost) {
+        try {
+            const room = this.socketManager.gameRooms.get(roomId);
+            if (!room || !room.players.has(userId)) {
+                return; // Player already removed or room doesn't exist
+            }
+
+            const player = room.players.get(userId);
+            if (player.isConnected) {
+                return; // Player reconnected, no cleanup needed
+            }
+
+            console.log(`[WaitingRoom] Cleaning up disconnected player ${username} from room ${roomId} after timeout`);
+
+            // Remove player from room
+            room.players.delete(userId);
+
+            // Remove player from teams if assigned
+            room.teams.team1 = room.teams.team1.filter(id => id !== userId);
+            room.teams.team2 = room.teams.team2.filter(id => id !== userId);
+
+            // Enhanced host transfer logic if the disconnected player was host
+            let newHostId = room.hostId;
+            let hostTransferred = false;
+            
+            if (wasHost && room.players.size > 0) {
+                // Prioritize connected players for host transfer
+                const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
+                const readyPlayers = connectedPlayers.filter(p => p.isReady);
+                
+                // Prefer ready players, then connected players, then any player
+                let newHost = null;
+                if (readyPlayers.length > 0) {
+                    newHost = readyPlayers[0];
+                } else if (connectedPlayers.length > 0) {
+                    newHost = connectedPlayers[0];
+                } else {
+                    newHost = Array.from(room.players.values())[0];
+                }
+                
+                if (newHost) {
+                    newHostId = String(newHost.userId);
+                    room.hostId = newHostId;
+                    hostTransferred = true;
+                    console.log(`[WaitingRoom] Host transferred from disconnected ${userId} to ${newHostId} in room ${roomId}`);
+                }
+            }
+
+            // Update database
+            let dbUpdateSuccess = false;
+            try {
+                const dbRoom = await Room.findById(roomId);
+                if (dbRoom) {
+                    await dbRoom.removePlayer(userId);
+                    dbUpdateSuccess = true;
+                    
+                    // Update host in database if transferred
+                    if (hostTransferred && newHostId !== room.hostId) {
+                        try {
+                            await dbRoom.updateWithVersionControl({ owner_id: newHostId });
+                            console.log(`[WaitingRoom] Database host updated to ${newHostId} for room ${roomId} after cleanup`);
+                        } catch (hostUpdateError) {
+                            console.error('[WaitingRoom] Failed to update host in database during cleanup:', hostUpdateError);
+                        }
+                    }
+                }
+            } catch (dbError) {
+                console.error('[WaitingRoom] Database update failed during cleanup:', dbError);
+            }
+
+            // Clean up socket mappings
+            this.socketManager.userSockets.delete(userId);
+
+            // Broadcast player removal to remaining players
+            this.broadcastPlayerLeft(roomId, userId, username, room, newHostId, {
+                wasHost,
+                hostTransferred,
+                dbUpdateSuccess,
+                remainingPlayers: room.players.size,
+                reason: 'disconnection_timeout'
+            });
+
+            // Clean up empty rooms
+            if (room.players.size === 0) {
+                this.socketManager.gameRooms.delete(roomId);
+                console.log(`[WaitingRoom] Cleaned up empty room after disconnection timeout: ${roomId}`);
+                
+                // Clean up database room if empty
+                try {
+                    const dbRoom = await Room.findById(roomId);
+                    if (dbRoom && dbRoom.players.length === 0) {
+                        await dbRoom.delete();
+                        console.log(`[WaitingRoom] Deleted empty room from database after cleanup: ${roomId}`);
+                    }
+                } catch (cleanupError) {
+                    console.error('[WaitingRoom] Failed to cleanup empty room from database:', cleanupError);
+                }
+            }
+
+        } catch (error) {
+            console.error('[WaitingRoom] Error during disconnected player cleanup:', error);
         }
     }
 
@@ -650,8 +829,9 @@ class WaitingRoomSocketHandler {
         });
     }
 
-    broadcastPlayerLeft(roomId, playerId, playerName, room, newHostId) {
+    broadcastPlayerLeft(roomId, playerId, playerName, room, newHostId, metadata = {}) {
         const roomPlayers = this.getRoomPlayersArray(room);
+        const gameStartInfo = this.calculateGameStartEligibility(room);
 
         this.io.to(roomId).emit('waiting-room-player-left', {
             roomId,
@@ -661,8 +841,32 @@ class WaitingRoomSocketHandler {
             teams: this.getTeamsForBroadcast(room),
             newHostId,
             playerCount: room.players.size,
+            connectedPlayers: gameStartInfo.totalConnected,
+            readyCount: gameStartInfo.readyCount,
+            canStartGame: gameStartInfo.canStartGame,
+            gameStartReason: gameStartInfo.reason,
+            hostTransferred: metadata.hostTransferred || false,
+            wasHost: metadata.wasHost || false,
+            dbUpdateSuccess: metadata.dbUpdateSuccess || false,
+            remainingPlayers: metadata.remainingPlayers || room.players.size,
             timestamp: new Date().toISOString()
         });
+
+        // Send specific host transfer notification if applicable
+        if (metadata.hostTransferred && newHostId) {
+            const newHost = room.players.get(newHostId);
+            if (newHost) {
+                this.io.to(roomId).emit('waiting-room-host-transferred', {
+                    roomId,
+                    previousHostId: playerId,
+                    previousHostName: playerName,
+                    newHostId,
+                    newHostName: newHost.username,
+                    reason: 'previous_host_left',
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
     }
 
     broadcastPlayerReconnected(roomId, playerId, playerName, room) {

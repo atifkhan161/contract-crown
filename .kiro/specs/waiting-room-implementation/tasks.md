@@ -97,7 +97,10 @@
   - Implement simultaneous navigation commands for all players
   - _Requirements: 5.3, 5.4, 5.5, 6.4_
 
-- [ ] 10. Add player leave and host transfer functionality
+- [x] 10. Add player leave and host transfer functionality
+
+
+
 
   - Implement leave room functionality with proper cleanup
   - Add host privilege transfer when host leaves
@@ -106,6 +109,7 @@
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
 
 - [ ] 11. Implement connection status and error handling
+
   - Add WebSocket connection status indicators with color coding
   - Create reconnection handling with exponential backoff
   - Implement fallback to HTTP polling for critical updates
