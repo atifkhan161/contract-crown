@@ -10,7 +10,7 @@ export class WaitingRoomSocketManager {
         this.roomId = roomId;
         this.socket = null;
         this.eventListeners = new Map();
-        
+
         // Connection state
         this.isConnected = false;
         this.connectionStatus = 'disconnected'; // disconnected, connecting, connected, reconnecting
@@ -18,16 +18,16 @@ export class WaitingRoomSocketManager {
         this.maxReconnectAttempts = 5;
         this.baseReconnectDelay = 1000;
         this.reconnectTimer = null;
-        
+
         // Room state
         this.currentUser = null;
         this.isJoined = false;
-        
+
         // Heartbeat for connection monitoring
         this.heartbeatInterval = null;
         this.heartbeatTimeout = null;
         this.lastPongReceived = null;
-        
+
         console.log('[WaitingRoomSocketManager] Initialized for room:', roomId);
     }
 
@@ -59,13 +59,16 @@ export class WaitingRoomSocketManager {
                     },
                     transports: ['websocket', 'polling'],
                     timeout: 20000,
-                    reconnection: false, // We'll handle reconnection manually
-                    forceNew: true
+                    reconnection: true, // Enable automatic reconnection
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000,
+                    reconnectionDelayMax: 5000,
+                    forceNew: false // Don't force new connection unless necessary
                 });
 
                 // Set up connection event handlers
                 this.setupConnectionHandlers(resolve, reject);
-                
+
                 // Set up waiting room specific event handlers
                 this.setupWaitingRoomEventHandlers();
 
@@ -88,10 +91,10 @@ export class WaitingRoomSocketManager {
             this.isConnected = true;
             this.reconnectAttempts = 0;
             this.updateConnectionStatus('connected');
-            
+
             // Start heartbeat monitoring
             this.startHeartbeat();
-            
+
             // Auto-join the waiting room
             this.joinRoom().then(() => {
                 resolve();
@@ -106,11 +109,12 @@ export class WaitingRoomSocketManager {
             this.isConnected = false;
             this.isJoined = false;
             this.stopHeartbeat();
-            
+
             this.emit('disconnect', { reason });
-            
-            // Attempt reconnection unless it was a manual disconnect
-            if (reason !== 'io client disconnect') {
+
+            // Only attempt manual reconnection for specific reasons
+            // Let Socket.IO handle automatic reconnection for most cases
+            if (reason === 'io server disconnect' || reason === 'ping timeout') {
                 this.handleReconnection();
             } else {
                 this.updateConnectionStatus('disconnected');
@@ -121,7 +125,7 @@ export class WaitingRoomSocketManager {
             console.error('[WaitingRoomSocketManager] Connection error:', error);
             this.isConnected = false;
             this.updateConnectionStatus('disconnected');
-            
+
             if (this.reconnectAttempts === 0) {
                 // First connection attempt failed
                 reject(error);
@@ -143,6 +147,39 @@ export class WaitingRoomSocketManager {
             this.lastPongReceived = Date.now();
             console.log('[WaitingRoomSocketManager] Heartbeat pong received');
         });
+
+        // Handle automatic reconnection events
+        this.socket.on('reconnect', (attemptNumber) => {
+            console.log('[WaitingRoomSocketManager] Socket.IO automatic reconnection successful:', attemptNumber);
+            this.isConnected = true;
+            this.reconnectAttempts = 0;
+            this.updateConnectionStatus('connected');
+
+            // Re-join the room after reconnection
+            this.joinRoom().then(() => {
+                this.emit('reconnected', { attempts: attemptNumber });
+            }).catch((error) => {
+                console.error('[WaitingRoomSocketManager] Failed to rejoin room after reconnection:', error);
+            });
+        });
+
+        this.socket.on('reconnect_attempt', (attemptNumber) => {
+            console.log('[WaitingRoomSocketManager] Socket.IO reconnection attempt:', attemptNumber);
+            this.updateConnectionStatus('reconnecting');
+        });
+
+        this.socket.on('reconnect_error', (error) => {
+            console.error('[WaitingRoomSocketManager] Socket.IO reconnection error:', error);
+        });
+
+        this.socket.on('reconnect_failed', () => {
+            console.error('[WaitingRoomSocketManager] Socket.IO reconnection failed');
+            this.updateConnectionStatus('disconnected');
+            this.emit('reconnect-failed', {
+                attempts: this.socket.io.reconnectionAttempts,
+                maxAttempts: this.socket.io.reconnectionAttempts
+            });
+        });
     }
 
     /**
@@ -150,45 +187,50 @@ export class WaitingRoomSocketManager {
      */
     setupWaitingRoomEventHandlers() {
         // Player events
-        this.socket.on('player-joined', (data) => {
+        this.socket.on('waiting-room-player-joined', (data) => {
             console.log('[WaitingRoomSocketManager] Player joined:', data);
             this.emit('player-joined', data);
         });
 
-        this.socket.on('player-left', (data) => {
+        this.socket.on('waiting-room-player-left', (data) => {
             console.log('[WaitingRoomSocketManager] Player left:', data);
             this.emit('player-left', data);
         });
 
-        this.socket.on('player-ready-changed', (data) => {
+        this.socket.on('waiting-room-ready-changed', (data) => {
             console.log('[WaitingRoomSocketManager] Player ready status changed:', data);
             this.emit('player-ready-changed', data);
         });
 
-        this.socket.on('player-disconnected', (data) => {
+        this.socket.on('waiting-room-player-disconnected', (data) => {
             console.log('[WaitingRoomSocketManager] Player disconnected:', data);
             this.emit('player-disconnected', data);
         });
 
+        this.socket.on('waiting-room-player-reconnected', (data) => {
+            console.log('[WaitingRoomSocketManager] Player reconnected:', data);
+            this.emit('player-reconnected', data);
+        });
+
         // Room events
-        this.socket.on('room-joined', (data) => {
+        this.socket.on('waiting-room-joined', (data) => {
             console.log('[WaitingRoomSocketManager] Room joined successfully:', data);
             this.isJoined = true;
             this.emit('room-joined', data);
         });
 
-        this.socket.on('room-join-error', (data) => {
+        this.socket.on('waiting-room-error', (data) => {
             console.error('[WaitingRoomSocketManager] Room join error:', data);
             this.emit('room-join-error', data);
         });
 
-        this.socket.on('room-updated', (data) => {
+        this.socket.on('waiting-room-updated', (data) => {
             console.log('[WaitingRoomSocketManager] Room updated:', data);
             this.emit('room-updated', data);
         });
 
         // Game events
-        this.socket.on('game-starting', (data) => {
+        this.socket.on('waiting-room-game-starting', (data) => {
             console.log('[WaitingRoomSocketManager] Game starting:', data);
             this.emit('game-starting', data);
         });
@@ -202,6 +244,12 @@ export class WaitingRoomSocketManager {
         this.socket.on('waiting-room-error', (data) => {
             console.error('[WaitingRoomSocketManager] Waiting room error:', data);
             this.emit('waiting-room-error', data);
+        });
+
+        // Status confirmation events
+        this.socket.on('ready-status-confirmed', (data) => {
+            console.log('[WaitingRoomSocketManager] Ready status confirmed:', data);
+            this.emit('ready-status-confirmed', data);
         });
 
         // Connection status events
@@ -228,18 +276,18 @@ export class WaitingRoomSocketManager {
             const joinSuccessHandler = (data) => {
                 console.log('[WaitingRoomSocketManager] Successfully joined room:', data);
                 this.isJoined = true;
-                this.socket.off('room-join-error', joinErrorHandler);
+                this.socket.off('waiting-room-error', joinErrorHandler);
                 resolve(data);
             };
 
             const joinErrorHandler = (error) => {
                 console.error('[WaitingRoomSocketManager] Failed to join room:', error);
-                this.socket.off('room-joined', joinSuccessHandler);
+                this.socket.off('waiting-room-joined', joinSuccessHandler);
                 reject(new Error(error.message || 'Failed to join room'));
             };
 
-            this.socket.once('room-joined', joinSuccessHandler);
-            this.socket.once('room-join-error', joinErrorHandler);
+            this.socket.once('waiting-room-joined', joinSuccessHandler);
+            this.socket.once('waiting-room-error', joinErrorHandler);
 
             // Emit join room event
             this.socket.emit('join-waiting-room', {
@@ -248,12 +296,12 @@ export class WaitingRoomSocketManager {
                 username: this.currentUser.username
             });
 
-            // Set timeout for join attempt
+            // Set timeout for join attempt (increased to 15 seconds)
             setTimeout(() => {
-                this.socket.off('room-joined', joinSuccessHandler);
-                this.socket.off('room-join-error', joinErrorHandler);
+                this.socket.off('waiting-room-joined', joinSuccessHandler);
+                this.socket.off('waiting-room-error', joinErrorHandler);
                 reject(new Error('Room join timeout'));
-            }, 10000);
+            }, 15000);
         });
     }
 
@@ -331,9 +379,12 @@ export class WaitingRoomSocketManager {
             this.reconnectTimer = null;
         }
 
-        // Disconnect socket
+        // Disconnect socket gracefully
         if (this.socket) {
-            this.socket.disconnect();
+            // Remove all listeners to prevent memory leaks
+            this.socket.removeAllListeners();
+            // Disconnect with manual flag to prevent automatic reconnection
+            this.socket.disconnect(true);
             this.socket = null;
         }
 
@@ -349,26 +400,26 @@ export class WaitingRoomSocketManager {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             console.error('[WaitingRoomSocketManager] Max reconnection attempts reached');
             this.updateConnectionStatus('disconnected');
-            this.emit('reconnect-failed', { 
+            this.emit('reconnect-failed', {
                 attempts: this.reconnectAttempts,
-                maxAttempts: this.maxReconnectAttempts 
+                maxAttempts: this.maxReconnectAttempts
             });
             return;
         }
 
         this.reconnectAttempts++;
         this.updateConnectionStatus('reconnecting');
-        
+
         const delay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
         const jitter = Math.random() * 1000; // Add jitter to prevent thundering herd
         const totalDelay = Math.min(delay + jitter, 30000); // Cap at 30 seconds
 
         console.log(`[WaitingRoomSocketManager] Reconnection attempt ${this.reconnectAttempts} in ${Math.round(totalDelay)}ms`);
-        
-        this.emit('reconnecting', { 
-            attempt: this.reconnectAttempts, 
+
+        this.emit('reconnecting', {
+            attempt: this.reconnectAttempts,
             maxAttempts: this.maxReconnectAttempts,
-            delay: totalDelay 
+            delay: totalDelay
         });
 
         this.reconnectTimer = setTimeout(() => {
@@ -383,20 +434,23 @@ export class WaitingRoomSocketManager {
     async attemptReconnection() {
         try {
             console.log('[WaitingRoomSocketManager] Attempting reconnection...');
-            
+
             // Clean up existing socket
             if (this.socket) {
                 this.socket.removeAllListeners();
-                this.socket.disconnect();
+                this.socket.disconnect(true); // Force disconnect
                 this.socket = null;
             }
 
+            // Add a small delay to prevent rapid reconnection attempts
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
             // Attempt to reconnect
             await this.connect();
-            
+
             console.log('[WaitingRoomSocketManager] Reconnection successful');
             this.emit('reconnected', { attempts: this.reconnectAttempts });
-            
+
         } catch (error) {
             console.error('[WaitingRoomSocketManager] Reconnection failed:', error);
             this.handleReconnection(); // Try again
@@ -409,18 +463,22 @@ export class WaitingRoomSocketManager {
     startHeartbeat() {
         this.stopHeartbeat(); // Clear any existing heartbeat
 
-        this.heartbeatInterval = setInterval(() => {
-            if (this.isConnected && this.socket) {
-                console.log('[WaitingRoomSocketManager] Sending heartbeat ping');
-                this.socket.emit('ping', { timestamp: Date.now() });
-                
-                // Set timeout for pong response
-                this.heartbeatTimeout = setTimeout(() => {
-                    console.warn('[WaitingRoomSocketManager] Heartbeat timeout - connection may be lost');
-                    this.handleConnectionLoss();
-                }, 5000);
-            }
-        }, 30000); // Send ping every 30 seconds
+        // Only start heartbeat if Socket.IO automatic reconnection is disabled
+        // Since we enabled automatic reconnection, we can rely on Socket.IO's built-in ping/pong
+        if (!this.socket.io.reconnection) {
+            this.heartbeatInterval = setInterval(() => {
+                if (this.isConnected && this.socket) {
+                    console.log('[WaitingRoomSocketManager] Sending heartbeat ping');
+                    this.socket.emit('ping', { timestamp: Date.now() });
+
+                    // Set timeout for pong response
+                    this.heartbeatTimeout = setTimeout(() => {
+                        console.warn('[WaitingRoomSocketManager] Heartbeat timeout - connection may be lost');
+                        this.handleConnectionLoss();
+                    }, 10000);
+                }
+            }, 60000); // Send ping every 60 seconds (less frequent)
+        }
     }
 
     /**
@@ -431,7 +489,7 @@ export class WaitingRoomSocketManager {
             clearInterval(this.heartbeatInterval);
             this.heartbeatInterval = null;
         }
-        
+
         if (this.heartbeatTimeout) {
             clearTimeout(this.heartbeatTimeout);
             this.heartbeatTimeout = null;
@@ -459,9 +517,9 @@ export class WaitingRoomSocketManager {
         if (this.connectionStatus !== status) {
             const previousStatus = this.connectionStatus;
             this.connectionStatus = status;
-            
+
             console.log(`[WaitingRoomSocketManager] Connection status changed: ${previousStatus} -> ${status}`);
-            
+
             this.emit('connection-status-changed', {
                 status: status,
                 previousStatus: previousStatus,

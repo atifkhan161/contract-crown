@@ -133,6 +133,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     invite_code VARCHAR(10) NULL,
     game_state JSON NULL,
     settings JSON NULL,
+    version INT DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     started_at TIMESTAMP NULL,
@@ -142,7 +143,8 @@ CREATE TABLE IF NOT EXISTS rooms (
     UNIQUE KEY unique_invite_code (invite_code),
     INDEX idx_status (status),
     INDEX idx_owner_id (owner_id),
-    INDEX idx_created_at (created_at)
+    INDEX idx_created_at (created_at),
+    INDEX idx_version (version)
 ) ENGINE=InnoDB;
 
 -- Room Players table (for tracking players in rooms)

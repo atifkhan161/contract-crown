@@ -195,7 +195,8 @@ class Room {
                 username: row.username,
                 joinedAt: row.joined_at,
                 isReady: !!row.is_ready || false, // Default to false if column doesn't exist
-                teamAssignment: row.team_assignment || null
+                teamAssignment: row.team_assignment || null,
+                isConnected: true // Default to connected for database-loaded players
             }));
 
             // Load owner details
@@ -242,30 +243,39 @@ class Room {
     async removePlayer(userId) {
         try {
             // Check if user is in room
-            if (!this.players.some(p => p.id === userId)) {
+            const player = this.players.find(p => p.id === userId);
+            if (!player) {
                 throw new Error('User is not in this room');
             }
 
-            // Remove player from room
-            await dbConnection.query(`
-                DELETE FROM room_players WHERE room_id = ? AND user_id = ?
-            `, [this.room_id, userId]);
+            // Use transaction for atomic update
+            await dbConnection.transaction(async (connection) => {
+                // Remove player from room
+                await connection.execute(`
+                    DELETE FROM room_players WHERE room_id = ? AND user_id = ?
+                `, [this.room_id, userId]);
 
-            // If owner left and there are other players, assign new owner
-            if (this.owner_id === userId) {
-                const remainingPlayers = this.players.filter(p => p.id !== userId);
-                if (remainingPlayers.length > 0) {
-                    this.owner_id = remainingPlayers[0].id;
-                    await dbConnection.query(`
-                        UPDATE rooms SET owner_id = ?, updated_at = NOW() WHERE room_id = ?
-                    `, [this.owner_id, this.room_id]);
+                // If owner left and there are other players, assign new owner
+                if (this.owner_id === userId) {
+                    const remainingPlayers = this.players.filter(p => p.id !== userId && p.isConnected !== false);
+                    if (remainingPlayers.length > 0) {
+                        // Prefer connected players for new host
+                        const newHostId = remainingPlayers[0].id;
+                        await connection.execute(`
+                            UPDATE rooms SET owner_id = ?, updated_at = NOW() WHERE room_id = ?
+                        `, [newHostId, this.room_id]);
+                        this.owner_id = newHostId;
+                    }
                 }
-            }
 
-            // Reload players
-            await this.loadPlayers();
+                // Increment room version to track state change
+                await this.incrementVersion();
+            });
 
-            console.log(`[Room] User ${userId} left room ${this.room_id}`);
+            // Remove player from in-memory data
+            this.players = this.players.filter(p => p.id !== userId);
+
+            console.log(`[Room] User ${userId} left room ${this.room_id} (version ${this.version})`);
             return this;
         } catch (error) {
             console.error('[Room] RemovePlayer error:', error.message);
@@ -408,35 +418,67 @@ class Room {
 
     // Convert to API response format
     toApiResponse() {
+        const gameStartInfo = this.getGameStartEligibility();
+        const teams = this.getTeams();
+
         return {
             id: this.room_id,
             name: this.name,
             maxPlayers: this.max_players,
-            players: this.players,
+            players: this.players.map(p => ({
+                id: p.id,
+                username: p.username,
+                isReady: p.isReady,
+                teamAssignment: p.teamAssignment,
+                isConnected: p.isConnected,
+                joinedAt: p.joinedAt
+            })),
             owner: this.owner_id,
             status: this.status,
             isPrivate: this.is_private,
             inviteCode: this.invite_code,
             createdAt: this.created_at,
+            updatedAt: this.updated_at,
+            startedAt: this.started_at,
             gameState: this.game_state,
-            settings: this.settings
+            settings: this.settings,
+            teams,
+            gameStartInfo,
+            version: this.version,
+            connectedPlayersCount: this.getConnectedPlayersCount(),
+            readyPlayersCount: this.getReadyPlayersCount()
         };
     }
 
     async setPlayerReady(userId, isReady) {
         try {
             // Check if user is in room
-            if (!this.players.some(p => p.id === userId)) {
+            const player = this.players.find(p => p.id === userId);
+            if (!player) {
                 throw new Error('User is not in this room');
+            }
+
+            // Check if player is connected
+            if (player.isConnected === false) {
+                throw new Error('Cannot set ready status for disconnected player');
+            }
+
+            // Validate ready status value
+            if (typeof isReady !== 'boolean') {
+                throw new Error('Ready status must be a boolean value');
             }
 
             // Use transaction for atomic update with version control
             await dbConnection.transaction(async (connection) => {
                 // Try to update ready status, add column if it doesn't exist
                 try {
-                    await connection.execute(`
+                    const result = await connection.execute(`
                         UPDATE room_players SET is_ready = ? WHERE room_id = ? AND user_id = ?
                     `, [isReady, this.room_id, userId]);
+
+                    if (result.affectedRows === 0) {
+                        throw new Error('Player not found in database');
+                    }
                 } catch (columnError) {
                     // Add column if it doesn't exist and retry
                     console.log('[Room] Adding is_ready column to room_players table');
@@ -452,8 +494,9 @@ class Room {
                 await this.incrementVersion();
             });
 
-            // Reload players to get updated status
-            await this.loadPlayers();
+            // Update in-memory player data
+            player.isReady = isReady;
+            player.lastReadyUpdate = new Date();
 
             console.log(`[Room] User ${userId} ready status set to ${isReady} in room ${this.room_id} (version ${this.version})`);
             return this;
@@ -465,24 +508,54 @@ class Room {
 
     async formTeams() {
         try {
-            // Only allow team formation if we have 4 players
-            if (this.players.length !== 4) {
-                throw new Error('Team formation requires exactly 4 players');
+            // Only allow team formation if we have connected players
+            const connectedPlayers = this.players.filter(p => p.isConnected !== false);
+            
+            if (connectedPlayers.length < 2) {
+                throw new Error('Team formation requires at least 2 connected players');
             }
 
-            // Shuffle players for random team assignment
-            const shuffledPlayers = [...this.players];
-            for (let i = shuffledPlayers.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
+            if (connectedPlayers.length > 4) {
+                throw new Error('Team formation supports maximum 4 players');
             }
 
-            // Assign teams: first 2 players to team 1, last 2 to team 2
-            const team1Players = shuffledPlayers.slice(0, 2);
-            const team2Players = shuffledPlayers.slice(2, 4);
+            // For 4 players, create 2 teams of 2
+            // For 2-3 players, create teams as evenly as possible
+            let team1Players, team2Players;
+
+            if (connectedPlayers.length === 4) {
+                // Shuffle players for random team assignment
+                const shuffledPlayers = [...connectedPlayers];
+                for (let i = shuffledPlayers.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
+                }
+
+                // Assign teams: first 2 players to team 1, last 2 to team 2
+                team1Players = shuffledPlayers.slice(0, 2);
+                team2Players = shuffledPlayers.slice(2, 4);
+            } else if (connectedPlayers.length === 3) {
+                // For 3 players: 2 vs 1
+                const shuffledPlayers = [...connectedPlayers];
+                for (let i = shuffledPlayers.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
+                }
+                team1Players = shuffledPlayers.slice(0, 2);
+                team2Players = shuffledPlayers.slice(2, 3);
+            } else {
+                // For 2 players: 1 vs 1
+                team1Players = [connectedPlayers[0]];
+                team2Players = [connectedPlayers[1]];
+            }
 
             // Use transaction for atomic update with version control
             await dbConnection.transaction(async (connection) => {
+                // Clear existing team assignments first
+                await connection.execute(`
+                    UPDATE room_players SET team_assignment = NULL WHERE room_id = ?
+                `, [this.room_id]);
+
                 // Try to update team assignments, add column if it doesn't exist
                 try {
                     // Update team assignments in database
@@ -522,14 +595,24 @@ class Room {
                 await this.incrementVersion();
             });
 
-            // Reload players to get updated team assignments
-            await this.loadPlayers();
+            // Update in-memory player data
+            this.players.forEach(player => {
+                if (team1Players.some(p => p.id === player.id)) {
+                    player.teamAssignment = 1;
+                } else if (team2Players.some(p => p.id === player.id)) {
+                    player.teamAssignment = 2;
+                } else {
+                    player.teamAssignment = null;
+                }
+            });
 
-            console.log(`[Room] Teams formed in room ${this.room_id} (version ${this.version})`);
-            return {
+            const result = {
                 team1: team1Players.map(p => ({ id: p.id, username: p.username })),
                 team2: team2Players.map(p => ({ id: p.id, username: p.username }))
             };
+
+            console.log(`[Room] Teams formed in room ${this.room_id} (version ${this.version}): Team1(${result.team1.length}), Team2(${result.team2.length})`);
+            return result;
         } catch (error) {
             console.error('[Room] FormTeams error:', error.message);
             throw error;
@@ -541,8 +624,35 @@ class Room {
         const team2 = this.players.filter(p => p.teamAssignment === 2);
 
         return {
-            team1: team1.map(p => ({ id: p.id, username: p.username })),
-            team2: team2.map(p => ({ id: p.id, username: p.username }))
+            team1: team1.map(p => ({ id: p.id, username: p.username, isConnected: p.isConnected })),
+            team2: team2.map(p => ({ id: p.id, username: p.username, isConnected: p.isConnected }))
+        };
+    }
+
+    /**
+     * Check if teams are formed
+     * @returns {boolean} True if teams are formed
+     */
+    areTeamsFormed() {
+        const playersWithTeams = this.players.filter(p => p.teamAssignment !== null);
+        const connectedPlayers = this.players.filter(p => p.isConnected !== false);
+        return playersWithTeams.length === connectedPlayers.length && connectedPlayers.length >= 2;
+    }
+
+    /**
+     * Get team balance information
+     * @returns {Object} Team balance details
+     */
+    getTeamBalance() {
+        const teams = this.getTeams();
+        const connectedTeam1 = teams.team1.filter(p => p.isConnected !== false);
+        const connectedTeam2 = teams.team2.filter(p => p.isConnected !== false);
+
+        return {
+            team1Count: connectedTeam1.length,
+            team2Count: connectedTeam2.length,
+            isBalanced: Math.abs(connectedTeam1.length - connectedTeam2.length) <= 1,
+            totalAssigned: connectedTeam1.length + connectedTeam2.length
         };
     }
 
@@ -551,6 +661,304 @@ class Room {
         const connectedPlayers = this.players.filter(p => p.isConnected !== false);
         const readyConnectedPlayers = connectedPlayers.filter(p => p.isReady);
         return connectedPlayers.length >= 2 && readyConnectedPlayers.length === connectedPlayers.length;
+    }
+
+    /**
+     * Get detailed game start eligibility information
+     * @returns {Object} Game start eligibility details
+     */
+    getGameStartEligibility() {
+        const connectedPlayers = this.players.filter(p => p.isConnected !== false);
+        const readyPlayers = connectedPlayers.filter(p => p.isReady);
+        const readyCount = readyPlayers.length;
+        const allConnectedReady = connectedPlayers.every(p => p.isReady) && connectedPlayers.length >= 2;
+
+        let canStartGame = false;
+        let reason = '';
+
+        if (this.status !== 'waiting') {
+            reason = 'Room is not in waiting status';
+        } else if (connectedPlayers.length < 2) {
+            reason = 'Need at least 2 connected players';
+        } else if (!allConnectedReady) {
+            reason = `${readyCount}/${connectedPlayers.length} players ready`;
+        } else if (connectedPlayers.length === 4) {
+            // For 4-player games, teams will be formed automatically on start
+            canStartGame = true;
+            reason = 'Ready to start!';
+        } else {
+            canStartGame = true;
+            reason = 'Ready to start!';
+        }
+
+        return {
+            canStartGame,
+            reason,
+            readyCount,
+            totalConnected: connectedPlayers.length,
+            totalPlayers: this.players.length,
+            allReady: allConnectedReady,
+            connectedPlayers: connectedPlayers.map(p => ({
+                id: p.id,
+                username: p.username,
+                isReady: p.isReady
+            }))
+        };
+    }
+
+    /**
+     * Set player connection status
+     * @param {string} userId - User ID
+     * @param {boolean} isConnected - Connection status
+     * @returns {Promise<Room>} Updated room instance
+     */
+    async setPlayerConnectionStatus(userId, isConnected) {
+        try {
+            // Find player in memory
+            const player = this.players.find(p => p.id === userId);
+            if (!player) {
+                throw new Error('Player not found in room');
+            }
+
+            // Update connection status
+            player.isConnected = isConnected;
+            player.lastConnectionUpdate = new Date();
+
+            // Increment version to track state change
+            await this.incrementVersion();
+
+            console.log(`[Room] Player ${userId} connection status set to ${isConnected} in room ${this.room_id} (version ${this.version})`);
+            return this;
+        } catch (error) {
+            console.error('[Room] SetPlayerConnectionStatus error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Get connected players count
+     * @returns {number} Number of connected players
+     */
+    getConnectedPlayersCount() {
+        return this.players.filter(p => p.isConnected !== false).length;
+    }
+
+    /**
+     * Get ready players count
+     * @returns {number} Number of ready players
+     */
+    getReadyPlayersCount() {
+        const connectedPlayers = this.players.filter(p => p.isConnected !== false);
+        return connectedPlayers.filter(p => p.isReady).length;
+    }
+
+    /**
+     * Check if player is host
+     * @param {string} userId - User ID to check
+     * @returns {boolean} True if player is host
+     */
+    isPlayerHost(userId) {
+        return String(this.owner_id) === String(userId);
+    }
+
+    /**
+     * Transfer host privileges to another player
+     * @param {string} newHostId - New host user ID
+     * @returns {Promise<Room>} Updated room instance
+     */
+    async transferHost(newHostId) {
+        try {
+            // Validate new host is in room
+            if (!this.players.some(p => p.id === newHostId)) {
+                throw new Error('New host must be a player in the room');
+            }
+
+            // Update host in database
+            await this.updateWithVersionControl({ owner_id: newHostId });
+
+            console.log(`[Room] Host transferred from ${this.owner_id} to ${newHostId} in room ${this.room_id}`);
+            return this;
+        } catch (error) {
+            console.error('[Room] TransferHost error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Reset all player ready statuses
+     * @returns {Promise<Room>} Updated room instance
+     */
+    async resetAllPlayerReadyStatus() {
+        try {
+            // Use transaction for atomic update
+            await dbConnection.transaction(async (connection) => {
+                // Reset ready status for all players in database
+                await connection.execute(`
+                    UPDATE room_players SET is_ready = FALSE WHERE room_id = ?
+                `, [this.room_id]);
+
+                // Increment room version to track state change
+                await this.incrementVersion();
+            });
+
+            // Update in-memory player data
+            this.players.forEach(player => {
+                player.isReady = false;
+            });
+
+            console.log(`[Room] All player ready statuses reset in room ${this.room_id} (version ${this.version})`);
+            return this;
+        } catch (error) {
+            console.error('[Room] ResetAllPlayerReadyStatus error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Clear team assignments for all players
+     * @returns {Promise<Room>} Updated room instance
+     */
+    async clearTeamAssignments() {
+        try {
+            // Use transaction for atomic update
+            await dbConnection.transaction(async (connection) => {
+                // Clear team assignments in database
+                await connection.execute(`
+                    UPDATE room_players SET team_assignment = NULL WHERE room_id = ?
+                `, [this.room_id]);
+
+                // Increment room version to track state change
+                await this.incrementVersion();
+            });
+
+            // Update in-memory player data
+            this.players.forEach(player => {
+                player.teamAssignment = null;
+            });
+
+            console.log(`[Room] Team assignments cleared in room ${this.room_id} (version ${this.version})`);
+            return this;
+        } catch (error) {
+            console.error('[Room] ClearTeamAssignments error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Get room state for waiting room UI
+     * @returns {Object} Waiting room state
+     */
+    getWaitingRoomState() {
+        const gameStartInfo = this.getGameStartEligibility();
+        const teams = this.getTeams();
+        const teamBalance = this.getTeamBalance();
+
+        return {
+            roomId: this.room_id,
+            name: this.name,
+            status: this.status,
+            hostId: this.owner_id,
+            maxPlayers: this.max_players,
+            players: this.players.map(p => ({
+                id: p.id,
+                username: p.username,
+                isReady: p.isReady,
+                teamAssignment: p.teamAssignment,
+                isConnected: p.isConnected,
+                joinedAt: p.joinedAt
+            })),
+            teams,
+            teamBalance,
+            gameStartInfo,
+            version: this.version,
+            createdAt: this.created_at,
+            updatedAt: this.updated_at
+        };
+    }
+
+    /**
+     * Validate room state for game start
+     * @returns {Object} Validation result
+     */
+    validateGameStart() {
+        const errors = [];
+        const warnings = [];
+
+        // Check room status
+        if (this.status !== 'waiting') {
+            errors.push('Room must be in waiting status to start game');
+        }
+
+        // Check player count and connection
+        const connectedPlayers = this.players.filter(p => p.isConnected !== false);
+        if (connectedPlayers.length < 2) {
+            errors.push('Need at least 2 connected players to start game');
+        }
+
+        // Check ready status
+        const readyPlayers = connectedPlayers.filter(p => p.isReady);
+        if (readyPlayers.length !== connectedPlayers.length) {
+            errors.push('All connected players must be ready to start game');
+        }
+
+        // Check team formation for 4-player games
+        if (connectedPlayers.length === 4) {
+            const teamsFormed = this.areTeamsFormed();
+            if (!teamsFormed) {
+                warnings.push('Teams will be formed automatically when game starts');
+            }
+        }
+
+        return {
+            isValid: errors.length === 0,
+            errors,
+            warnings,
+            connectedPlayers: connectedPlayers.length,
+            readyPlayers: readyPlayers.length
+        };
+    }
+
+    /**
+     * Prepare room for game start
+     * @returns {Promise<Object>} Game start preparation result
+     */
+    async prepareForGameStart() {
+        try {
+            const validation = this.validateGameStart();
+            if (!validation.isValid) {
+                throw new Error(`Cannot start game: ${validation.errors.join(', ')}`);
+            }
+
+            const connectedPlayers = this.players.filter(p => p.isConnected !== false);
+            let teams = null;
+
+            // Form teams if needed
+            if (connectedPlayers.length >= 2 && !this.areTeamsFormed()) {
+                teams = await this.formTeams();
+            } else {
+                teams = this.getTeams();
+            }
+
+            // Update room status to playing
+            await this.updateWithVersionControl({ 
+                status: 'playing',
+                started_at: new Date()
+            });
+
+            return {
+                success: true,
+                teams,
+                players: connectedPlayers.map(p => ({
+                    id: p.id,
+                    username: p.username,
+                    teamAssignment: p.teamAssignment
+                })),
+                gameStartedAt: this.started_at
+            };
+        } catch (error) {
+            console.error('[Room] PrepareForGameStart error:', error.message);
+            throw error;
+        }
     }
 
     // Validation methods

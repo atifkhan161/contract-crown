@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import JWTValidator from '../utils/jwtValidator.js';
 import UserIdNormalizer from '../utils/userIdNormalizer.js';
 
@@ -17,7 +18,7 @@ const jwtValidator = new JWTValidator();
 export const authenticateSocket = async (socket, next) => {
   try {
     // Extract token from various possible locations
-    const token = jwtValidator.extractToken(socket);
+    const token = extractToken(socket);
 
     if (!token) {
       console.error('[SocketAuth] No token provided');

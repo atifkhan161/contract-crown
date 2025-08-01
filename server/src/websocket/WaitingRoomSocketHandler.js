@@ -221,15 +221,54 @@ class WaitingRoomSocketHandler {
 
         console.log(`[WaitingRoom] Ready status toggle - roomId: ${roomId}, userId: ${effectiveUserId}, isReady: ${isReady}`);
 
+        // Enhanced validation
         if (!roomId || typeof isReady !== 'boolean') {
-            socket.emit('waiting-room-error', { message: 'Room ID and ready status are required' });
+            socket.emit('ready-toggle-error', { message: 'Room ID and ready status are required' });
+            return;
+        }
+
+        if (!effectiveUserId || !effectiveUsername) {
+            socket.emit('ready-toggle-error', { message: 'User information is required' });
             return;
         }
 
         try {
             const room = this.socketManager.gameRooms.get(roomId);
-            if (!room || !room.players.has(effectiveUserId)) {
-                socket.emit('waiting-room-error', { message: 'Player not in room' });
+            if (!room) {
+                socket.emit('ready-toggle-error', { message: 'Room not found' });
+                return;
+            }
+
+            if (!room.players.has(effectiveUserId)) {
+                socket.emit('ready-toggle-error', { message: 'Player not in room' });
+                return;
+            }
+
+            const player = room.players.get(effectiveUserId);
+
+            // Validate player connection status
+            if (!player.isConnected) {
+                socket.emit('ready-toggle-error', { message: 'Cannot change ready status while disconnected' });
+                return;
+            }
+
+            // Validate room status
+            if (room.status !== 'waiting') {
+                socket.emit('ready-toggle-error', { message: 'Cannot change ready status - room is not waiting for players' });
+                return;
+            }
+
+            // Check if ready status is actually changing
+            if (player.isReady === isReady) {
+                console.log(`[WaitingRoom] Ready status unchanged for ${effectiveUsername}: ${isReady}`);
+                socket.emit('ready-status-confirmed', {
+                    roomId,
+                    isReady,
+                    success: true,
+                    dbSynced: true,
+                    unchanged: true,
+                    timestamp: new Date().toISOString()
+                });
                 return;
             }
 
@@ -243,14 +282,14 @@ class WaitingRoomSocketHandler {
                 }
             } catch (dbError) {
                 console.error('[WaitingRoom] Database update failed for ready status:', dbError);
+                // Continue with WebSocket update even if database fails
             }
 
             // Update websocket state
-            const player = room.players.get(effectiveUserId);
             player.isReady = isReady;
             player.lastReadyUpdate = new Date().toISOString();
 
-            console.log(`[WaitingRoom] ${effectiveUsername} ready status set to ${isReady}`);
+            console.log(`[WaitingRoom] ${effectiveUsername} ready status set to ${isReady} (DB: ${dbUpdateSuccess})`);
 
             // Calculate game start eligibility
             const gameStartInfo = this.calculateGameStartEligibility(room);
@@ -264,12 +303,16 @@ class WaitingRoomSocketHandler {
                 isReady,
                 success: true,
                 dbSynced: dbUpdateSuccess,
+                gameStartInfo,
                 timestamp: new Date().toISOString()
             });
 
         } catch (error) {
             console.error('[WaitingRoom] Error toggling ready status:', error);
-            socket.emit('waiting-room-error', { message: 'Failed to update ready status' });
+            socket.emit('ready-toggle-error', { 
+                message: error.message || 'Failed to update ready status',
+                code: 'READY_TOGGLE_ERROR'
+            });
         }
     }
 
@@ -282,35 +325,74 @@ class WaitingRoomSocketHandler {
 
         console.log(`[WaitingRoom] Game start request - roomId: ${roomId}, userId: ${userId}`);
 
+        // Enhanced validation
         if (!roomId) {
-            socket.emit('waiting-room-error', { message: 'Room ID is required' });
+            socket.emit('game-start-error', { message: 'Room ID is required' });
+            return;
+        }
+
+        if (!userId || !username) {
+            socket.emit('game-start-error', { message: 'User information is required' });
             return;
         }
 
         try {
             const room = this.socketManager.gameRooms.get(roomId);
-            if (!room || !room.players.has(userId)) {
-                socket.emit('waiting-room-error', { message: 'Player not in room' });
+            if (!room) {
+                socket.emit('game-start-error', { message: 'Room not found' });
+                return;
+            }
+
+            if (!room.players.has(userId)) {
+                socket.emit('game-start-error', { message: 'Player not in room' });
                 return;
             }
 
             // Check if user is the host
             if (String(room.hostId) !== String(userId)) {
-                socket.emit('waiting-room-error', { message: 'Only the host can start the game' });
+                socket.emit('game-start-error', { message: 'Only the host can start the game' });
                 return;
             }
 
-            // Validate game start conditions
+            // Check if room is in correct status
+            if (room.status !== 'waiting') {
+                socket.emit('game-start-error', { message: 'Room is not in waiting status' });
+                return;
+            }
+
+            // Validate game start conditions with detailed feedback
             const gameStartInfo = this.calculateGameStartEligibility(room);
             if (!gameStartInfo.canStartGame) {
-                socket.emit('waiting-room-error', { message: gameStartInfo.reason });
+                socket.emit('game-start-error', { 
+                    message: gameStartInfo.reason,
+                    details: {
+                        connectedPlayers: gameStartInfo.totalConnected,
+                        readyPlayers: gameStartInfo.readyCount,
+                        requiredReady: gameStartInfo.totalConnected
+                    }
+                });
                 return;
             }
 
-            // Form teams if we have 4 players and teams aren't formed yet
+            // Prevent double game starts
+            if (room.status === 'starting') {
+                socket.emit('game-start-error', { message: 'Game is already starting' });
+                return;
+            }
+
+            // Update room status immediately to prevent race conditions
+            room.status = 'starting';
+            room.gameStartedBy = userId;
+            room.gameStartedAt = new Date().toISOString();
+
+            console.log(`[WaitingRoom] Game start validated for room ${roomId} by ${username}`);
+
+            // Form teams if we have connected players and teams aren't formed yet
             let teams = null;
-            if (room.players.size === 4) {
-                const hasTeamAssignments = Array.from(room.players.values()).every(p => p.teamAssignment !== null);
+            const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
+            
+            if (connectedPlayers.length >= 2) {
+                const hasTeamAssignments = connectedPlayers.every(p => p.teamAssignment !== null);
                 if (!hasTeamAssignments) {
                     teams = await this.formTeams(roomId);
                 } else {
@@ -318,27 +400,37 @@ class WaitingRoomSocketHandler {
                 }
             }
 
-            // Update room status
-            room.status = 'starting';
-
             // Update database
+            let dbUpdateSuccess = false;
             try {
                 const dbRoom = await Room.findById(roomId);
                 if (dbRoom) {
                     await dbRoom.updateStatus('playing');
+                    dbUpdateSuccess = true;
                 }
             } catch (dbError) {
                 console.error('[WaitingRoom] Database update failed on game start:', dbError);
+                // Continue with game start even if database update fails
             }
 
-            console.log(`[WaitingRoom] Game starting in room ${roomId} by ${username}`);
+            console.log(`[WaitingRoom] Game starting in room ${roomId} by ${username} (DB: ${dbUpdateSuccess})`);
 
             // Broadcast game start to all players
-            this.broadcastGameStarting(roomId, userId, username, teams, room);
+            this.broadcastGameStarting(roomId, userId, username, teams, room, dbUpdateSuccess);
 
         } catch (error) {
             console.error('[WaitingRoom] Error starting game:', error);
-            socket.emit('waiting-room-error', { message: 'Failed to start game' });
+            
+            // Reset room status on error
+            const room = this.socketManager.gameRooms.get(roomId);
+            if (room && room.status === 'starting') {
+                room.status = 'waiting';
+            }
+            
+            socket.emit('game-start-error', { 
+                message: error.message || 'Failed to start game',
+                code: 'GAME_START_ERROR'
+            });
         }
     }
 
@@ -540,7 +632,7 @@ class WaitingRoomSocketHandler {
         });
     }
 
-    broadcastGameStarting(roomId, startedBy, startedByName, teams, room) {
+    broadcastGameStarting(roomId, startedBy, startedByName, teams, room, dbSynced = false) {
         const roomPlayers = this.getRoomPlayersArray(room);
 
         this.io.to(roomId).emit('waiting-room-game-starting', {
@@ -550,6 +642,8 @@ class WaitingRoomSocketHandler {
             players: roomPlayers,
             teams,
             redirectUrl: `/game.html?roomId=${roomId}`,
+            dbSynced,
+            roomStatus: room.status,
             timestamp: new Date().toISOString()
         });
     }

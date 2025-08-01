@@ -323,6 +323,21 @@ class WaitingRoomManager {
         this.socketManager.on('ready-toggle-error', (error) => {
             console.error('[WaitingRoom] Ready toggle error:', error);
             this.showError(error.message || 'Failed to update ready status');
+            
+            // Re-enable ready button on error
+            this.updateReadyButton(true);
+        });
+
+        this.socketManager.on('ready-status-confirmed', (data) => {
+            console.log('[WaitingRoom] Ready status confirmed:', data);
+            
+            // Re-enable ready button after successful update
+            this.updateReadyButton(true);
+            
+            // Show success message if database sync failed but WebSocket succeeded
+            if (!data.dbSynced) {
+                this.uiManager.addMessage('Ready status updated (WebSocket only)', 'system');
+            }
         });
 
         this.socketManager.on('game-start-error', (error) => {
@@ -364,9 +379,13 @@ class WaitingRoomManager {
         // Update UI with player data
         this.uiManager.updatePlayerSlots(playersWithHostInfo);
 
-        // Update ready count
-        const readyCount = this.players.filter(player => player.isReady).length;
-        this.uiManager.updateReadyStatus(readyCount, this.players.length);
+        // Calculate ready count based on connected players
+        const connectedPlayers = this.players.filter(player => player.isConnected !== false);
+        const readyPlayers = connectedPlayers.filter(player => player.isReady);
+        const readyCount = readyPlayers.length;
+
+        // Update ready status display with more detailed information
+        this.uiManager.updateReadyStatus(readyCount, connectedPlayers.length);
 
         // Check if current user is in the players list and update ready button
         const currentUserId = this.currentUser.user_id || this.currentUser.id;
@@ -376,18 +395,78 @@ class WaitingRoomManager {
 
         if (currentPlayer) {
             this.isReady = currentPlayer.isReady || false;
-            this.updateReadyButton();
+            
+            // Enable ready button only if player is connected and room is waiting
+            const canToggleReady = currentPlayer.isConnected !== false && 
+                                 (!this.roomData || this.roomData.status === 'waiting');
+            this.updateReadyButton(canToggleReady);
         }
 
-        // Update start game button state for host
+        // Update start game button state for host with enhanced logic
         if (this.isHost) {
-            const canStartGame = this.players.length === 4 && readyCount === 4;
-            this.uiManager.showHostControls(true, canStartGame);
+            const canStartGame = this.calculateGameStartEligibility();
+            this.uiManager.showHostControls(true, canStartGame.canStart);
+            
+            // Update host info text with more detailed status
+            this.updateHostInfoText(canStartGame);
         }
     }
 
-    updateReadyButton() {
-        this.uiManager.updateReadyButton(this.isReady, true);
+    /**
+     * Calculate if the game can be started based on current room state
+     */
+    calculateGameStartEligibility() {
+        const connectedPlayers = this.players.filter(player => player.isConnected !== false);
+        const readyPlayers = connectedPlayers.filter(player => player.isReady);
+        
+        let canStart = false;
+        let reason = '';
+
+        // Check room status
+        if (this.roomData && this.roomData.status !== 'waiting') {
+            reason = 'Room is not in waiting status';
+        }
+        // Check minimum players
+        else if (connectedPlayers.length < 2) {
+            reason = 'Need at least 2 connected players';
+        }
+        // Check if all connected players are ready
+        else if (readyPlayers.length !== connectedPlayers.length) {
+            reason = `${readyPlayers.length}/${connectedPlayers.length} players ready`;
+        }
+        // All conditions met
+        else {
+            canStart = true;
+            reason = `Ready to start with ${connectedPlayers.length} players!`;
+        }
+
+        return {
+            canStart,
+            reason,
+            connectedCount: connectedPlayers.length,
+            readyCount: readyPlayers.length,
+            totalCount: this.players.length
+        };
+    }
+
+    /**
+     * Update host info text with current game start status
+     */
+    updateHostInfoText(gameStartInfo) {
+        const hostInfoElement = document.querySelector('.host-info .host-text');
+        if (hostInfoElement) {
+            if (gameStartInfo.canStart) {
+                hostInfoElement.textContent = `${gameStartInfo.reason} Click "Start Game" to begin.`;
+                hostInfoElement.className = 'host-text ready';
+            } else {
+                hostInfoElement.textContent = `Waiting: ${gameStartInfo.reason}`;
+                hostInfoElement.className = 'host-text waiting';
+            }
+        }
+    }
+
+    updateReadyButton(enabled = true) {
+        this.uiManager.updateReadyButton(this.isReady, enabled);
     }
 
     // Event Handlers
@@ -420,68 +499,213 @@ class WaitingRoomManager {
 
     async handleReadyToggle() {
         try {
+            // Validate that user can change ready status
+            const currentUserId = this.currentUser.user_id || this.currentUser.id;
+            const currentPlayer = this.players.find(player =>
+                player.id === currentUserId || player.user_id === currentUserId
+            );
+
+            // Check if player is in the room
+            if (!currentPlayer) {
+                this.showError('You are not in this room.');
+                return;
+            }
+
+            // Check if player is connected (for WebSocket scenarios)
+            if (currentPlayer.isConnected === false) {
+                this.showError('Cannot change ready status while disconnected.');
+                return;
+            }
+
+            // Check if room is in waiting status
+            if (this.roomData && this.roomData.status !== 'waiting') {
+                this.showError('Cannot change ready status - room is not waiting for players.');
+                return;
+            }
+
             const newReadyStatus = !this.isReady;
+            
+            // Disable ready button temporarily to prevent double-clicks
+            this.uiManager.updateReadyButton(this.isReady, false);
             
             // Use socket manager if available
             if (this.socketManager && this.socketManager.isReady()) {
                 this.socketManager.toggleReady(newReadyStatus);
                 console.log('[WaitingRoom] Ready status toggle sent via socket:', newReadyStatus);
-            } else {
-                // Fallback to local state update if socket not available
-                console.warn('[WaitingRoom] Socket not available, updating local state only');
-                this.isReady = newReadyStatus;
-                this.updateReadyButton();
-
-                // Update the current user's ready status in the players array
-                const currentUserId = this.currentUser.user_id || this.currentUser.id;
-                const playerIndex = this.players.findIndex(player =>
-                    player.id === currentUserId || player.user_id === currentUserId
+                
+                // Add user feedback message
+                this.uiManager.addMessage(
+                    `You are now ${newReadyStatus ? 'ready' : 'not ready'}`, 
+                    'system'
                 );
-
-                if (playerIndex !== -1) {
-                    this.players[playerIndex].isReady = this.isReady;
-                    this.updatePlayersDisplay();
-                }
+            } else {
+                // Fallback to HTTP API if socket not available
+                console.warn('[WaitingRoom] Socket not available, using HTTP fallback');
+                await this.toggleReadyStatusViaAPI(newReadyStatus);
             }
 
         } catch (error) {
             console.error('[WaitingRoom] Error toggling ready status:', error);
             this.showError('Failed to update ready status. Please try again.');
+            
+            // Re-enable ready button on error
+            this.uiManager.updateReadyButton(this.isReady, true);
+        }
+    }
+
+    /**
+     * Fallback method to toggle ready status via HTTP API
+     */
+    async toggleReadyStatusViaAPI(newReadyStatus) {
+        try {
+            const token = this.authManager.getToken();
+            const response = await fetch(`/api/waiting-rooms/${this.roomId}/ready`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ isReady: newReadyStatus })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to update ready status');
+            }
+
+            const result = await response.json();
+            
+            // Update local state
+            this.isReady = newReadyStatus;
+            this.updateReadyButton();
+
+            // Update the current user's ready status in the players array
+            const currentUserId = this.currentUser.user_id || this.currentUser.id;
+            const playerIndex = this.players.findIndex(player =>
+                player.id === currentUserId || player.user_id === currentUserId
+            );
+
+            if (playerIndex !== -1) {
+                this.players[playerIndex].isReady = this.isReady;
+                this.updatePlayersDisplay();
+            }
+
+            // Add user feedback message
+            this.uiManager.addMessage(
+                `You are now ${newReadyStatus ? 'ready' : 'not ready'}`, 
+                'system'
+            );
+
+            console.log('[WaitingRoom] Ready status updated via HTTP API:', newReadyStatus);
+
+        } catch (error) {
+            console.error('[WaitingRoom] HTTP API ready toggle failed:', error);
+            throw error;
         }
     }
 
     async handleStartGame() {
-        if (!this.isHost) {
-            this.showError('Only the host can start the game.');
-            return;
-        }
-
-        const readyCount = this.players.filter(player => player.isReady).length;
-        if (this.players.length !== 4 || readyCount !== 4) {
-            this.showError('All 4 players must be ready before starting the game.');
-            return;
-        }
-
         try {
+            // Validate host privileges
+            if (!this.isHost) {
+                this.showError('Only the host can start the game.');
+                return;
+            }
+
+            // Validate room status
+            if (this.roomData && this.roomData.status !== 'waiting') {
+                this.showError('Cannot start game - room is not in waiting status.');
+                return;
+            }
+
+            // Get connected players for validation
+            const connectedPlayers = this.players.filter(player => player.isConnected !== false);
+            const readyPlayers = connectedPlayers.filter(player => player.isReady);
+            
+            // Enhanced validation for game start conditions
+            if (connectedPlayers.length < 2) {
+                this.showError('Need at least 2 connected players to start the game.');
+                return;
+            }
+
+            if (readyPlayers.length !== connectedPlayers.length) {
+                this.showError(`All connected players must be ready. Currently ${readyPlayers.length}/${connectedPlayers.length} players are ready.`);
+                return;
+            }
+
+            // Additional validation for 4-player games
+            if (connectedPlayers.length === 4 && readyPlayers.length !== 4) {
+                this.showError('All 4 players must be ready before starting the game.');
+                return;
+            }
+
+            // Disable start button to prevent double-clicks
             this.setStartGameLoading(true);
+            this.uiManager.showHostControls(true, false);
+
+            console.log(`[WaitingRoom] Starting game with ${connectedPlayers.length} connected players, ${readyPlayers.length} ready`);
 
             // Use socket manager if available
             if (this.socketManager && this.socketManager.isReady()) {
                 this.socketManager.startGame();
                 console.log('[WaitingRoom] Game start request sent via socket');
+                
+                // Add user feedback
+                this.uiManager.addMessage('Starting game...', 'system');
             } else {
-                // Fallback to direct redirect if socket not available
-                console.warn('[WaitingRoom] Socket not available, redirecting directly');
-                this.showMessage('Starting game...');
-                setTimeout(() => {
-                    window.location.href = `game.html?room=${this.roomId}`;
-                }, 1000);
+                // Fallback to HTTP API if socket not available
+                console.warn('[WaitingRoom] Socket not available, using HTTP fallback');
+                await this.startGameViaAPI();
             }
 
         } catch (error) {
             console.error('[WaitingRoom] Error starting game:', error);
             this.showError('Failed to start game. Please try again.');
             this.setStartGameLoading(false);
+            
+            // Re-enable start button on error if conditions are still met
+            const connectedPlayers = this.players.filter(player => player.isConnected !== false);
+            const readyPlayers = connectedPlayers.filter(player => player.isReady);
+            const canStart = connectedPlayers.length >= 2 && readyPlayers.length === connectedPlayers.length;
+            this.uiManager.showHostControls(this.isHost, canStart);
+        }
+    }
+
+    /**
+     * Fallback method to start game via HTTP API
+     */
+    async startGameViaAPI() {
+        try {
+            const token = this.authManager.getToken();
+            const response = await fetch(`/api/waiting-rooms/${this.roomId}/start`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to start game');
+            }
+
+            const result = await response.json();
+            
+            // Add user feedback
+            this.uiManager.addMessage('Game is starting! Redirecting...', 'success');
+            
+            // Redirect to game page
+            const redirectUrl = result.redirectUrl || `game.html?room=${this.roomId}`;
+            setTimeout(() => {
+                window.location.href = redirectUrl;
+            }, 1500);
+
+            console.log('[WaitingRoom] Game started via HTTP API');
+
+        } catch (error) {
+            console.error('[WaitingRoom] HTTP API game start failed:', error);
+            throw error;
         }
     }
     // Player join/leave event handling

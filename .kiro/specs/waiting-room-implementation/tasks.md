@@ -65,7 +65,7 @@
   - Create validation and error handling for all endpoints
   - _Requirements: 1.5, 2.1, 2.2, 5.3, 7.3, 9.1, 9.4_
 
-- [ ] 7. Extend Room model for waiting room functionality
+- [x] 7. Extend Room model for waiting room functionality
 
   - Enhance server/src/models/Room.js with ready status tracking
   - Add team formation logic and game start validation methods
@@ -73,7 +73,12 @@
   - Create optimistic concurrency control with version tracking
   - _Requirements: 1.5, 2.4, 4.5, 5.1, 5.2, 5.3_
 
-- [ ] 8. Implement ready status management system
+- [x] 8. Implement ready status management system
+
+
+
+
+
 
   - Add ready status toggle functionality with real-time synchronization
   - Create ready count tracking and game start button state management

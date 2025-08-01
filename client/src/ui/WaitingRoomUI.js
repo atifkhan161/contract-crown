@@ -218,17 +218,31 @@ export class WaitingRoomUI {
     /**
      * Update ready status display
      * @param {number} readyCount - Number of ready players
-     * @param {number} totalCount - Total number of players
+     * @param {number} totalCount - Total number of connected players
      */
     updateReadyStatus(readyCount, totalCount) {
         if (this.elements.readyCount) {
             this.elements.readyCount.textContent = readyCount;
         }
 
-        // Update ready status text
+        // Update ready status text with enhanced information
         const readyStatusElement = this.elements.readyStatus;
         if (readyStatusElement) {
-            readyStatusElement.textContent = `${readyCount} of ${totalCount} players ready`;
+            let statusText = `${readyCount} of ${totalCount} players ready`;
+            let statusClass = 'ready-status';
+
+            // Add visual feedback based on ready state
+            if (readyCount === totalCount && totalCount >= 2) {
+                statusText += ' ✓';
+                statusClass += ' all-ready';
+            } else if (readyCount > 0) {
+                statusClass += ' some-ready';
+            } else {
+                statusClass += ' none-ready';
+            }
+
+            readyStatusElement.textContent = statusText;
+            readyStatusElement.className = statusClass;
         }
     }
 
@@ -297,18 +311,30 @@ export class WaitingRoomUI {
             const buttonText = button.querySelector('.btn-text');
             
             if (buttonText) {
-                buttonText.textContent = isReady ? 'Not Ready' : 'Ready Up';
+                if (enabled) {
+                    buttonText.textContent = isReady ? 'Not Ready' : 'Ready Up';
+                } else {
+                    buttonText.textContent = isReady ? 'Ready...' : 'Getting Ready...';
+                }
             }
             
             button.disabled = !enabled;
             
-            if (isReady) {
+            // Enhanced visual states
+            if (!enabled) {
+                button.classList.add('btn-disabled');
+                button.classList.remove('btn-success', 'btn-primary');
+            } else if (isReady) {
                 button.classList.add('btn-success');
-                button.classList.remove('btn-primary');
+                button.classList.remove('btn-primary', 'btn-disabled');
             } else {
                 button.classList.add('btn-primary');
-                button.classList.remove('btn-success');
+                button.classList.remove('btn-success', 'btn-disabled');
             }
+
+            // Add accessibility attributes
+            button.setAttribute('aria-pressed', isReady.toString());
+            button.setAttribute('aria-disabled', (!enabled).toString());
         }
     }
 

@@ -305,6 +305,20 @@
 .ready-status {
   color: var(--text-secondary);
   font-size: var(--font-size-base);
+  transition: color 0.3s ease;
+}
+
+.ready-status.all-ready {
+  color: var(--success-color);
+  font-weight: 600;
+}
+
+.ready-status.some-ready {
+  color: var(--warning-color);
+}
+
+.ready-status.none-ready {
+  color: var(--text-muted);
 }
 
 /* Host Controls Section */
@@ -325,6 +339,19 @@
   font-size: var(--font-size-sm);
   text-align: center;
   max-width: 300px;
+}
+
+.host-info .host-text {
+  transition: color 0.3s ease;
+}
+
+.host-info .host-text.ready {
+  color: var(--success-color);
+  font-weight: 600;
+}
+
+.host-info .host-text.waiting {
+  color: var(--text-secondary);
 }
 
 /* Messages Section */
