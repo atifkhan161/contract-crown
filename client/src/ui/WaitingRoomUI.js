@@ -59,36 +59,82 @@ export class WaitingRoomUI {
 
     setupResponsiveHandlers() {
         // Handle window resize for responsive layout
-        window.addEventListener('resize', () => {
+        const handleResize = () => {
             const wasMobile = this.isMobile;
             this.isMobile = window.innerWidth <= 768;
             
             if (wasMobile !== this.isMobile) {
                 this.updateMobileLayout();
             }
-        });
+            
+            // Update touch targets for current screen size
+            this.updateTouchTargets();
+        };
 
-        // Handle orientation change on mobile devices
-        window.addEventListener('orientationchange', () => {
+        window.addEventListener('resize', handleResize);
+
+        // Enhanced orientation change handling
+        const handleOrientationChange = () => {
+            // Wait for viewport to stabilize after orientation change
             setTimeout(() => {
                 this.updateMobileLayout();
-            }, 100);
-        });
+                this.handleOrientationSpecificLayout();
+                this.updateTouchTargets();
+                
+                // Force a reflow to ensure proper layout
+                document.body.offsetHeight;
+            }, 150);
+        };
+
+        window.addEventListener('orientationchange', handleOrientationChange);
+        
+        // Also listen for screen orientation API if available
+        if (screen.orientation) {
+            screen.orientation.addEventListener('change', handleOrientationChange);
+        }
+
+        // Handle viewport changes on mobile browsers
+        const handleViewportChange = () => {
+            if (this.isMobile) {
+                this.adjustForViewportChanges();
+            }
+        };
+
+        window.addEventListener('resize', handleViewportChange);
+        
+        // Store handlers for cleanup
+        this.resizeHandler = handleResize;
+        this.orientationHandler = handleOrientationChange;
+        this.viewportHandler = handleViewportChange;
     }
 
     initializeAccessibility() {
         // Set up ARIA labels and keyboard navigation
-        this.elements.copyCodeBtn.setAttribute('aria-label', 'Copy room code to clipboard');
-        this.elements.readyToggleBtn.setAttribute('aria-label', 'Toggle ready status');
-        this.elements.startGameBtn.setAttribute('aria-label', 'Start game for all players');
+        this.elements.copyCodeBtn?.setAttribute('aria-label', 'Copy room code to clipboard');
+        this.elements.readyToggleBtn?.setAttribute('aria-label', 'Toggle ready status');
+        this.elements.startGameBtn?.setAttribute('aria-label', 'Start game for all players');
+        
+        // Add screen reader only content
+        this.addScreenReaderContent();
         
         // Add keyboard navigation for interactive elements
         this.setupKeyboardNavigation();
+        
+        // Set up focus management
+        this.setupFocusManagement();
+        
+        // Add skip links for better navigation
+        this.addSkipLinks();
     }
 
     setupKeyboardNavigation() {
-        // Handle Enter key for buttons
-        const buttons = [this.elements.copyCodeBtn, this.elements.readyToggleBtn, this.elements.startGameBtn];
+        // Handle Enter and Space key for buttons
+        const buttons = [
+            this.elements.copyCodeBtn, 
+            this.elements.readyToggleBtn, 
+            this.elements.startGameBtn,
+            document.getElementById('leave-room-btn')
+        ];
         
         buttons.forEach(button => {
             if (button) {
@@ -100,6 +146,313 @@ export class WaitingRoomUI {
                 });
             }
         });
+
+        // Add keyboard navigation for player slots
+        Object.values(this.elements.playerSlots).forEach((slot, index) => {
+            if (slot) {
+                slot.addEventListener('keydown', (e) => {
+                    this.handlePlayerSlotKeydown(e, index + 1);
+                });
+            }
+        });
+
+        // Add global keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            this.handleGlobalKeydown(e);
+        });
+    }
+
+    /**
+     * Handle keyboard navigation for player slots
+     */
+    handlePlayerSlotKeydown(e, slotNumber) {
+        switch (e.key) {
+            case 'ArrowDown':
+            case 'ArrowRight':
+                e.preventDefault();
+                this.focusNextPlayerSlot(slotNumber);
+                break;
+            case 'ArrowUp':
+            case 'ArrowLeft':
+                e.preventDefault();
+                this.focusPreviousPlayerSlot(slotNumber);
+                break;
+            case 'Home':
+                e.preventDefault();
+                this.focusPlayerSlot(1);
+                break;
+            case 'End':
+                e.preventDefault();
+                this.focusPlayerSlot(4);
+                break;
+        }
+    }
+
+    /**
+     * Handle global keyboard shortcuts
+     */
+    handleGlobalKeydown(e) {
+        // Only handle shortcuts when not in input fields
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+
+        switch (e.key) {
+            case 'r':
+            case 'R':
+                if (!e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    this.elements.readyToggleBtn?.click();
+                }
+                break;
+            case 's':
+            case 'S':
+                if (!e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    if (!this.elements.startGameBtn?.disabled) {
+                        this.elements.startGameBtn?.click();
+                    }
+                }
+                break;
+            case 'c':
+            case 'C':
+                if (!e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    this.elements.copyCodeBtn?.click();
+                }
+                break;
+            case 'Escape':
+                e.preventDefault();
+                this.handleEscapeKey();
+                break;
+        }
+    }
+
+    /**
+     * Focus next player slot
+     */
+    focusNextPlayerSlot(currentSlot) {
+        const nextSlot = currentSlot < 4 ? currentSlot + 1 : 1;
+        this.focusPlayerSlot(nextSlot);
+    }
+
+    /**
+     * Focus previous player slot
+     */
+    focusPreviousPlayerSlot(currentSlot) {
+        const prevSlot = currentSlot > 1 ? currentSlot - 1 : 4;
+        this.focusPlayerSlot(prevSlot);
+    }
+
+    /**
+     * Focus specific player slot
+     */
+    focusPlayerSlot(slotNumber) {
+        const slot = this.elements.playerSlots[slotNumber];
+        if (slot) {
+            slot.focus();
+        }
+    }
+
+    /**
+     * Handle escape key press
+     */
+    handleEscapeKey() {
+        // Close any open modals
+        if (!this.elements.errorModal?.classList.contains('hidden')) {
+            this.hideError();
+            return;
+        }
+
+        // Focus main ready button as default action
+        this.elements.readyToggleBtn?.focus();
+    }
+
+    /**
+     * Set up focus management
+     */
+    setupFocusManagement() {
+        // Trap focus in modals
+        this.setupModalFocusTrap();
+        
+        // Manage focus indicators
+        this.setupFocusIndicators();
+        
+        // Handle focus restoration
+        this.setupFocusRestoration();
+    }
+
+    /**
+     * Set up modal focus trap
+     */
+    setupModalFocusTrap() {
+        const modal = this.elements.errorModal;
+        if (!modal) return;
+
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                this.trapFocusInModal(e, modal);
+            }
+        });
+    }
+
+    /**
+     * Trap focus within modal
+     */
+    trapFocusInModal(e, modal) {
+        const focusableElements = modal.querySelectorAll(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+            if (document.activeElement === firstElement) {
+                e.preventDefault();
+                lastElement.focus();
+            }
+        } else {
+            if (document.activeElement === lastElement) {
+                e.preventDefault();
+                firstElement.focus();
+            }
+        }
+    }
+
+    /**
+     * Set up focus indicators
+     */
+    setupFocusIndicators() {
+        // Add visible focus indicators for keyboard users
+        const style = document.createElement('style');
+        style.textContent = `
+            .keyboard-user *:focus {
+                outline: 2px solid var(--primary-color) !important;
+                outline-offset: 2px !important;
+            }
+            
+            .keyboard-user .player-slot:focus {
+                box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.3) !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Detect keyboard usage
+        document.addEventListener('keydown', () => {
+            document.body.classList.add('keyboard-user');
+        });
+
+        document.addEventListener('mousedown', () => {
+            document.body.classList.remove('keyboard-user');
+        });
+    }
+
+    /**
+     * Set up focus restoration
+     */
+    setupFocusRestoration() {
+        this.lastFocusedElement = null;
+
+        // Store focus before showing modal
+        const originalDisplayError = this.displayError.bind(this);
+        this.displayError = (message) => {
+            this.lastFocusedElement = document.activeElement;
+            originalDisplayError(message);
+            
+            // Focus first button in modal
+            setTimeout(() => {
+                const firstButton = this.elements.errorModal?.querySelector('button');
+                firstButton?.focus();
+            }, 100);
+        };
+
+        // Restore focus after hiding modal
+        const originalHideError = this.hideError.bind(this);
+        this.hideError = () => {
+            originalHideError();
+            
+            // Restore focus
+            if (this.lastFocusedElement) {
+                this.lastFocusedElement.focus();
+                this.lastFocusedElement = null;
+            }
+        };
+    }
+
+    /**
+     * Add screen reader only content
+     */
+    addScreenReaderContent() {
+        // Add screen reader only styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .sr-only {
+                position: absolute !important;
+                width: 1px !important;
+                height: 1px !important;
+                padding: 0 !important;
+                margin: -1px !important;
+                overflow: hidden !important;
+                clip: rect(0, 0, 0, 0) !important;
+                white-space: nowrap !important;
+                border: 0 !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Add keyboard shortcut hints
+        const shortcutHints = document.createElement('div');
+        shortcutHints.className = 'sr-only';
+        shortcutHints.innerHTML = `
+            <p>Keyboard shortcuts: Press R to toggle ready, S to start game (if host), C to copy room code, Escape to close dialogs</p>
+            <p>Use arrow keys to navigate between player slots</p>
+        `;
+        document.body.appendChild(shortcutHints);
+    }
+
+    /**
+     * Add skip links for better navigation
+     */
+    addSkipLinks() {
+        const skipLinks = document.createElement('div');
+        skipLinks.className = 'skip-links';
+        skipLinks.innerHTML = `
+            <a href="#players-heading" class="skip-link">Skip to players</a>
+            <a href="#ready-toggle-btn" class="skip-link">Skip to ready controls</a>
+            <a href="#game-messages" class="skip-link">Skip to messages</a>
+        `;
+
+        // Add skip link styles
+        const style = document.createElement('style');
+        style.textContent = `
+            .skip-links {
+                position: absolute;
+                top: -100px;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .skip-link {
+                position: absolute;
+                top: -100px;
+                left: 0;
+                background: var(--primary-color);
+                color: white;
+                padding: 8px 16px;
+                text-decoration: none;
+                border-radius: 4px;
+                font-weight: bold;
+                transition: top 0.3s;
+            }
+            
+            .skip-link:focus {
+                top: 10px;
+            }
+        `;
+        document.head.appendChild(style);
+
+        document.body.insertBefore(skipLinks, document.body.firstChild);
     }
 
     setupEventListeners() {
@@ -641,22 +994,278 @@ export class WaitingRoomUI {
      */
     updateMobileLayout() {
         const container = document.querySelector('.waiting-room-container');
+        const body = document.body;
         
         if (this.isMobile) {
             container?.classList.add('mobile-layout');
+            body.classList.add('mobile-device');
             
             // Adjust player grid for mobile
             const playersGrid = this.elements.playersGrid;
             if (playersGrid) {
                 playersGrid.style.gridTemplateColumns = '1fr';
             }
+            
+            // Enable mobile-specific features
+            this.enableMobileFeatures();
         } else {
             container?.classList.remove('mobile-layout');
+            body.classList.remove('mobile-device');
             
             // Reset player grid for desktop
             const playersGrid = this.elements.playersGrid;
             if (playersGrid) {
                 playersGrid.style.gridTemplateColumns = '';
+            }
+            
+            // Disable mobile-specific features
+            this.disableMobileFeatures();
+        }
+        
+        // Update touch targets regardless of device type
+        this.updateTouchTargets();
+    }
+
+    /**
+     * Handle orientation-specific layout adjustments
+     */
+    handleOrientationSpecificLayout() {
+        if (!this.isMobile) return;
+
+        const isLandscape = window.innerWidth > window.innerHeight;
+        const container = document.querySelector('.waiting-room-container');
+        
+        if (isLandscape) {
+            container?.classList.add('landscape-mode');
+            container?.classList.remove('portrait-mode');
+            
+            // Adjust player grid for landscape
+            const playersGrid = this.elements.playersGrid;
+            if (playersGrid && window.innerWidth >= 640) {
+                playersGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+            }
+        } else {
+            container?.classList.add('portrait-mode');
+            container?.classList.remove('landscape-mode');
+            
+            // Single column for portrait
+            const playersGrid = this.elements.playersGrid;
+            if (playersGrid) {
+                playersGrid.style.gridTemplateColumns = '1fr';
+            }
+        }
+    }
+
+    /**
+     * Update touch targets for better mobile interaction
+     */
+    updateTouchTargets() {
+        const touchElements = [
+            this.elements.copyCodeBtn,
+            this.elements.readyToggleBtn,
+            this.elements.startGameBtn,
+            document.getElementById('leave-room-btn'),
+            document.getElementById('close-error-btn'),
+            document.getElementById('error-ok-btn')
+        ];
+
+        touchElements.forEach(element => {
+            if (element) {
+                // Ensure minimum touch target size (44px x 44px)
+                const computedStyle = window.getComputedStyle(element);
+                const currentHeight = parseInt(computedStyle.height);
+                const currentWidth = parseInt(computedStyle.width);
+                
+                if (currentHeight < 44) {
+                    element.style.minHeight = '44px';
+                }
+                if (currentWidth < 44) {
+                    element.style.minWidth = '44px';
+                }
+                
+                // Add touch-friendly class
+                element.classList.add('touch-target');
+            }
+        });
+
+        // Update player slots for touch interaction
+        Object.values(this.elements.playerSlots).forEach(slot => {
+            if (slot) {
+                slot.classList.add('touch-friendly');
+            }
+        });
+    }
+
+    /**
+     * Enable mobile-specific features
+     */
+    enableMobileFeatures() {
+        // Prevent zoom on input focus
+        const viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport) {
+            viewport.setAttribute('content', 
+                'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'
+            );
+        }
+
+        // Add mobile-specific event listeners
+        this.addMobileEventListeners();
+        
+        // Enable swipe gestures for navigation
+        this.enableSwipeGestures();
+    }
+
+    /**
+     * Disable mobile-specific features
+     */
+    disableMobileFeatures() {
+        // Re-enable zoom
+        const viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport) {
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
+        }
+
+        // Remove mobile-specific event listeners
+        this.removeMobileEventListeners();
+        
+        // Disable swipe gestures
+        this.disableSwipeGestures();
+    }
+
+    /**
+     * Add mobile-specific event listeners
+     */
+    addMobileEventListeners() {
+        // Touch feedback for buttons
+        const buttons = document.querySelectorAll('.btn, .copy-btn');
+        buttons.forEach(button => {
+            button.addEventListener('touchstart', this.handleTouchStart.bind(this), { passive: true });
+            button.addEventListener('touchend', this.handleTouchEnd.bind(this), { passive: true });
+        });
+
+        // Prevent double-tap zoom on buttons
+        buttons.forEach(button => {
+            button.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                button.click();
+            });
+        });
+    }
+
+    /**
+     * Remove mobile-specific event listeners
+     */
+    removeMobileEventListeners() {
+        const buttons = document.querySelectorAll('.btn, .copy-btn');
+        buttons.forEach(button => {
+            button.removeEventListener('touchstart', this.handleTouchStart);
+            button.removeEventListener('touchend', this.handleTouchEnd);
+        });
+    }
+
+    /**
+     * Handle touch start for visual feedback
+     */
+    handleTouchStart(e) {
+        e.currentTarget.classList.add('touch-active');
+    }
+
+    /**
+     * Handle touch end for visual feedback
+     */
+    handleTouchEnd(e) {
+        setTimeout(() => {
+            e.currentTarget.classList.remove('touch-active');
+        }, 150);
+    }
+
+    /**
+     * Enable swipe gestures for navigation
+     */
+    enableSwipeGestures() {
+        let startX = 0;
+        let startY = 0;
+        
+        const handleTouchStart = (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        };
+        
+        const handleTouchEnd = (e) => {
+            if (!startX || !startY) return;
+            
+            const endX = e.changedTouches[0].clientX;
+            const endY = e.changedTouches[0].clientY;
+            
+            const diffX = startX - endX;
+            const diffY = startY - endY;
+            
+            // Only trigger if horizontal swipe is dominant
+            if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+                if (diffX > 0) {
+                    // Swipe left - could trigger leave room
+                    this.handleSwipeLeft();
+                } else {
+                    // Swipe right - could trigger refresh
+                    this.handleSwipeRight();
+                }
+            }
+            
+            startX = 0;
+            startY = 0;
+        };
+        
+        document.addEventListener('touchstart', handleTouchStart, { passive: true });
+        document.addEventListener('touchend', handleTouchEnd, { passive: true });
+        
+        this.swipeStartHandler = handleTouchStart;
+        this.swipeEndHandler = handleTouchEnd;
+    }
+
+    /**
+     * Disable swipe gestures
+     */
+    disableSwipeGestures() {
+        if (this.swipeStartHandler) {
+            document.removeEventListener('touchstart', this.swipeStartHandler);
+        }
+        if (this.swipeEndHandler) {
+            document.removeEventListener('touchend', this.swipeEndHandler);
+        }
+    }
+
+    /**
+     * Handle swipe left gesture
+     */
+    handleSwipeLeft() {
+        // Optional: Show leave room confirmation
+        console.log('[WaitingRoomUI] Swipe left detected');
+    }
+
+    /**
+     * Handle swipe right gesture
+     */
+    handleSwipeRight() {
+        // Optional: Refresh room data
+        console.log('[WaitingRoomUI] Swipe right detected');
+    }
+
+    /**
+     * Adjust for viewport changes (keyboard show/hide on mobile)
+     */
+    adjustForViewportChanges() {
+        const viewportHeight = window.innerHeight;
+        const documentHeight = document.documentElement.clientHeight;
+        
+        // Detect if virtual keyboard is likely open
+        const keyboardOpen = viewportHeight < documentHeight * 0.75;
+        
+        const container = document.querySelector('.waiting-room-container');
+        if (container) {
+            if (keyboardOpen) {
+                container.classList.add('keyboard-open');
+            } else {
+                container.classList.remove('keyboard-open');
             }
         }
     }
@@ -683,12 +1292,37 @@ export class WaitingRoomUI {
      */
     cleanup() {
         // Remove event listeners
-        window.removeEventListener('resize', this.updateMobileLayout);
-        window.removeEventListener('orientationchange', this.updateMobileLayout);
+        if (this.resizeHandler) {
+            window.removeEventListener('resize', this.resizeHandler);
+        }
+        if (this.orientationHandler) {
+            window.removeEventListener('orientationchange', this.orientationHandler);
+            if (screen.orientation) {
+                screen.orientation.removeEventListener('change', this.orientationHandler);
+            }
+        }
+        if (this.viewportHandler) {
+            window.removeEventListener('resize', this.viewportHandler);
+        }
+        
+        // Remove mobile-specific event listeners
+        this.removeMobileEventListeners();
+        
+        // Disable swipe gestures
+        this.disableSwipeGestures();
         
         // Clear any timers or intervals
         this.clearMessages();
         this.hideLoading();
         this.hideError();
+        
+        // Remove added styles and elements
+        const addedStyles = document.querySelectorAll('style[data-waiting-room]');
+        addedStyles.forEach(style => style.remove());
+        
+        const skipLinks = document.querySelector('.skip-links');
+        if (skipLinks) {
+            skipLinks.remove();
+        }
     }
 }

@@ -25,8 +25,10 @@
         <header class="waiting-room-header">
             <div class="header-content">
                 <div class="header-left">
-                    <button id="leave-room-btn" class="btn btn-secondary btn-sm">
-                        <span class="btn-icon">←</span>
+                    <button id="leave-room-btn" class="btn btn-secondary btn-sm" 
+                            aria-label="Leave room and return to dashboard"
+                            tabindex="0">
+                        <span class="btn-icon" aria-hidden="true">←</span>
                         Leave Room
                     </button>
                 </div>
@@ -35,14 +37,20 @@
                     <div class="room-code-display">
                         <span class="room-code-label">Room Code:</span>
                         <span id="room-code" class="room-code">------</span>
-                        <button id="copy-code-btn" class="copy-btn" title="Copy room code">
-                            <span class="copy-icon">📋</span>
+                        <button id="copy-code-btn" class="copy-btn" 
+                                title="Copy room code to clipboard"
+                                aria-label="Copy room code to clipboard"
+                                tabindex="0">
+                            <span class="copy-icon" aria-hidden="true">📋</span>
                         </button>
                     </div>
                 </div>
                 <div class="header-right">
-                    <div id="connection-status" class="connection-status">
-                        <span class="status-indicator" id="status-indicator"></span>
+                    <div id="connection-status" class="connection-status" 
+                         role="status" 
+                         aria-live="polite" 
+                         aria-label="Connection status">
+                        <span class="status-indicator" id="status-indicator" aria-hidden="true"></span>
                         <span class="status-text" id="status-text">Connecting...</span>
                     </div>
                 </div>
@@ -53,113 +61,137 @@
         <main class="waiting-room-main">
             <div class="waiting-room-container">
                 <!-- Player Slots Section -->
-                <section class="players-section">
+                <section class="players-section" aria-labelledby="players-heading">
                     <div class="section-header">
-                        <h2>Players</h2>
-                        <div class="players-count">
-                            <span id="current-players">0</span>/4
+                        <h2 id="players-heading">Players</h2>
+                        <div class="players-count" aria-label="Player count">
+                            <span id="current-players" aria-live="polite">0</span>/4
                         </div>
                     </div>
                     
-                    <div class="players-grid">
+                    <div class="players-grid" role="list" aria-label="Player slots">
                         <!-- Player Slot 1 -->
-                        <div class="player-slot" id="player-slot-1" data-position="1">
-                            <div class="player-avatar">
+                        <div class="player-slot" id="player-slot-1" data-position="1" 
+                             role="listitem" 
+                             aria-label="Player slot 1"
+                             tabindex="0">
+                            <div class="player-avatar" aria-hidden="true">
                                 <div class="avatar-placeholder">1</div>
                             </div>
                             <div class="player-info">
-                                <div class="player-name">Waiting for player...</div>
+                                <div class="player-name" aria-live="polite">Waiting for player...</div>
                                 <div class="player-status">
-                                    <span class="ready-indicator"></span>
-                                    <span class="ready-text">Not Ready</span>
+                                    <span class="ready-indicator" aria-hidden="true"></span>
+                                    <span class="ready-text" aria-live="polite">Not Ready</span>
                                 </div>
                             </div>
                             <div class="player-badges">
-                                <span class="host-badge hidden">Host</span>
+                                <span class="host-badge hidden" aria-label="Host player">Host</span>
                             </div>
                         </div>
 
                         <!-- Player Slot 2 -->
-                        <div class="player-slot" id="player-slot-2" data-position="2">
-                            <div class="player-avatar">
+                        <div class="player-slot" id="player-slot-2" data-position="2" 
+                             role="listitem" 
+                             aria-label="Player slot 2"
+                             tabindex="0">
+                            <div class="player-avatar" aria-hidden="true">
                                 <div class="avatar-placeholder">2</div>
                             </div>
                             <div class="player-info">
-                                <div class="player-name">Waiting for player...</div>
+                                <div class="player-name" aria-live="polite">Waiting for player...</div>
                                 <div class="player-status">
-                                    <span class="ready-indicator"></span>
-                                    <span class="ready-text">Not Ready</span>
+                                    <span class="ready-indicator" aria-hidden="true"></span>
+                                    <span class="ready-text" aria-live="polite">Not Ready</span>
                                 </div>
                             </div>
                             <div class="player-badges">
-                                <span class="host-badge hidden">Host</span>
+                                <span class="host-badge hidden" aria-label="Host player">Host</span>
                             </div>
                         </div>
 
                         <!-- Player Slot 3 -->
-                        <div class="player-slot" id="player-slot-3" data-position="3">
-                            <div class="player-avatar">
+                        <div class="player-slot" id="player-slot-3" data-position="3" 
+                             role="listitem" 
+                             aria-label="Player slot 3"
+                             tabindex="0">
+                            <div class="player-avatar" aria-hidden="true">
                                 <div class="avatar-placeholder">3</div>
                             </div>
                             <div class="player-info">
-                                <div class="player-name">Waiting for player...</div>
+                                <div class="player-name" aria-live="polite">Waiting for player...</div>
                                 <div class="player-status">
-                                    <span class="ready-indicator"></span>
-                                    <span class="ready-text">Not Ready</span>
+                                    <span class="ready-indicator" aria-hidden="true"></span>
+                                    <span class="ready-text" aria-live="polite">Not Ready</span>
                                 </div>
                             </div>
                             <div class="player-badges">
-                                <span class="host-badge hidden">Host</span>
+                                <span class="host-badge hidden" aria-label="Host player">Host</span>
                             </div>
                         </div>
 
                         <!-- Player Slot 4 -->
-                        <div class="player-slot" id="player-slot-4" data-position="4">
-                            <div class="player-avatar">
+                        <div class="player-slot" id="player-slot-4" data-position="4" 
+                             role="listitem" 
+                             aria-label="Player slot 4"
+                             tabindex="0">
+                            <div class="player-avatar" aria-hidden="true">
                                 <div class="avatar-placeholder">4</div>
                             </div>
                             <div class="player-info">
-                                <div class="player-name">Waiting for player...</div>
+                                <div class="player-name" aria-live="polite">Waiting for player...</div>
                                 <div class="player-status">
-                                    <span class="ready-indicator"></span>
-                                    <span class="ready-text">Not Ready</span>
+                                    <span class="ready-indicator" aria-hidden="true"></span>
+                                    <span class="ready-text" aria-live="polite">Not Ready</span>
                                 </div>
                             </div>
                             <div class="player-badges">
-                                <span class="host-badge hidden">Host</span>
+                                <span class="host-badge hidden" aria-label="Host player">Host</span>
                             </div>
                         </div>
                     </div>
                 </section>
 
                 <!-- Ready Status Section -->
-                <section class="ready-section">
+                <section class="ready-section" aria-labelledby="ready-heading">
                     <div class="ready-controls">
-                        <button id="ready-toggle-btn" class="btn btn-primary btn-lg" disabled>
+                        <button id="ready-toggle-btn" class="btn btn-primary btn-lg" 
+                                disabled
+                                aria-label="Toggle your ready status"
+                                aria-pressed="false"
+                                tabindex="0">
                             <span class="btn-text">Ready Up</span>
                         </button>
-                        <div class="ready-status">
+                        <div class="ready-status" aria-live="polite" aria-atomic="true">
                             <span id="ready-count">0</span> of 4 players ready
                         </div>
                     </div>
                 </section>
 
                 <!-- Host Controls Section -->
-                <section class="host-controls-section hidden" id="host-controls">
+                <section class="host-controls-section hidden" id="host-controls" 
+                         aria-labelledby="host-heading">
                     <div class="host-controls">
-                        <button id="start-game-btn" class="btn btn-primary btn-lg" disabled>
+                        <button id="start-game-btn" class="btn btn-primary btn-lg" 
+                                disabled
+                                aria-label="Start game for all players"
+                                tabindex="0">
                             <span class="btn-text">Start Game</span>
-                            <span id="start-spinner" class="spinner hidden"></span>
+                            <span id="start-spinner" class="spinner hidden" aria-hidden="true"></span>
                         </button>
-                        <div class="host-info">
+                        <div class="host-info" aria-live="polite">
                             <span class="host-text">You are the host - start the game when all players are ready</span>
                         </div>
                     </div>
                 </section>
 
                 <!-- Messages Section -->
-                <section class="messages-section">
-                    <div id="game-messages" class="game-messages">
+                <section class="messages-section" aria-labelledby="messages-heading">
+                    <h3 id="messages-heading" class="sr-only">Game Messages</h3>
+                    <div id="game-messages" class="game-messages" 
+                         role="log" 
+                         aria-live="polite" 
+                         aria-label="Game status messages">
                         <!-- Messages will be populated dynamically -->
                     </div>
                 </section>
