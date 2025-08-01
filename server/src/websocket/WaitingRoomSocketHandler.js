@@ -1,4 +1,5 @@
 import Room from '../models/Room.js';
+import Game from '../models/Game.js';
 
 /**
  * Waiting Room WebSocket Handler
@@ -387,36 +388,46 @@ class WaitingRoomSocketHandler {
 
             console.log(`[WaitingRoom] Game start validated for room ${roomId} by ${username}`);
 
-            // Form teams if we have connected players and teams aren't formed yet
+            // Create game with team formation and database entries
+            let game = null;
             let teams = null;
-            const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
-            
-            if (connectedPlayers.length >= 2) {
-                const hasTeamAssignments = connectedPlayers.every(p => p.teamAssignment !== null);
-                if (!hasTeamAssignments) {
-                    teams = await this.formTeams(roomId);
-                } else {
-                    teams = this.getExistingTeams(room);
-                }
-            }
-
-            // Update database
             let dbUpdateSuccess = false;
+            
             try {
                 const dbRoom = await Room.findById(roomId);
                 if (dbRoom) {
-                    await dbRoom.updateStatus('playing');
+                    // Create game (this will form teams and create database entries)
+                    game = await dbRoom.createGame();
+                    teams = {
+                        team1: game.teams.find(t => t.team_number === 1)?.players || [],
+                        team2: game.teams.find(t => t.team_number === 2)?.players || []
+                    };
+                    
+                    // Update WebSocket room state with team assignments
+                    this.updateWebSocketTeamAssignments(room, teams);
+                    
                     dbUpdateSuccess = true;
+                    console.log(`[WaitingRoom] Game ${game.game_code} created successfully from room ${roomId}`);
                 }
             } catch (dbError) {
-                console.error('[WaitingRoom] Database update failed on game start:', dbError);
-                // Continue with game start even if database update fails
+                console.error('[WaitingRoom] Game creation failed:', dbError);
+                
+                // Fallback: form teams in WebSocket only
+                const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
+                if (connectedPlayers.length >= 2) {
+                    const hasTeamAssignments = connectedPlayers.every(p => p.teamAssignment !== null);
+                    if (!hasTeamAssignments) {
+                        teams = await this.formTeamsWebSocketOnly(room);
+                    } else {
+                        teams = this.getExistingTeams(room);
+                    }
+                }
             }
 
             console.log(`[WaitingRoom] Game starting in room ${roomId} by ${username} (DB: ${dbUpdateSuccess})`);
 
-            // Broadcast game start to all players
-            this.broadcastGameStarting(roomId, userId, username, teams, room, dbUpdateSuccess);
+            // Broadcast game start to all players with game information
+            this.broadcastGameStarting(roomId, userId, username, teams, room, game, dbUpdateSuccess);
 
         } catch (error) {
             console.error('[WaitingRoom] Error starting game:', error);
@@ -473,20 +484,7 @@ class WaitingRoomSocketHandler {
             // Update websocket room state
             const room = this.socketManager.gameRooms.get(roomId);
             if (room) {
-                room.teams.team1 = teams.team1.map(p => p.id);
-                room.teams.team2 = teams.team2.map(p => p.id);
-
-                // Update player team assignments in websocket state
-                for (const player of teams.team1) {
-                    if (room.players.has(player.id)) {
-                        room.players.get(player.id).teamAssignment = 1;
-                    }
-                }
-                for (const player of teams.team2) {
-                    if (room.players.has(player.id)) {
-                        room.players.get(player.id).teamAssignment = 2;
-                    }
-                }
+                this.updateWebSocketTeamAssignments(room, teams);
             }
 
             console.log(`[WaitingRoom] Teams formed for room ${roomId}`);
@@ -494,6 +492,86 @@ class WaitingRoomSocketHandler {
         } catch (error) {
             console.error('[WaitingRoom] Error forming teams:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Form teams in WebSocket only (fallback when database fails)
+     */
+    async formTeamsWebSocketOnly(room) {
+        try {
+            const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
+            
+            if (connectedPlayers.length < 2) {
+                throw new Error('Need at least 2 connected players for team formation');
+            }
+
+            // Shuffle players for random team assignment
+            const shuffledPlayers = [...connectedPlayers];
+            for (let i = shuffledPlayers.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledPlayers[i], shuffledPlayers[j]] = [shuffledPlayers[j], shuffledPlayers[i]];
+            }
+
+            let team1Players, team2Players;
+
+            if (connectedPlayers.length === 4) {
+                team1Players = shuffledPlayers.slice(0, 2);
+                team2Players = shuffledPlayers.slice(2, 4);
+            } else if (connectedPlayers.length === 3) {
+                team1Players = shuffledPlayers.slice(0, 2);
+                team2Players = shuffledPlayers.slice(2, 3);
+            } else {
+                team1Players = [shuffledPlayers[0]];
+                team2Players = [shuffledPlayers[1]];
+            }
+
+            // Update WebSocket room state
+            room.teams.team1 = team1Players.map(p => p.userId);
+            room.teams.team2 = team2Players.map(p => p.userId);
+
+            // Update player team assignments
+            for (const player of team1Players) {
+                if (room.players.has(player.userId)) {
+                    room.players.get(player.userId).teamAssignment = 1;
+                }
+            }
+            for (const player of team2Players) {
+                if (room.players.has(player.userId)) {
+                    room.players.get(player.userId).teamAssignment = 2;
+                }
+            }
+
+            const teams = {
+                team1: team1Players.map(p => ({ id: p.userId, username: p.username })),
+                team2: team2Players.map(p => ({ id: p.userId, username: p.username }))
+            };
+
+            console.log(`[WaitingRoom] Teams formed in WebSocket only for room ${room.gameId}`);
+            return teams;
+        } catch (error) {
+            console.error('[WaitingRoom] Error forming teams in WebSocket:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update WebSocket room state with team assignments
+     */
+    updateWebSocketTeamAssignments(room, teams) {
+        room.teams.team1 = teams.team1.map(p => p.id);
+        room.teams.team2 = teams.team2.map(p => p.id);
+
+        // Update player team assignments in websocket state
+        for (const player of teams.team1) {
+            if (room.players.has(player.id)) {
+                room.players.get(player.id).teamAssignment = 1;
+            }
+        }
+        for (const player of teams.team2) {
+            if (room.players.has(player.id)) {
+                room.players.get(player.id).teamAssignment = 2;
+            }
         }
     }
 
@@ -632,8 +710,19 @@ class WaitingRoomSocketHandler {
         });
     }
 
-    broadcastGameStarting(roomId, startedBy, startedByName, teams, room, dbSynced = false) {
+    broadcastGameStarting(roomId, startedBy, startedByName, teams, room, game = null, dbSynced = false) {
         const roomPlayers = this.getRoomPlayersArray(room);
+
+        // Prepare game information
+        const gameInfo = game ? {
+            gameId: game.game_id,
+            gameCode: game.game_code,
+            status: game.status,
+            targetScore: game.target_score
+        } : null;
+
+        // Determine redirect URL - use game ID if available, otherwise room ID
+        const redirectUrl = game ? `/game.html?gameId=${game.game_id}` : `/game.html?roomId=${roomId}`;
 
         this.io.to(roomId).emit('waiting-room-game-starting', {
             roomId,
@@ -641,11 +730,30 @@ class WaitingRoomSocketHandler {
             startedByName,
             players: roomPlayers,
             teams,
-            redirectUrl: `/game.html?roomId=${roomId}`,
+            game: gameInfo,
+            redirectUrl,
             dbSynced,
             roomStatus: room.status,
             timestamp: new Date().toISOString()
         });
+
+        // Send individual navigation commands to ensure all players redirect
+        setTimeout(() => {
+            this.sendNavigationCommands(roomId, redirectUrl);
+        }, 1500); // Give players time to see the "game starting" message
+    }
+
+    /**
+     * Send navigation commands to all players in the room
+     */
+    sendNavigationCommands(roomId, redirectUrl) {
+        this.io.to(roomId).emit('navigate-to-game', {
+            roomId,
+            redirectUrl,
+            timestamp: new Date().toISOString()
+        });
+
+        console.log(`[WaitingRoom] Navigation commands sent to room ${roomId}: ${redirectUrl}`);
     }
 
     // Helper methods

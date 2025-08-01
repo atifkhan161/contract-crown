@@ -1,5 +1,6 @@
 import express from 'express';
 import Room from '../models/Room.js';
+import Game from '../models/Game.js';
 import auth from '../middlewares/auth.js';
 
 const router = express.Router();
@@ -355,19 +356,33 @@ router.post('/:roomId/start', auth, async (req, res) => {
             });
         }
 
-        // Form teams if we have 4 players
+        // Create game with team formation and database entries
+        let game = null;
         let teams = null;
-        if (room.players.length === 4) {
-            const hasTeamAssignments = room.players.every(p => p.teamAssignment !== null);
-            if (!hasTeamAssignments) {
+        
+        try {
+            // Create game (this will form teams and create database entries)
+            game = await room.createGame();
+            teams = {
+                team1: game.teams.find(t => t.team_number === 1)?.players || [],
+                team2: game.teams.find(t => t.team_number === 2)?.players || []
+            };
+            
+            console.log(`[WaitingRoom API] Game ${game.game_code} created successfully from room ${roomId}`);
+        } catch (gameError) {
+            console.error('[WaitingRoom API] Game creation failed, falling back to room-only start:', gameError);
+            
+            // Fallback: just form teams and update room status
+            const connectedPlayers = room.players.filter(p => p.isConnected !== false);
+            if (connectedPlayers.length >= 2 && !room.areTeamsFormed()) {
                 teams = await room.formTeams();
             } else {
                 teams = room.getTeams();
             }
+            
+            // Update room status
+            await room.updateStatus('playing');
         }
-
-        // Update room status
-        await room.updateStatus('playing');
 
         // Update WebSocket room if available
         if (req.io && req.io.socketManager && req.io.socketManager.gameRooms.has(roomId)) {
@@ -392,24 +407,48 @@ router.post('/:roomId/start', auth, async (req, res) => {
             }
 
             // Broadcast game start via WebSocket
+            const gameInfo = game ? {
+                gameId: game.game_id,
+                gameCode: game.game_code,
+                status: game.status,
+                targetScore: game.target_score
+            } : null;
+
+            const redirectUrl = game ? `/game.html?gameId=${game.game_id}` : `/game.html?roomId=${roomId}`;
+
             req.io.to(roomId).emit('waiting-room-game-starting-http', {
                 roomId,
                 startedBy: userId,
                 startedByName: username,
                 players: Array.from(wsRoom.players.values()),
                 teams,
-                redirectUrl: `/game.html?roomId=${roomId}`,
+                game: gameInfo,
+                redirectUrl,
                 source: 'http_fallback',
                 timestamp: new Date().toISOString()
             });
+
+            // Send navigation commands after a delay
+            setTimeout(() => {
+                req.io.to(roomId).emit('navigate-to-game', {
+                    roomId,
+                    redirectUrl,
+                    source: 'http_fallback',
+                    timestamp: new Date().toISOString()
+                });
+            }, 1500);
         }
 
+        // Prepare response
+        const redirectUrl = game ? `/game.html?gameId=${game.game_id}` : `/game.html?roomId=${roomId}`;
+        
         res.json({
             success: true,
             message: 'Game is starting!',
             room: room.toApiResponse(),
+            game: game ? game.toApiResponse() : null,
             teams,
-            redirectUrl: `/game.html?roomId=${roomId}`
+            redirectUrl
         });
     } catch (error) {
         console.error('[WaitingRoom API] Error starting game:', error);

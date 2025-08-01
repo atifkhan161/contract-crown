@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import dbConnection from '../../database/connection.js';
 import User from './User.js';
+import Game from './Game.js';
 
 class Room {
     constructor(roomData = {}) {
@@ -957,6 +958,56 @@ class Room {
             };
         } catch (error) {
             console.error('[Room] PrepareForGameStart error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Create a game from this room with team assignments
+     * @returns {Promise<Game>} Created game instance
+     */
+    async createGame() {
+        try {
+            const validation = this.validateGameStart();
+            if (!validation.isValid) {
+                throw new Error(`Cannot create game: ${validation.errors.join(', ')}`);
+            }
+
+            const connectedPlayers = this.players.filter(p => p.isConnected !== false);
+            
+            // Form teams if needed
+            let teams = null;
+            if (!this.areTeamsFormed()) {
+                teams = await this.formTeams();
+            } else {
+                teams = this.getTeams();
+            }
+
+            // Prepare game data
+            const gameData = {
+                roomId: this.room_id,
+                hostId: this.owner_id,
+                players: connectedPlayers,
+                teams: {
+                    team1: teams.team1,
+                    team2: teams.team2
+                }
+            };
+
+            // Create game in database
+            const game = await Game.createFromRoom(gameData);
+
+            // Update room status to playing
+            await this.updateWithVersionControl({ 
+                status: 'playing',
+                started_at: new Date()
+            });
+
+            console.log(`[Room] Created game ${game.game_code} from room ${this.room_id}`);
+
+            return game;
+        } catch (error) {
+            console.error('[Room] CreateGame error:', error.message);
             throw error;
         }
     }

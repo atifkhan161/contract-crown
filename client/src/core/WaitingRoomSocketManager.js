@@ -240,6 +240,11 @@ export class WaitingRoomSocketManager {
             this.emit('teams-formed', data);
         });
 
+        this.socket.on('navigate-to-game', (data) => {
+            console.log('[WaitingRoomSocketManager] Navigation command received:', data);
+            this.emit('navigate-to-game', data);
+        });
+
         // Error events
         this.socket.on('waiting-room-error', (data) => {
             console.error('[WaitingRoomSocketManager] Waiting room error:', data);

@@ -86,7 +86,11 @@
   - Add validation for ready status changes and host privileges
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 5.2_
 
-- [ ] 9. Create team formation and game start logic
+- [x] 9. Create team formation and game start logic
+
+
+
+
   - Implement automatic team assignment (2 teams of 2 players each)
   - Add team creation in database when game starts
   - Create game start validation and redirect functionality
@@ -94,6 +98,7 @@
   - _Requirements: 5.3, 5.4, 5.5, 6.4_
 
 - [ ] 10. Add player leave and host transfer functionality
+
   - Implement leave room functionality with proper cleanup
   - Add host privilege transfer when host leaves
   - Create player slot availability management

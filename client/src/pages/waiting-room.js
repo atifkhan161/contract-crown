@@ -314,6 +314,10 @@ class WaitingRoomManager {
             this.uiManager.addMessage('Teams have been formed! Starting game...', 'success');
         });
 
+        this.socketManager.on('navigate-to-game', (data) => {
+            this.handleNavigateToGame(data);
+        });
+
         // Error events
         this.socketManager.on('waiting-room-error', (error) => {
             console.error('[WaitingRoom] Waiting room error:', error);
@@ -692,14 +696,25 @@ class WaitingRoomManager {
 
             const result = await response.json();
             
-            // Add user feedback
-            this.uiManager.addMessage('Game is starting! Redirecting...', 'success');
+            // Display teams information if available
+            if (result.teams) {
+                const team1Names = result.teams.team1.map(p => p.username).join(', ');
+                const team2Names = result.teams.team2.map(p => p.username).join(', ');
+                this.uiManager.addMessage(`Teams formed! Team 1: ${team1Names} vs Team 2: ${team2Names}`, 'success');
+            }
+
+            // Display game information if available
+            if (result.game) {
+                this.uiManager.addMessage(`Game ${result.game.code} created! Starting...`, 'success');
+            } else {
+                this.uiManager.addMessage('Game is starting! Redirecting...', 'success');
+            }
             
             // Redirect to game page
             const redirectUrl = result.redirectUrl || `game.html?room=${this.roomId}`;
             setTimeout(() => {
                 window.location.href = redirectUrl;
-            }, 1500);
+            }, 2000);
 
             console.log('[WaitingRoom] Game started via HTTP API');
 
@@ -778,14 +793,46 @@ class WaitingRoomManager {
 
     handleGameStart(data) {
         console.log('[WaitingRoom] Game starting:', data);
-        this.uiManager.addMessage('Game is starting! Redirecting...', 'success');
+        
+        // Display teams information if available
+        if (data.teams) {
+            const team1Names = data.teams.team1.map(p => p.username).join(', ');
+            const team2Names = data.teams.team2.map(p => p.username).join(', ');
+            this.uiManager.addMessage(`Teams formed! Team 1: ${team1Names} vs Team 2: ${team2Names}`, 'success');
+        }
+
+        // Display game information if available
+        if (data.game) {
+            this.uiManager.addMessage(`Game ${data.game.gameCode} created! Starting...`, 'success');
+        } else {
+            this.uiManager.addMessage('Game is starting! Redirecting...', 'success');
+        }
 
         // Use redirect URL from server if provided, otherwise construct it
         const redirectUrl = data?.redirectUrl || `game.html?room=${this.roomId}`;
         
+        // Set loading state
+        this.setStartGameLoading(true);
+        
+        // Redirect after showing the message
         setTimeout(() => {
             window.location.href = redirectUrl;
-        }, 1500);
+        }, 2000);
+    }
+
+    handleNavigateToGame(data) {
+        console.log('[WaitingRoom] Navigation command received:', data);
+        
+        // Immediate navigation when server sends explicit command
+        const redirectUrl = data?.redirectUrl || `game.html?room=${this.roomId}`;
+        
+        this.uiManager.addMessage('Navigating to game...', 'system');
+        
+        // Clean up before navigation
+        this.cleanup();
+        
+        // Navigate immediately
+        window.location.href = redirectUrl;
     }
     // Navigation management
     handlePageHidden() {
