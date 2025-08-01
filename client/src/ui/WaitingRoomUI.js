@@ -45,6 +45,13 @@ export class WaitingRoomUI {
         this.elements.startGameBtn = document.getElementById('start-game-btn');
         this.elements.startSpinner = document.getElementById('start-spinner');
         
+        // Debug logging for host controls
+        console.log('[WaitingRoomUI] Host controls element found:', !!this.elements.hostControls);
+        console.log('[WaitingRoomUI] Start game button found:', !!this.elements.startGameBtn);
+        if (this.elements.hostControls) {
+            console.log('[WaitingRoomUI] Initial host controls classes:', this.elements.hostControls.classList.toString());
+        }
+        
         // Message elements
         this.elements.gameMessages = document.getElementById('game-messages');
         
@@ -772,15 +779,25 @@ export class WaitingRoomUI {
      * @param {boolean} canStart - Whether game can be started
      */
     showHostControls(isHost, canStart = false) {
+        console.log('[WaitingRoomUI] showHostControls called:', { isHost, canStart });
+        
         const hostControls = this.elements.hostControls;
         const startButton = this.elements.startGameBtn;
         
+        console.log('[WaitingRoomUI] Host controls element:', hostControls);
+        console.log('[WaitingRoomUI] Start button element:', startButton);
+        
         if (hostControls) {
             if (isHost) {
+                console.log('[WaitingRoomUI] Showing host controls (removing hidden class)');
                 hostControls.classList.remove('hidden');
             } else {
+                console.log('[WaitingRoomUI] Hiding host controls (adding hidden class)');
                 hostControls.classList.add('hidden');
             }
+            console.log('[WaitingRoomUI] Host controls classes after update:', hostControls.classList.toString());
+        } else {
+            console.error('[WaitingRoomUI] Host controls element not found!');
         }
 
         if (startButton) {
@@ -791,6 +808,9 @@ export class WaitingRoomUI {
             } else {
                 startButton.classList.add('btn-disabled');
             }
+            console.log('[WaitingRoomUI] Start button disabled:', startButton.disabled);
+        } else {
+            console.error('[WaitingRoomUI] Start button element not found!');
         }
     }
 

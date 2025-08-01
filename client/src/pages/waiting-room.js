@@ -197,12 +197,32 @@ class WaitingRoomManager {
             this.updateRoomDisplay();
 
             // Check if current user is the host
-            this.isHost = this.roomData.owner === (this.currentUser.user_id || this.currentUser.id);
-            console.log('[WaitingRoom] Is host:', this.isHost);
+            const currentUserId = this.currentUser.user_id || this.currentUser.id;
+            const roomOwnerId = this.roomData.owner;
 
-            // Show host controls if user is host
-            if (this.isHost) {
+            console.log('[WaitingRoom] Host detection debug:', {
+                currentUserId,
+                currentUserIdType: typeof currentUserId,
+                roomOwnerId,
+                roomOwnerIdType: typeof roomOwnerId,
+                strictEqual: roomOwnerId === currentUserId,
+                looseEqual: roomOwnerId == currentUserId,
+                stringComparison: String(roomOwnerId) === String(currentUserId)
+            });
+
+            // Use string comparison to ensure no type issues
+            this.isHost = String(roomOwnerId) === String(currentUserId);
+
+            console.log('[WaitingRoom] Final host status:', this.isHost);
+
+            // Always show host controls if user IDs match (more robust check)
+            if (String(currentUserId) === String(roomOwnerId)) {
+                console.log('[WaitingRoom] User is host (IDs match), showing host controls');
+                this.isHost = true;
                 this.uiManager.showHostControls(true, false);
+            } else {
+                console.log('[WaitingRoom] User is not host, host controls will remain hidden');
+                this.uiManager.showHostControls(false, false);
             }
 
         } catch (error) {
@@ -216,22 +236,22 @@ class WaitingRoomManager {
     async initializeSocketManager() {
         try {
             console.log('[WaitingRoom] Initializing socket manager...');
-            
+
             // Create socket manager instance
             this.socketManager = new WaitingRoomSocketManager(this.authManager, this.roomId);
-            
+
             // Set up socket event listeners
             this.setupSocketEventListeners();
-            
+
             // Connect to WebSocket server
             await this.socketManager.connect();
-            
+
             console.log('[WaitingRoom] Socket manager initialized successfully');
-            
+
         } catch (error) {
             console.error('[WaitingRoom] Failed to initialize socket manager:', error);
             this.showError('Failed to connect to real-time updates. Some features may not work properly.');
-            
+
             // Continue without socket connection - fallback to HTTP polling could be implemented here
         }
     }
@@ -296,8 +316,27 @@ class WaitingRoomManager {
         // Room events
         this.socketManager.on('room-joined', (data) => {
             console.log('[WaitingRoom] Successfully joined room via socket:', data);
-            if (data.room) {
-                this.roomData = data.room;
+
+            // Update room data with the received data
+            if (data.players) {
+                // Map server player data format to client format
+                const mappedPlayers = data.players.map(player => ({
+                    id: player.userId,
+                    user_id: player.userId,
+                    username: player.username,
+                    isReady: player.isReady,
+                    teamAssignment: player.teamAssignment,
+                    isConnected: player.isConnected !== false
+                }));
+
+                // Update room data
+                if (!this.roomData) {
+                    this.roomData = {};
+                }
+                this.roomData.players = mappedPlayers;
+                this.roomData.status = data.roomStatus || 'waiting';
+                this.roomData.owner = data.hostId;
+
                 this.updateRoomDisplay();
             }
         });
@@ -344,7 +383,7 @@ class WaitingRoomManager {
             const playerIndex = this.players.findIndex(player =>
                 player.id === playerId || player.user_id === playerId
             );
-            
+
             if (playerIndex !== -1) {
                 this.players[playerIndex].isConnected = false;
                 this.updatePlayersDisplay();
@@ -376,17 +415,17 @@ class WaitingRoomManager {
         this.socketManager.on('ready-toggle-error', (error) => {
             console.error('[WaitingRoom] Ready toggle error:', error);
             this.showError(error.message || 'Failed to update ready status');
-            
+
             // Re-enable ready button on error
             this.updateReadyButton(true);
         });
 
         this.socketManager.on('ready-status-confirmed', (data) => {
             console.log('[WaitingRoom] Ready status confirmed:', data);
-            
+
             // Re-enable ready button after successful update
             this.updateReadyButton(true);
-            
+
             // Show success message if database sync failed but WebSocket succeeded
             if (!data.dbSynced) {
                 this.uiManager.addMessage('Ready status updated (WebSocket only)', 'system');
@@ -410,7 +449,7 @@ class WaitingRoomManager {
 
     updateConnectionStatus(status, details = {}) {
         this.uiManager.updateConnectionStatus(status, details);
-        
+
         // Perform additional actions based on status
         switch (status) {
             case 'connected':
@@ -430,7 +469,7 @@ class WaitingRoomManager {
         if (this.roomData) {
             this.updateRoomDisplay();
         }
-        
+
         // Clear any connection warnings
         this.uiManager.hideConnectionWarning();
     }
@@ -444,7 +483,7 @@ class WaitingRoomManager {
         // Show progress if multiple attempts
         if (details.reconnectAttempts > 2) {
             this.uiManager.showConnectionWarning(
-                'warning', 
+                'warning',
                 `Connection unstable - attempt ${details.reconnectAttempts}/${details.maxReconnectAttempts}`,
                 { autoHide: false }
             );
@@ -453,7 +492,7 @@ class WaitingRoomManager {
 
     handleReconnectFailed(data) {
         console.error('[WaitingRoom] Reconnection failed after', data.attempts, 'attempts');
-        
+
         // Show recovery options to user
         this.uiManager.showConnectionRecoveryOptions({
             showRefresh: true,
@@ -467,7 +506,7 @@ class WaitingRoomManager {
 
     handleConnectionWarning(data) {
         console.warn('[WaitingRoom] Connection warning:', data);
-        
+
         switch (data.type) {
             case 'stale_connection':
                 this.uiManager.showConnectionWarning(
@@ -483,7 +522,7 @@ class WaitingRoomManager {
 
     handleHttpPollingFailed() {
         console.error('[WaitingRoom] HTTP polling fallback failed');
-        
+
         this.uiManager.showConnectionRecoveryOptions({
             showRefresh: true,
             showRetry: false,
@@ -495,7 +534,7 @@ class WaitingRoomManager {
     async retryConnection() {
         try {
             this.uiManager.addMessage('Retrying connection...', 'system');
-            
+
             if (this.socketManager) {
                 await this.socketManager.disconnect();
                 await this.initializeSocketManager();
@@ -517,7 +556,7 @@ class WaitingRoomManager {
         // Disable/enable buttons that require real-time connection
         const readyButton = this.elements.readyToggleBtn;
         const startButton = this.elements.startGameBtn;
-        
+
         if (readyButton) {
             readyButton.disabled = !enabled;
             if (!enabled) {
@@ -526,7 +565,7 @@ class WaitingRoomManager {
                 readyButton.title = '';
             }
         }
-        
+
         if (startButton && this.isHost) {
             startButton.disabled = !enabled;
             if (!enabled) {
@@ -571,22 +610,64 @@ class WaitingRoomManager {
             player.id === currentUserId || player.user_id === currentUserId
         );
 
+        console.log('[WaitingRoom] Ready button check:', {
+            currentUserId,
+            playersCount: this.players.length,
+            currentPlayerFound: !!currentPlayer,
+            currentPlayer: currentPlayer,
+            roomStatus: this.roomData?.status
+        });
+
         if (currentPlayer) {
             this.isReady = currentPlayer.isReady || false;
-            
+
             // Enable ready button only if player is connected and room is waiting
-            const canToggleReady = currentPlayer.isConnected !== false && 
-                                 (!this.roomData || this.roomData.status === 'waiting');
+            const canToggleReady = currentPlayer.isConnected !== false &&
+                (!this.roomData || this.roomData.status === 'waiting');
+
+            console.log('[WaitingRoom] Ready button state:', {
+                isConnected: currentPlayer.isConnected,
+                roomStatus: this.roomData?.status,
+                canToggleReady
+            });
+
             this.updateReadyButton(canToggleReady);
+        } else {
+            console.warn('[WaitingRoom] Current player not found in players list - ready button will be disabled');
+            this.updateReadyButton(false);
         }
 
         // Update start game button state for host with enhanced logic
+        console.log('[WaitingRoom] Host check in updatePlayersDisplay:', {
+            isHost: this.isHost,
+            currentUserId,
+            roomOwner: this.roomData?.owner,
+            roomData: this.roomData
+        });
+
+        // Multiple ways to check if user should be host
+        const shouldBeHost = (
+            (this.roomData?.owner && String(this.roomData.owner) === String(currentUserId)) ||
+            (this.roomData?.room?.owner && String(this.roomData.room.owner) === String(currentUserId)) ||
+            // Check if user is first player (fallback for host detection)
+            (this.players.length > 0 && (this.players[0].id === currentUserId || this.players[0].user_id === currentUserId))
+        );
+
+        if (shouldBeHost && !this.isHost) {
+            console.log('[WaitingRoom] User should be host - setting isHost to true');
+            this.isHost = true;
+        }
+
         if (this.isHost) {
+            console.log('[WaitingRoom] Showing host controls');
             const canStartGame = this.calculateGameStartEligibility();
             this.uiManager.showHostControls(true, canStartGame.canStart);
-            
+
             // Update host info text with more detailed status
             this.updateHostInfoText(canStartGame);
+        } else {
+            console.log('[WaitingRoom] Not host, hiding host controls');
+            this.uiManager.showHostControls(false, false);
         }
     }
 
@@ -596,7 +677,7 @@ class WaitingRoomManager {
     calculateGameStartEligibility() {
         const connectedPlayers = this.players.filter(player => player.isConnected !== false);
         const readyPlayers = connectedPlayers.filter(player => player.isReady);
-        
+
         let canStart = false;
         let reason = '';
 
@@ -651,7 +732,7 @@ class WaitingRoomManager {
     async handleLeaveRoom() {
         const isHost = this.isHost;
         const playerCount = this.players.filter(p => p.isConnected !== false).length;
-        
+
         // Enhanced confirmation message for hosts
         let confirmMessage = 'Are you sure you want to leave the room?';
         if (isHost && playerCount > 1) {
@@ -659,7 +740,7 @@ class WaitingRoomManager {
         } else if (isHost && playerCount === 1) {
             confirmMessage = 'You are the only player in the room. Leaving will close the room. Are you sure?';
         }
-        
+
         if (confirm(confirmMessage)) {
             try {
                 this.showLoading(true, 'Leaving room...');
@@ -697,9 +778,9 @@ class WaitingRoomManager {
                     // Set up one-time listeners for leave response
                     this.socketManager.socket.once('waiting-room-left', leaveConfirmationHandler);
                     this.socketManager.socket.once('waiting-room-error', leaveErrorHandler);
-                    
+
                     this.socketManager.leaveRoom();
-                    
+
                     // Fallback timeout in case no response
                     setTimeout(() => {
                         this.socketManager.socket.off('waiting-room-left', leaveConfirmationHandler);
@@ -744,9 +825,9 @@ class WaitingRoomManager {
 
             const result = await response.json();
             console.log('[WaitingRoom] Left room via HTTP API:', result);
-            
+
             this.uiManager.addMessage('Successfully left the room', 'success');
-            
+
             // Clean up and redirect
             setTimeout(async () => {
                 await this.cleanup();
@@ -791,18 +872,18 @@ class WaitingRoomManager {
             }
 
             const newReadyStatus = !this.isReady;
-            
+
             // Disable ready button temporarily to prevent double-clicks
             this.uiManager.updateReadyButton(this.isReady, false);
-            
+
             // Use socket manager if available
             if (this.socketManager && this.socketManager.isReady()) {
                 this.socketManager.toggleReady(newReadyStatus);
                 console.log('[WaitingRoom] Ready status toggle sent via socket:', newReadyStatus);
-                
+
                 // Add user feedback message
                 this.uiManager.addMessage(
-                    `You are now ${newReadyStatus ? 'ready' : 'not ready'}`, 
+                    `You are now ${newReadyStatus ? 'ready' : 'not ready'}`,
                     'system'
                 );
             } else {
@@ -814,7 +895,7 @@ class WaitingRoomManager {
         } catch (error) {
             console.error('[WaitingRoom] Error toggling ready status:', error);
             this.showError('Failed to update ready status. Please try again.');
-            
+
             // Re-enable ready button on error
             this.uiManager.updateReadyButton(this.isReady, true);
         }
@@ -841,7 +922,7 @@ class WaitingRoomManager {
             }
 
             const result = await response.json();
-            
+
             // Update local state
             this.isReady = newReadyStatus;
             this.updateReadyButton();
@@ -859,7 +940,7 @@ class WaitingRoomManager {
 
             // Add user feedback message
             this.uiManager.addMessage(
-                `You are now ${newReadyStatus ? 'ready' : 'not ready'}`, 
+                `You are now ${newReadyStatus ? 'ready' : 'not ready'}`,
                 'system'
             );
 
@@ -888,7 +969,7 @@ class WaitingRoomManager {
             // Get connected players for validation
             const connectedPlayers = this.players.filter(player => player.isConnected !== false);
             const readyPlayers = connectedPlayers.filter(player => player.isReady);
-            
+
             // Enhanced validation for game start conditions
             if (connectedPlayers.length < 2) {
                 this.showError('Need at least 2 connected players to start the game.');
@@ -916,7 +997,7 @@ class WaitingRoomManager {
             if (this.socketManager && this.socketManager.isReady()) {
                 this.socketManager.startGame();
                 console.log('[WaitingRoom] Game start request sent via socket');
-                
+
                 // Add user feedback
                 this.uiManager.addMessage('Starting game...', 'system');
             } else {
@@ -929,7 +1010,7 @@ class WaitingRoomManager {
             console.error('[WaitingRoom] Error starting game:', error);
             this.showError('Failed to start game. Please try again.');
             this.setStartGameLoading(false);
-            
+
             // Re-enable start button on error if conditions are still met
             const connectedPlayers = this.players.filter(player => player.isConnected !== false);
             const readyPlayers = connectedPlayers.filter(player => player.isReady);
@@ -958,7 +1039,7 @@ class WaitingRoomManager {
             }
 
             const result = await response.json();
-            
+
             // Display teams information if available
             if (result.teams) {
                 const team1Names = result.teams.team1.map(p => p.username).join(', ');
@@ -972,7 +1053,7 @@ class WaitingRoomManager {
             } else {
                 this.uiManager.addMessage('Game is starting! Redirecting...', 'success');
             }
-            
+
             // Redirect to game page
             const redirectUrl = result.redirectUrl || `game.html?room=${this.roomId}`;
             setTimeout(() => {
@@ -990,36 +1071,38 @@ class WaitingRoomManager {
     handlePlayerJoin(playerData) {
         console.log('[WaitingRoom] Player joined:', playerData);
 
+        // Map server data format to client format
+        const mappedPlayerData = {
+            id: playerData.userId || playerData.id,
+            user_id: playerData.userId || playerData.user_id || playerData.id,
+            username: playerData.username || playerData.name,
+            isReady: playerData.isReady || false,
+            isConnected: playerData.isConnected !== false
+        };
+
         // Add player to the list if not already present
         const existingPlayerIndex = this.players.findIndex(player =>
-            player.id === playerData.id || player.user_id === playerData.id
+            player.id === mappedPlayerData.id || player.user_id === mappedPlayerData.id
         );
 
         if (existingPlayerIndex === -1) {
-            this.players.push({
-                id: playerData.id,
-                user_id: playerData.user_id || playerData.id,
-                username: playerData.username || playerData.name,
-                isReady: playerData.isReady || false,
-                isConnected: playerData.isConnected !== false
-            });
+            this.players.push(mappedPlayerData);
         } else {
             // Update existing player data
             this.players[existingPlayerIndex] = {
                 ...this.players[existingPlayerIndex],
-                ...playerData,
-                isConnected: playerData.isConnected !== false
+                ...mappedPlayerData
             };
         }
 
         this.updatePlayersDisplay();
-        this.uiManager.addMessage(`${playerData.username || playerData.name} joined the room`, 'system');
+        this.uiManager.addMessage(`${mappedPlayerData.username} joined the room`, 'system');
     }
 
     handlePlayerLeave(data) {
         const playerId = data.playerId || data.userId;
         const playerName = data.playerName || 'Unknown Player';
-        
+
         console.log('[WaitingRoom] Player left:', { playerId, playerName, data });
 
         // Update players list from server data if available
@@ -1047,25 +1130,25 @@ class WaitingRoomManager {
         if (data.hostTransferred && data.newHostId) {
             const currentUserId = this.currentUser.user_id || this.currentUser.id;
             const wasCurrentUserHost = this.isHost;
-            
+
             // Update room owner
             if (this.roomData) {
                 this.roomData.owner = data.newHostId;
             }
-            
+
             // Update local host status
             this.isHost = String(data.newHostId) === String(currentUserId);
-            
+
             // Show/hide host controls based on new status
             const gameStartInfo = this.calculateGameStartEligibility();
             this.uiManager.showHostControls(this.isHost, gameStartInfo.canStart);
-            
+
             // Add appropriate message
             if (data.wasHost) {
                 if (this.isHost) {
                     this.uiManager.addMessage(`${playerName} (host) left. You are now the host!`, 'success');
                 } else {
-                    const newHost = this.players.find(p => 
+                    const newHost = this.players.find(p =>
                         (p.id === data.newHostId || p.user_id === data.newHostId)
                     );
                     const newHostName = newHost ? newHost.username : 'Unknown';
@@ -1080,7 +1163,7 @@ class WaitingRoomManager {
 
         // Update display with new player count and ready status
         this.updatePlayersDisplay();
-        
+
         // Update host info if current user is host
         if (this.isHost) {
             const gameStartInfo = this.calculateGameStartEligibility();
@@ -1090,22 +1173,22 @@ class WaitingRoomManager {
 
     handleHostTransfer(data) {
         console.log('[WaitingRoom] Host transfer event:', data);
-        
+
         const currentUserId = this.currentUser.user_id || this.currentUser.id;
         const wasHost = this.isHost;
-        
+
         // Update room owner
         if (this.roomData) {
             this.roomData.owner = data.newHostId;
         }
-        
+
         // Update local host status
         this.isHost = String(data.newHostId) === String(currentUserId);
-        
+
         // Show/hide host controls
         const gameStartInfo = this.calculateGameStartEligibility();
         this.uiManager.showHostControls(this.isHost, gameStartInfo.canStart);
-        
+
         // Add appropriate message
         if (this.isHost && !wasHost) {
             this.uiManager.addMessage(`You are now the host! You can start the game when all players are ready.`, 'success');
@@ -1114,7 +1197,7 @@ class WaitingRoomManager {
         } else {
             this.uiManager.addMessage(`${data.newHostName} is now the host`, 'system');
         }
-        
+
         // Update players display to show new host badge
         this.updatePlayersDisplay();
     }
@@ -1144,7 +1227,7 @@ class WaitingRoomManager {
 
     handleGameStart(data) {
         console.log('[WaitingRoom] Game starting:', data);
-        
+
         // Display teams information if available
         if (data.teams) {
             const team1Names = data.teams.team1.map(p => p.username).join(', ');
@@ -1161,10 +1244,10 @@ class WaitingRoomManager {
 
         // Use redirect URL from server if provided, otherwise construct it
         const redirectUrl = data?.redirectUrl || `game.html?room=${this.roomId}`;
-        
+
         // Set loading state
         this.setStartGameLoading(true);
-        
+
         // Redirect after showing the message
         setTimeout(() => {
             window.location.href = redirectUrl;
@@ -1173,15 +1256,15 @@ class WaitingRoomManager {
 
     handleNavigateToGame(data) {
         console.log('[WaitingRoom] Navigation command received:', data);
-        
+
         // Immediate navigation when server sends explicit command
         const redirectUrl = data?.redirectUrl || `game.html?room=${this.roomId}`;
-        
+
         this.uiManager.addMessage('Navigating to game...', 'system');
-        
+
         // Clean up before navigation
         this.cleanup();
-        
+
         // Navigate immediately
         window.location.href = redirectUrl;
     }
@@ -1239,7 +1322,7 @@ class WaitingRoomManager {
         // Check for stale connection (no updates for too long)
         if (timeSinceLastUpdate > 120000) { // 2 minutes
             console.warn('[WaitingRoom] No successful updates for', timeSinceLastUpdate, 'ms');
-            
+
             this.uiManager.showConnectionWarning(
                 'warning',
                 'Connection may be stale - checking...',
@@ -1343,5 +1426,10 @@ class WaitingRoomManager {
 
 // Initialize waiting room when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new WaitingRoomManager();
+    const manager = new WaitingRoomManager();
+
+    // Expose for debugging
+    window.waitingRoomManager = manager;
+
+    console.log('[WaitingRoom] Manager initialized and exposed globally');
 });
