@@ -247,16 +247,18 @@ export class WaitingRoomUI {
     }
 
     /**
-     * Update connection status indicator
+     * Update connection status indicator with enhanced information
      * @param {string} status - Connection status: 'connected', 'connecting', 'disconnected', 'reconnecting'
+     * @param {Object} details - Additional connection details
      */
-    updateConnectionStatus(status) {
+    updateConnectionStatus(status, details = {}) {
         const indicator = this.elements.statusIndicator;
         const text = this.elements.statusText;
+        const statusContainer = this.elements.connectionStatus;
         
         if (indicator) {
             // Remove all status classes
-            indicator.classList.remove('connected', 'connecting', 'disconnected', 'reconnecting');
+            indicator.classList.remove('connected', 'connecting', 'disconnected', 'reconnecting', 'warning', 'error');
             indicator.classList.add(status);
         }
 
@@ -265,10 +267,150 @@ export class WaitingRoomUI {
                 connected: 'Connected',
                 connecting: 'Connecting...',
                 disconnected: 'Disconnected',
-                reconnecting: 'Reconnecting...'
+                reconnecting: details.reconnectAttempts ? 
+                    `Reconnecting... (${details.reconnectAttempts}/${details.maxReconnectAttempts})` : 
+                    'Reconnecting...'
             };
             text.textContent = statusTexts[status] || 'Unknown';
         }
+
+        // Update container classes for additional styling
+        if (statusContainer) {
+            statusContainer.classList.remove('status-connected', 'status-connecting', 'status-disconnected', 'status-reconnecting');
+            statusContainer.classList.add(`status-${status}`);
+            
+            // Add warning class if connection is unstable
+            if (details.reconnectAttempts > 0) {
+                statusContainer.classList.add('status-warning');
+            }
+        }
+
+        // Store status for accessibility
+        if (indicator) {
+            indicator.setAttribute('aria-label', `Connection status: ${status}`);
+            indicator.setAttribute('title', text?.textContent || status);
+        }
+    }
+
+    /**
+     * Show connection warning with user-friendly message
+     * @param {string} type - Warning type
+     * @param {string} message - Warning message
+     * @param {Object} options - Display options
+     */
+    showConnectionWarning(type, message, options = {}) {
+        const { autoHide = true, duration = 5000 } = options;
+        
+        // Create or update warning element
+        let warningElement = document.getElementById('connection-warning');
+        if (!warningElement) {
+            warningElement = document.createElement('div');
+            warningElement.id = 'connection-warning';
+            warningElement.className = 'connection-warning';
+            
+            // Insert after connection status
+            const statusElement = this.elements.connectionStatus;
+            if (statusElement && statusElement.parentNode) {
+                statusElement.parentNode.insertBefore(warningElement, statusElement.nextSibling);
+            } else {
+                // Fallback: add to header
+                const header = document.querySelector('.waiting-room-header .header-content');
+                if (header) {
+                    header.appendChild(warningElement);
+                }
+            }
+        }
+
+        warningElement.className = `connection-warning ${type}`;
+        warningElement.innerHTML = `
+            <span class="warning-icon">⚠️</span>
+            <span class="warning-text">${message}</span>
+            <button class="warning-close" onclick="this.parentElement.style.display='none'">×</button>
+        `;
+        warningElement.style.display = 'flex';
+
+        // Auto-hide if requested
+        if (autoHide) {
+            setTimeout(() => {
+                if (warningElement && warningElement.parentNode) {
+                    warningElement.style.display = 'none';
+                }
+            }, duration);
+        }
+    }
+
+    /**
+     * Hide connection warning
+     */
+    hideConnectionWarning() {
+        const warningElement = document.getElementById('connection-warning');
+        if (warningElement) {
+            warningElement.style.display = 'none';
+        }
+    }
+
+    /**
+     * Show connection recovery options
+     * @param {Object} options - Recovery options
+     */
+    showConnectionRecoveryOptions(options = {}) {
+        const { 
+            showRefresh = true, 
+            showRetry = true, 
+            showHttpFallback = false,
+            onRefresh = () => window.location.reload(),
+            onRetry = () => {},
+            onHttpFallback = () => {}
+        } = options;
+
+        // Create recovery modal
+        const recoveryModal = document.createElement('div');
+        recoveryModal.id = 'connection-recovery-modal';
+        recoveryModal.className = 'modal connection-recovery-modal';
+        recoveryModal.innerHTML = `
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Connection Issues</h3>
+                </div>
+                <div class="modal-body">
+                    <p>We're having trouble maintaining a stable connection. You can:</p>
+                    <div class="recovery-options">
+                        ${showRefresh ? '<button id="recovery-refresh" class="btn btn-primary">Refresh Page</button>' : ''}
+                        ${showRetry ? '<button id="recovery-retry" class="btn btn-secondary">Retry Connection</button>' : ''}
+                        ${showHttpFallback ? '<button id="recovery-fallback" class="btn btn-secondary">Use Backup Mode</button>' : ''}
+                    </div>
+                    <p class="recovery-note">Your progress will be preserved.</p>
+                </div>
+            </div>
+        `;
+
+        // Add to page
+        document.body.appendChild(recoveryModal);
+
+        // Set up event listeners
+        if (showRefresh) {
+            document.getElementById('recovery-refresh')?.addEventListener('click', onRefresh);
+        }
+        if (showRetry) {
+            document.getElementById('recovery-retry')?.addEventListener('click', () => {
+                recoveryModal.remove();
+                onRetry();
+            });
+        }
+        if (showHttpFallback) {
+            document.getElementById('recovery-fallback')?.addEventListener('click', () => {
+                recoveryModal.remove();
+                onHttpFallback();
+            });
+        }
+
+        // Close on overlay click
+        recoveryModal.querySelector('.modal-overlay')?.addEventListener('click', () => {
+            recoveryModal.remove();
+        });
+
+        return recoveryModal;
     }
 
     /**

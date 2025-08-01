@@ -21,6 +21,11 @@ class WaitingRoomManager {
         this.isReady = false;
         this.players = [];
 
+        // Connection monitoring
+        this.connectionHealthTimer = null;
+        this.connectionHealthInterval = 30000; // 30 seconds
+        this.lastSuccessfulUpdate = Date.now();
+
         this.initializeElements();
         this.setupEventListeners();
         this.initialize();
@@ -135,6 +140,9 @@ class WaitingRoomManager {
             // Initialize socket manager for real-time communication
             await this.initializeSocketManager();
 
+            // Start connection health monitoring
+            this.startConnectionHealthMonitoring();
+
         } catch (error) {
             console.error('[WaitingRoom] Initialization error:', error);
             this.showError('Failed to initialize waiting room. Please try again.');
@@ -233,24 +241,56 @@ class WaitingRoomManager {
 
         // Connection status events
         this.socketManager.on('connection-status-changed', (data) => {
-            this.updateConnectionStatus(data.status);
+            this.updateConnectionStatus(data.status, data);
         });
 
         this.socketManager.on('reconnecting', (data) => {
-            this.updateConnectionStatus('reconnecting');
+            this.updateConnectionStatus('reconnecting', data);
             this.uiManager.addMessage(`Reconnecting... (attempt ${data.attempt}/${data.maxAttempts})`, 'system');
         });
 
-        this.socketManager.on('reconnected', () => {
+        this.socketManager.on('reconnected', (data) => {
             this.uiManager.addMessage('Reconnected successfully!', 'success');
+            this.uiManager.hideConnectionWarning();
         });
 
-        this.socketManager.on('reconnect-failed', () => {
-            this.showError('Failed to reconnect. Please refresh the page.');
+        this.socketManager.on('reconnect-failed', (data) => {
+            this.handleReconnectFailed(data);
         });
 
         this.socketManager.on('connection-lost', () => {
             this.uiManager.addMessage('Connection lost. Attempting to reconnect...', 'error');
+            this.uiManager.showConnectionWarning('warning', 'Connection lost - trying to reconnect...');
+        });
+
+        this.socketManager.on('connection-warning', (data) => {
+            this.handleConnectionWarning(data);
+        });
+
+        this.socketManager.on('connection-health-check', (data) => {
+            console.log('[WaitingRoom] Connection health:', data);
+        });
+
+        // HTTP polling fallback events
+        this.socketManager.on('http-polling-started', (data) => {
+            this.uiManager.addMessage('Using backup connection mode', 'system');
+            this.uiManager.showConnectionWarning('info', 'Using backup mode - some features may be limited');
+        });
+
+        this.socketManager.on('http-polling-stopped', () => {
+            this.uiManager.addMessage('Real-time connection restored', 'success');
+            this.uiManager.hideConnectionWarning();
+        });
+
+        this.socketManager.on('http-polling-error', (data) => {
+            console.warn('[WaitingRoom] HTTP polling error:', data);
+            if (data.attempts >= data.maxAttempts - 1) {
+                this.uiManager.showConnectionWarning('error', 'Backup connection failing - please refresh');
+            }
+        });
+
+        this.socketManager.on('http-polling-failed', () => {
+            this.handleHttpPollingFailed();
         });
 
         // Room events
@@ -272,24 +312,29 @@ class WaitingRoomManager {
             if (data.room) {
                 this.roomData = data.room;
                 this.updateRoomDisplay();
+                this.markSuccessfulUpdate();
             }
         });
 
         // Player events
         this.socketManager.on('player-joined', (data) => {
             this.handlePlayerJoin(data.player || data);
+            this.markSuccessfulUpdate();
         });
 
         this.socketManager.on('player-left', (data) => {
             this.handlePlayerLeave(data);
+            this.markSuccessfulUpdate();
         });
 
         this.socketManager.on('host-transferred', (data) => {
             this.handleHostTransfer(data);
+            this.markSuccessfulUpdate();
         });
 
         this.socketManager.on('player-ready-changed', (data) => {
             this.handleReadyStatusChange(data.playerId || data.userId, data.isReady);
+            this.markSuccessfulUpdate();
         });
 
         this.socketManager.on('player-disconnected', (data) => {
@@ -363,8 +408,133 @@ class WaitingRoomManager {
         });
     }
 
-    updateConnectionStatus(status) {
-        this.uiManager.updateConnectionStatus(status);
+    updateConnectionStatus(status, details = {}) {
+        this.uiManager.updateConnectionStatus(status, details);
+        
+        // Perform additional actions based on status
+        switch (status) {
+            case 'connected':
+                this.handleConnectionRestored();
+                break;
+            case 'disconnected':
+                this.handleConnectionLost();
+                break;
+            case 'reconnecting':
+                this.handleReconnecting(details);
+                break;
+        }
+    }
+
+    handleConnectionRestored() {
+        // Connection is back - ensure UI is in sync
+        if (this.roomData) {
+            this.updateRoomDisplay();
+        }
+        
+        // Clear any connection warnings
+        this.uiManager.hideConnectionWarning();
+    }
+
+    handleConnectionLost() {
+        // Disable interactive elements that require real-time connection
+        this.setInteractiveElementsEnabled(false);
+    }
+
+    handleReconnecting(details) {
+        // Show progress if multiple attempts
+        if (details.reconnectAttempts > 2) {
+            this.uiManager.showConnectionWarning(
+                'warning', 
+                `Connection unstable - attempt ${details.reconnectAttempts}/${details.maxReconnectAttempts}`,
+                { autoHide: false }
+            );
+        }
+    }
+
+    handleReconnectFailed(data) {
+        console.error('[WaitingRoom] Reconnection failed after', data.attempts, 'attempts');
+        
+        // Show recovery options to user
+        this.uiManager.showConnectionRecoveryOptions({
+            showRefresh: true,
+            showRetry: true,
+            showHttpFallback: true,
+            onRefresh: () => window.location.reload(),
+            onRetry: () => this.retryConnection(),
+            onHttpFallback: () => this.enableHttpFallbackMode()
+        });
+    }
+
+    handleConnectionWarning(data) {
+        console.warn('[WaitingRoom] Connection warning:', data);
+        
+        switch (data.type) {
+            case 'stale_connection':
+                this.uiManager.showConnectionWarning(
+                    'warning',
+                    'Connection may be unstable - monitoring...',
+                    { autoHide: true, duration: 10000 }
+                );
+                break;
+            default:
+                this.uiManager.showConnectionWarning('warning', data.message);
+        }
+    }
+
+    handleHttpPollingFailed() {
+        console.error('[WaitingRoom] HTTP polling fallback failed');
+        
+        this.uiManager.showConnectionRecoveryOptions({
+            showRefresh: true,
+            showRetry: false,
+            showHttpFallback: false,
+            onRefresh: () => window.location.reload()
+        });
+    }
+
+    async retryConnection() {
+        try {
+            this.uiManager.addMessage('Retrying connection...', 'system');
+            
+            if (this.socketManager) {
+                await this.socketManager.disconnect();
+                await this.initializeSocketManager();
+            }
+        } catch (error) {
+            console.error('[WaitingRoom] Retry connection failed:', error);
+            this.showError('Failed to retry connection. Please refresh the page.');
+        }
+    }
+
+    enableHttpFallbackMode() {
+        if (this.socketManager) {
+            this.socketManager.enableHttpFallback();
+            this.uiManager.addMessage('Enabled backup connection mode', 'system');
+        }
+    }
+
+    setInteractiveElementsEnabled(enabled) {
+        // Disable/enable buttons that require real-time connection
+        const readyButton = this.elements.readyToggleBtn;
+        const startButton = this.elements.startGameBtn;
+        
+        if (readyButton) {
+            readyButton.disabled = !enabled;
+            if (!enabled) {
+                readyButton.title = 'Connection required for ready status';
+            } else {
+                readyButton.title = '';
+            }
+        }
+        
+        if (startButton && this.isHost) {
+            startButton.disabled = !enabled;
+            if (!enabled) {
+                startButton.title = 'Connection required to start game';
+            } else {
+                startButton.title = '';
+            }
+        }
     }
 
     updateRoomDisplay() {
@@ -1030,11 +1200,83 @@ class WaitingRoomManager {
         }
     }
 
+    /**
+     * Start connection health monitoring
+     */
+    startConnectionHealthMonitoring() {
+        if (this.connectionHealthTimer) {
+            clearInterval(this.connectionHealthTimer);
+        }
+
+        this.connectionHealthTimer = setInterval(() => {
+            this.checkConnectionHealth();
+        }, this.connectionHealthInterval);
+
+        console.log('[WaitingRoom] Started connection health monitoring');
+    }
+
+    /**
+     * Stop connection health monitoring
+     */
+    stopConnectionHealthMonitoring() {
+        if (this.connectionHealthTimer) {
+            clearInterval(this.connectionHealthTimer);
+            this.connectionHealthTimer = null;
+        }
+    }
+
+    /**
+     * Check connection health and take action if needed
+     */
+    checkConnectionHealth() {
+        if (!this.socketManager) return;
+
+        const health = this.socketManager.checkConnectionHealth();
+        const timeSinceLastUpdate = Date.now() - this.lastSuccessfulUpdate;
+
+        console.log('[WaitingRoom] Connection health check:', health);
+
+        // Check for stale connection (no updates for too long)
+        if (timeSinceLastUpdate > 120000) { // 2 minutes
+            console.warn('[WaitingRoom] No successful updates for', timeSinceLastUpdate, 'ms');
+            
+            this.uiManager.showConnectionWarning(
+                'warning',
+                'Connection may be stale - checking...',
+                { autoHide: true, duration: 10000 }
+            );
+
+            // Try to refresh connection
+            if (health.isConnected) {
+                this.socketManager.checkConnectionHealth();
+            }
+        }
+
+        // Check for excessive reconnection attempts
+        if (health.reconnectAttempts >= 3) {
+            this.uiManager.showConnectionWarning(
+                'error',
+                'Connection unstable - consider refreshing',
+                { autoHide: false }
+            );
+        }
+    }
+
+    /**
+     * Mark successful update received
+     */
+    markSuccessfulUpdate() {
+        this.lastSuccessfulUpdate = Date.now();
+    }
+
     // Cleanup methods for proper resource management
     async cleanup() {
         console.log('[WaitingRoom] Cleaning up resources...');
 
         try {
+            // Stop connection health monitoring
+            this.stopConnectionHealthMonitoring();
+
             // Cleanup socket connections
             if (this.socketManager) {
                 this.socketManager.disconnect();

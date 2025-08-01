@@ -97,7 +97,12 @@
   - Implement simultaneous navigation commands for all players
   - _Requirements: 5.3, 5.4, 5.5, 6.4_
 
-- [x] 10. Add player leave and host transfer functionality
+- [ ] 10. Add player leave and host transfer functionality
+
+
+
+
+
 
 
 
@@ -107,8 +112,13 @@
   - Create player slot availability management
   - Implement WebSocket connection cleanup on player departure
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5_
+-
 
-- [ ] 11. Implement connection status and error handling
+-
+
+- [-] 11. Implement connection status and error handling
+
+
 
   - Add WebSocket connection status indicators with color coding
   - Create reconnection handling with exponential backoff
@@ -124,6 +134,7 @@
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
 - [ ] 13. Add mobile responsiveness and accessibility
+
   - Implement touch-friendly button targets and interactions
   - Add screen orientation change handling
   - Create optimal player slot arrangement for different screen sizes
@@ -131,6 +142,7 @@
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 
 - [ ] 14. Integrate with existing dashboard navigation
+
   - Update dashboard room creation to redirect to waiting-room.html instead of lobby.html
   - Modify room joining flow to use waiting room
   - Ensure proper URL parameter passing for room identification

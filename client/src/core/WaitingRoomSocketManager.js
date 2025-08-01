@@ -19,6 +19,14 @@ export class WaitingRoomSocketManager {
         this.baseReconnectDelay = 1000;
         this.reconnectTimer = null;
 
+        // HTTP polling fallback
+        this.httpPollingEnabled = false;
+        this.httpPollingInterval = null;
+        this.httpPollingFrequency = 5000; // 5 seconds
+        this.lastHttpPollTime = null;
+        this.httpPollingErrors = 0;
+        this.maxHttpPollingErrors = 3;
+
         // Room state
         this.currentUser = null;
         this.isJoined = false;
@@ -92,6 +100,9 @@ export class WaitingRoomSocketManager {
             this.reconnectAttempts = 0;
             this.updateConnectionStatus('connected');
 
+            // Disable HTTP polling fallback since WebSocket is working
+            this.disableHttpFallback();
+
             // Start heartbeat monitoring
             this.startHeartbeat();
 
@@ -112,6 +123,9 @@ export class WaitingRoomSocketManager {
 
             this.emit('disconnect', { reason });
 
+            // Enable HTTP polling fallback for critical updates
+            this.enableHttpFallback();
+
             // Only attempt manual reconnection for specific reasons
             // Let Socket.IO handle automatic reconnection for most cases
             if (reason === 'io server disconnect' || reason === 'ping timeout') {
@@ -125,6 +139,9 @@ export class WaitingRoomSocketManager {
             console.error('[WaitingRoomSocketManager] Connection error:', error);
             this.isConnected = false;
             this.updateConnectionStatus('disconnected');
+
+            // Enable HTTP polling fallback for critical updates
+            this.enableHttpFallback();
 
             if (this.reconnectAttempts === 0) {
                 // First connection attempt failed
@@ -154,6 +171,9 @@ export class WaitingRoomSocketManager {
             this.isConnected = true;
             this.reconnectAttempts = 0;
             this.updateConnectionStatus('connected');
+
+            // Disable HTTP polling fallback since WebSocket is working again
+            this.disableHttpFallback();
 
             // Re-join the room after reconnection
             this.joinRoom().then(() => {
@@ -388,6 +408,9 @@ export class WaitingRoomSocketManager {
         // Stop heartbeat
         this.stopHeartbeat();
 
+        // Stop HTTP polling fallback
+        this.stopHttpPolling();
+
         // Clear reconnection timer
         if (this.reconnectTimer) {
             clearTimeout(this.reconnectTimer);
@@ -538,9 +561,57 @@ export class WaitingRoomSocketManager {
             this.emit('connection-status-changed', {
                 status: status,
                 previousStatus: previousStatus,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                reconnectAttempts: this.reconnectAttempts,
+                maxReconnectAttempts: this.maxReconnectAttempts,
+                isConnected: this.isConnected,
+                isJoined: this.isJoined
             });
         }
+    }
+
+    /**
+     * Get detailed connection health information
+     * @returns {Object} Connection health data
+     */
+    getConnectionHealth() {
+        const now = Date.now();
+        const timeSinceLastPong = this.lastPongReceived ? now - this.lastPongReceived : null;
+        
+        return {
+            status: this.connectionStatus,
+            isConnected: this.isConnected,
+            isJoined: this.isJoined,
+            reconnectAttempts: this.reconnectAttempts,
+            maxReconnectAttempts: this.maxReconnectAttempts,
+            timeSinceLastPong: timeSinceLastPong,
+            socketId: this.getSocketId(),
+            roomId: this.roomId,
+            hasHeartbeat: !!this.heartbeatInterval,
+            timestamp: now
+        };
+    }
+
+    /**
+     * Force a connection health check
+     */
+    checkConnectionHealth() {
+        const health = this.getConnectionHealth();
+        
+        // Emit health check event
+        this.emit('connection-health-check', health);
+        
+        // Check for potential issues
+        if (health.isConnected && health.timeSinceLastPong && health.timeSinceLastPong > 120000) {
+            console.warn('[WaitingRoomSocketManager] No pong received for over 2 minutes, connection may be stale');
+            this.emit('connection-warning', {
+                type: 'stale_connection',
+                message: 'Connection may be stale - no heartbeat response',
+                timeSinceLastPong: health.timeSinceLastPong
+            });
+        }
+        
+        return health;
     }
 
     /**
@@ -632,5 +703,145 @@ export class WaitingRoomSocketManager {
      */
     getCurrentUser() {
         return this.currentUser;
+    }
+
+    /**
+     * Start HTTP polling as fallback for critical updates
+     */
+    startHttpPolling() {
+        if (this.httpPollingInterval) {
+            this.stopHttpPolling();
+        }
+
+        console.log('[WaitingRoomSocketManager] Starting HTTP polling fallback');
+        this.httpPollingEnabled = true;
+        this.httpPollingErrors = 0;
+
+        this.httpPollingInterval = setInterval(() => {
+            this.performHttpPoll();
+        }, this.httpPollingFrequency);
+
+        // Perform initial poll
+        this.performHttpPoll();
+
+        this.emit('http-polling-started', {
+            frequency: this.httpPollingFrequency,
+            timestamp: Date.now()
+        });
+    }
+
+    /**
+     * Stop HTTP polling
+     */
+    stopHttpPolling() {
+        if (this.httpPollingInterval) {
+            clearInterval(this.httpPollingInterval);
+            this.httpPollingInterval = null;
+        }
+
+        if (this.httpPollingEnabled) {
+            console.log('[WaitingRoomSocketManager] Stopped HTTP polling fallback');
+            this.httpPollingEnabled = false;
+            
+            this.emit('http-polling-stopped', {
+                timestamp: Date.now()
+            });
+        }
+    }
+
+    /**
+     * Perform HTTP poll for room updates
+     */
+    async performHttpPoll() {
+        if (!this.httpPollingEnabled || !this.roomId || !this.authManager) {
+            return;
+        }
+
+        try {
+            const token = this.authManager.getToken();
+            if (!token) {
+                console.warn('[WaitingRoomSocketManager] No auth token for HTTP polling');
+                return;
+            }
+
+            const response = await fetch(`/api/waiting-rooms/${this.roomId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 10000 // 10 second timeout
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const roomData = await response.json();
+            this.lastHttpPollTime = Date.now();
+            this.httpPollingErrors = 0;
+
+            // Emit room update event
+            this.emit('room-updated', { room: roomData, source: 'http-poll' });
+
+            console.log('[WaitingRoomSocketManager] HTTP poll successful');
+
+        } catch (error) {
+            this.httpPollingErrors++;
+            console.error(`[WaitingRoomSocketManager] HTTP poll error (${this.httpPollingErrors}/${this.maxHttpPollingErrors}):`, error);
+
+            this.emit('http-polling-error', {
+                error: error.message,
+                attempts: this.httpPollingErrors,
+                maxAttempts: this.maxHttpPollingErrors,
+                timestamp: Date.now()
+            });
+
+            // Stop polling if too many errors
+            if (this.httpPollingErrors >= this.maxHttpPollingErrors) {
+                console.error('[WaitingRoomSocketManager] Too many HTTP polling errors, stopping fallback');
+                this.stopHttpPolling();
+                
+                this.emit('http-polling-failed', {
+                    totalErrors: this.httpPollingErrors,
+                    timestamp: Date.now()
+                });
+            }
+        }
+    }
+
+    /**
+     * Enable HTTP polling fallback when WebSocket fails
+     */
+    enableHttpFallback() {
+        if (!this.httpPollingEnabled && !this.isConnected) {
+            console.log('[WaitingRoomSocketManager] Enabling HTTP polling fallback due to connection issues');
+            this.startHttpPolling();
+        }
+    }
+
+    /**
+     * Disable HTTP polling fallback when WebSocket recovers
+     */
+    disableHttpFallback() {
+        if (this.httpPollingEnabled && this.isConnected) {
+            console.log('[WaitingRoomSocketManager] Disabling HTTP polling fallback - WebSocket recovered');
+            this.stopHttpPolling();
+        }
+    }
+
+    /**
+     * Get HTTP polling status
+     * @returns {Object} HTTP polling status information
+     */
+    getHttpPollingStatus() {
+        return {
+            enabled: this.httpPollingEnabled,
+            frequency: this.httpPollingFrequency,
+            errors: this.httpPollingErrors,
+            maxErrors: this.maxHttpPollingErrors,
+            lastPollTime: this.lastHttpPollTime,
+            isActive: !!this.httpPollingInterval
+        };
     }
 }
