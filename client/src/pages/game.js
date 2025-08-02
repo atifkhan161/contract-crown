@@ -19,7 +19,11 @@ class GameManager {
                 'player4': { username: 'Player 4', seatPosition: 4, handSize: 4 }
             },
             currentRound: 1,
-            currentTrick: 1,
+            currentTrick: {
+                trickNumber: 1,
+                cardsPlayed: [],
+                leadSuit: null
+            },
             trumpSuit: null,
             trumpDeclarer: 'player1',
             scores: { team1: 0, team2: 0 },
@@ -49,13 +53,35 @@ class GameManager {
                 return;
             }
 
+            // Check if this is demo mode
+            const urlParams = new URLSearchParams(window.location.search);
+            const isDemoMode = urlParams.get('demo') === 'true';
+
             this.initializeElements();
             this.setupEventListeners();
-            this.initializeWebSocket();
-            this.updateUI();
             
-            // Show loading initially
-            this.showLoading('Connecting to game...');
+            if (isDemoMode) {
+                // For demo mode, skip WebSocket and load demo directly
+                console.log('[Game] Demo mode detected, loading demo game...');
+                this.showLoading('Loading demo game...');
+                this.updateConnectionStatus('connected'); // Show as connected for demo
+                const gameId = urlParams.get('gameId');
+                console.log('[Game] Demo game ID:', gameId);
+                if (gameId) {
+                    this.gameState.gameId = gameId;
+                    this.gameState.isDemoMode = true;
+                    await this.loadDemoGame(gameId);
+                } else {
+                    console.error('[Game] No demo game ID provided');
+                    this.showError('No demo game ID provided');
+                }
+            } else {
+                // For regular games, initialize WebSocket
+                this.initializeWebSocket();
+                this.showLoading('Connecting to game...');
+            }
+            
+            this.updateUI();
             
         } catch (error) {
             console.error('Failed to initialize game:', error);
@@ -107,6 +133,7 @@ class GameManager {
 
         // Modal elements
         this.elements.trumpModal = document.getElementById('trump-modal');
+        this.elements.trumpInitialCards = document.getElementById('trump-initial-cards');
         this.elements.trumpOptions = document.querySelectorAll('.trump-option');
         this.elements.confirmTrumpBtn = document.getElementById('confirm-trump-btn');
 
@@ -206,7 +233,7 @@ class GameManager {
 
         this.gameState.gameId = gameId;
         
-        // Join the game room
+        // Join the game room for regular multiplayer games
         this.socket.emit('join-game-room', { 
             gameId: gameId,
             userId: this.authManager.getUserId(),
@@ -217,6 +244,130 @@ class GameManager {
         setTimeout(() => {
             this.socket.emit('request-game-state', { gameId: gameId });
         }, 500);
+    }
+
+    async loadDemoGame(gameId) {
+        try {
+            console.log('[Game] Loading demo game:', gameId);
+            console.log('[Game] AuthManager:', this.authManager);
+            console.log('[Game] Current user:', this.authManager?.getCurrentUser());
+            
+            // Create demo game data directly on client side
+            const demoGame = {
+                id: gameId,
+                isDemoMode: true,
+                status: 'ready',
+                players: [
+                    {
+                        id: 'human_player',
+                        username: (this.authManager && this.authManager.getUsername) ? this.authManager.getUsername() : 'You',
+                        isBot: false,
+                        seatPosition: 0,
+                        isReady: true
+                    },
+                    {
+                        id: 'bot_1',
+                        username: 'Bot Alice',
+                        isBot: true,
+                        seatPosition: 1,
+                        isReady: true
+                    },
+                    {
+                        id: 'bot_2',
+                        username: 'Bot Bob',
+                        isBot: true,
+                        seatPosition: 2,
+                        isReady: true
+                    },
+                    {
+                        id: 'bot_3',
+                        username: 'Bot Charlie',
+                        isBot: true,
+                        seatPosition: 3,
+                        isReady: true
+                    }
+                ]
+            };
+
+            console.log('[Game] Demo game created:', demoGame);
+            
+            // Set up demo game state
+            this.setupDemoGameState(demoGame);
+            
+            // Hide loading and show demo game
+            this.hideLoading();
+            this.addGameMessage('Demo game loaded with 3 AI bots', 'success');
+            
+        } catch (error) {
+            console.error('Load demo game error:', error);
+            this.showError(error.message || 'Failed to load demo game');
+            this.hideLoading();
+        }
+    }
+
+    setupDemoGameState(demoGame) {
+        console.log('[Game] Setting up demo game state:', demoGame);
+        
+        // Update game state with demo data
+        this.gameState.isDemoMode = true;
+        this.gameState.status = 'ready';
+        this.gameState.gamePhase = 'trump_declaration';
+        this.gameState.currentRound = 1;
+        this.gameState.currentTrick = {
+            trickNumber: 1,
+            cardsPlayed: [],
+            leadSuit: null
+        };
+        
+        // Set up players (human + 3 bots)
+        this.gameState.players = {};
+        demoGame.players.forEach((player, index) => {
+            this.gameState.players[player.id] = {
+                username: player.username,
+                isBot: player.isBot,
+                seatPosition: player.seatPosition,
+                isReady: player.isReady,
+                handSize: 8 // Start with 8 cards
+            };
+        });
+
+        // Set current player as the human player
+        const humanPlayer = demoGame.players.find(p => !p.isBot);
+        if (humanPlayer) {
+            this.gameState.currentPlayer = humanPlayer.id;
+        } else {
+            this.gameState.currentPlayer = 'human_player'; // fallback
+        }
+
+        // Initialize demo game with sample cards for trump declaration
+        this.gameState.playerHand = [
+            { suit: 'hearts', rank: 'A' },
+            { suit: 'hearts', rank: 'K' },
+            { suit: 'diamonds', rank: 'Q' },
+            { suit: 'spades', rank: 'J' },
+            { suit: 'clubs', rank: '10' },
+            { suit: 'hearts', rank: '9' },
+            { suit: 'diamonds', rank: '8' },
+            { suit: 'spades', rank: '7' }
+        ];
+
+        // Set trump declarer (for demo, let human player declare trump)
+        this.gameState.trumpDeclarer = this.gameState.currentPlayer;
+        this.gameState.isMyTurn = true;
+
+        console.log('[Game] Demo game state setup complete:', this.gameState);
+        
+        // Update UI
+        this.updateUI();
+        
+        console.log('[Game] UI updated, showing trump declaration modal in 1 second');
+        
+        // Show trump declaration modal after a short delay
+        setTimeout(() => {
+            console.log('[Game] Showing trump declaration modal');
+            this.showTrumpDeclarationModal();
+            this.addGameMessage('Choose the trump suit to start the demo game', 'info');
+        }, 1000);
     }
 
     // Room Event Handlers
@@ -1169,19 +1320,30 @@ class GameManager {
 
     // UI Updates
     updateUI() {
-        this.updateRoundInfo();
-        this.updatePlayerInfo();
-        this.updateTurnIndicators();
-        this.updateTrumpDisplay();
-        this.updateScoreDisplay();
-        this.renderPlayerHand();
-        this.renderOpponentHands();
-        this.updateCardPlayability();
+        console.log('[Game] updateUI called');
+        try {
+            this.updateRoundInfo();
+            this.updatePlayerInfo();
+            this.updateTurnIndicators();
+            this.updateTrumpDisplay();
+            this.updateScoreDisplay();
+            this.renderPlayerHand();
+            this.renderOpponentHands();
+            this.updateCardPlayability();
+            console.log('[Game] updateUI completed successfully');
+        } catch (error) {
+            console.error('[Game] Error in updateUI:', error);
+        }
     }
 
     updateRoundInfo() {
-        this.elements.currentRound.textContent = this.gameState.currentRound;
-        this.elements.currentTrick.textContent = this.gameState.currentTrick;
+        console.log('[Game] updateRoundInfo called, currentRound:', this.gameState.currentRound, 'currentTrick:', this.gameState.currentTrick);
+        if (this.elements.currentRound) {
+            this.elements.currentRound.textContent = this.gameState.currentRound || 1;
+        }
+        if (this.elements.currentTrick) {
+            this.elements.currentTrick.textContent = this.gameState.currentTrick || 1;
+        }
     }
 
     updatePlayerInfo() {
@@ -1607,13 +1769,18 @@ class GameManager {
         // Show loading state
         this.showCardPlayLoading(card);
 
-        // Emit card play to server with current game context
-        this.socket.emit('play-card', {
-            gameId: this.gameState.gameId,
-            card: card,
-            trickId: this.gameState.currentTrick?.trickId,
-            roundId: this.gameState.currentRound?.roundId
-        });
+        if (this.gameState.isDemoMode) {
+            // Handle demo mode card play locally
+            this.handleDemoCardPlay(card);
+        } else {
+            // Emit card play to server with current game context
+            this.socket.emit('play-card', {
+                gameId: this.gameState.gameId,
+                card: card,
+                trickId: this.gameState.currentTrick?.trickId,
+                roundId: this.gameState.currentRound?.roundId
+            });
+        }
 
         // Optimistic update - remove card from hand
         this.gameState.playerHand.splice(this.gameState.selectedCard, 1);
@@ -1622,6 +1789,215 @@ class GameManager {
         
         this.renderPlayerHand();
         this.addGameMessage(`You played ${card.rank} of ${card.suit}`, 'info');
+    }
+
+    handleDemoCardPlay(card) {
+        // Initialize current trick if not exists
+        if (!this.gameState.currentTrick) {
+            this.gameState.currentTrick = {
+                trickNumber: 1,
+                cardsPlayed: [],
+                leadSuit: null
+            };
+        }
+
+        // Ensure cardsPlayed array exists (defensive programming)
+        if (!this.gameState.currentTrick.cardsPlayed) {
+            this.gameState.currentTrick.cardsPlayed = [];
+        }
+
+        // Add human player's card to trick
+        this.gameState.currentTrick.cardsPlayed.push({
+            playerId: this.gameState.currentPlayer,
+            card: card
+        });
+
+        // Set lead suit if this is the first card
+        if (this.gameState.currentTrick.cardsPlayed.length === 1) {
+            this.gameState.currentTrick.leadSuit = card.suit;
+            this.gameState.leadSuit = card.suit;
+        }
+
+        // Render the played card
+        this.renderPlayedCard(this.gameState.currentPlayer, card, 'bottom');
+
+        // Simulate bot plays after a delay
+        setTimeout(() => {
+            this.simulateBotPlays();
+        }, 1500);
+    }
+
+    simulateBotPlays() {
+        const botPlayers = Object.keys(this.gameState.players).filter(id => 
+            this.gameState.players[id].isBot
+        );
+
+        let delay = 0;
+        botPlayers.forEach((botId, index) => {
+            setTimeout(() => {
+                this.playBotCard(botId, index);
+            }, delay);
+            delay += 2000; // 2 second delay between bot plays
+        });
+
+        // After all bots play, determine trick winner
+        setTimeout(() => {
+            this.determineTrickWinner();
+        }, delay + 1000);
+    }
+
+    playBotCard(botId, botIndex) {
+        // Generate a random valid card for the bot
+        const botCard = this.generateBotCard();
+        
+        // Ensure cardsPlayed array exists (defensive programming)
+        if (!this.gameState.currentTrick.cardsPlayed) {
+            this.gameState.currentTrick.cardsPlayed = [];
+        }
+        
+        // Add bot's card to trick
+        this.gameState.currentTrick.cardsPlayed.push({
+            playerId: botId,
+            card: botCard
+        });
+
+        // Determine bot position (left, top, right)
+        const positions = ['left', 'top', 'right'];
+        const position = positions[botIndex];
+
+        // Render the played card
+        this.renderPlayedCard(botId, botCard, position);
+
+        // Update bot hand size
+        if (this.gameState.players[botId]) {
+            this.gameState.players[botId].handSize--;
+        }
+
+        // Add game message
+        const botName = this.gameState.players[botId].username;
+        this.addGameMessage(`${botName} played ${botCard.rank} of ${botCard.suit}`, 'info');
+
+        // Update UI
+        this.updatePlayerInfo();
+    }
+
+    generateBotCard() {
+        // Simple bot card generation - in a real game this would follow game rules
+        const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+        const ranks = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        
+        const randomSuit = suits[Math.floor(Math.random() * suits.length)];
+        const randomRank = ranks[Math.floor(Math.random() * ranks.length)];
+        
+        return { suit: randomSuit, rank: randomRank };
+    }
+
+    determineTrickWinner() {
+        const trick = this.gameState.currentTrick;
+        if (!trick || trick.cardsPlayed.length !== 4) return;
+
+        // Simple winner determination - highest trump or highest of lead suit
+        let winningCard = trick.cardsPlayed[0];
+        let winnerId = winningCard.playerId;
+
+        trick.cardsPlayed.forEach(play => {
+            const card = play.card;
+            
+            // Trump cards beat non-trump cards
+            if (card.suit === this.gameState.trumpSuit && winningCard.card.suit !== this.gameState.trumpSuit) {
+                winningCard = play;
+                winnerId = play.playerId;
+            }
+            // Among trump cards, higher rank wins (simplified)
+            else if (card.suit === this.gameState.trumpSuit && winningCard.card.suit === this.gameState.trumpSuit) {
+                if (this.getCardValue(card) > this.getCardValue(winningCard.card)) {
+                    winningCard = play;
+                    winnerId = play.playerId;
+                }
+            }
+            // Among non-trump cards of lead suit, higher rank wins
+            else if (card.suit === trick.leadSuit && winningCard.card.suit === trick.leadSuit) {
+                if (this.getCardValue(card) > this.getCardValue(winningCard.card)) {
+                    winningCard = play;
+                    winnerId = play.playerId;
+                }
+            }
+        });
+
+        // Show trick winner
+        const winnerName = this.gameState.players[winnerId]?.username || 'Unknown';
+        this.addGameMessage(`${winnerName} won the trick!`, 'success');
+
+        // Clear played cards after showing winner
+        setTimeout(() => {
+            this.clearPlayedCards();
+            this.prepareNextTrick(winnerId);
+        }, 2500);
+    }
+
+    getCardValue(card) {
+        const values = { '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
+        return values[card.rank] || 0;
+    }
+
+    prepareNextTrick(winnerId) {
+        // Increment trick number
+        this.gameState.currentTrick = {
+            trickNumber: (this.gameState.currentTrick?.trickNumber || 0) + 1,
+            cardsPlayed: [],
+            leadSuit: null
+        };
+
+        // Clear lead suit
+        this.gameState.leadSuit = null;
+
+        // Set next turn based on winner
+        if (winnerId === this.gameState.currentPlayer) {
+            // Human player won, their turn
+            this.gameState.isMyTurn = true;
+            this.gameState.currentTurnPlayer = this.gameState.currentPlayer;
+            this.addGameMessage('You won the trick! Your turn to lead', 'success');
+        } else {
+            // Bot won, simulate their lead
+            this.gameState.isMyTurn = false;
+            this.gameState.currentTurnPlayer = winnerId;
+            
+            const winnerName = this.gameState.players[winnerId]?.username || 'Bot';
+            this.addGameMessage(`${winnerName} leads the next trick`, 'info');
+            
+            // Simulate bot leading after delay
+            setTimeout(() => {
+                this.playBotCard(winnerId, 0);
+                // Then continue with other bots and human
+                setTimeout(() => {
+                    this.gameState.isMyTurn = true;
+                    this.addGameMessage('Your turn!', 'info');
+                }, 2000);
+            }, 1500);
+        }
+
+        // Update UI
+        this.updateTurnIndicators();
+        this.updateCardPlayability();
+        
+        // Check if this was the last trick
+        if (this.gameState.currentTrick.trickNumber > 8) {
+            this.addGameMessage('Demo round complete!', 'success');
+            setTimeout(() => {
+                this.showDemoComplete();
+            }, 2000);
+        }
+    }
+
+    showDemoComplete() {
+        this.addGameMessage('Demo game finished! Thanks for trying Contract Crown!', 'success');
+        
+        // Show completion message with option to return to dashboard
+        setTimeout(() => {
+            if (confirm('Demo complete! Would you like to return to the dashboard to create a real game?')) {
+                window.location.href = '/dashboard.html';
+            }
+        }, 2000);
     }
 
     /**
@@ -1697,13 +2073,16 @@ class GameManager {
     showTrumpDeclarationModal() {
         // Show only the first 4 cards during trump declaration
         this.renderInitialCards();
+        this.renderTrumpModalCards();
         this.elements.trumpModal.classList.remove('hidden');
+        this.highlightRecommendedSuit();
         this.addGameMessage("Choose the trump suit based on your first 4 cards", 'info');
     }
 
     hideTrumpDeclarationModal() {
         this.elements.trumpModal.classList.add('hidden');
         this.clearTrumpSelection();
+        this.clearTrumpRecommendation();
     }
 
     renderInitialCards() {
@@ -1728,6 +2107,40 @@ class GameManager {
             cardElement.classList.add('disabled');
             this.elements.playerHand.appendChild(cardElement);
         });
+    }
+
+    renderTrumpModalCards() {
+        const trumpCardsContainer = document.getElementById('trump-initial-cards');
+        if (!trumpCardsContainer) return;
+
+        trumpCardsContainer.innerHTML = '';
+        
+        // Show only the first 4 cards in the trump modal
+        const initialCards = this.gameState.playerHand.slice(0, 4);
+        
+        initialCards.forEach((card, index) => {
+            const cardElement = this.createTrumpModalCard(card);
+            trumpCardsContainer.appendChild(cardElement);
+        });
+    }
+
+    createTrumpModalCard(card) {
+        const cardElement = document.createElement('div');
+        cardElement.className = `trump-modal-card ${card.suit}`;
+        
+        const suitSymbols = {
+            hearts: '♥',
+            diamonds: '♦',
+            clubs: '♣',
+            spades: '♠'
+        };
+
+        cardElement.innerHTML = `
+            <div class="card-rank">${card.rank}</div>
+            <div class="card-suit">${suitSymbols[card.suit]}</div>
+        `;
+
+        return cardElement;
     }
 
     selectTrumpSuit(optionElement) {
@@ -1762,10 +2175,16 @@ class GameManager {
         this.elements.confirmTrumpBtn.disabled = true;
         this.elements.confirmTrumpBtn.innerHTML = '<span class="spinner"></span> Declaring...';
         
-        this.socket.emit('game:declare_trump', {
-            gameId: this.gameState.gameId,
-            trumpSuit: trumpSuit
-        });
+        if (this.gameState.isDemoMode) {
+            // Handle demo mode trump declaration locally
+            this.handleDemoTrumpDeclaration(trumpSuit);
+        } else {
+            // Send to server for multiplayer games
+            this.socket.emit('game:declare_trump', {
+                gameId: this.gameState.gameId,
+                trumpSuit: trumpSuit
+            });
+        }
 
         this.addGameMessage(`Declaring ${trumpSuit} as trump...`, 'info');
     }
@@ -1786,24 +2205,73 @@ class GameManager {
         return true;
     }
 
+    handleDemoTrumpDeclaration(trumpSuit) {
+        // Simulate trump declaration in demo mode
+        setTimeout(() => {
+            // Update game state
+            this.gameState.trumpSuit = trumpSuit;
+            
+            // Update UI
+            this.updateTrumpDisplay();
+            this.hideTrumpDeclarationModal();
+            
+            // Handle trump declaration completion (this will render all cards)
+            this.handleTrumpDeclarationComplete();
+            
+            // Add success message
+            this.addGameMessage(`Trump suit set to ${trumpSuit}`, 'success');
+            this.addGameMessage('Demo game started! Play against 3 AI bots', 'info');
+            
+            // Set up first trick - human player starts
+            this.gameState.isMyTurn = true;
+            this.gameState.currentTurnPlayer = this.gameState.currentPlayer;
+            this.gameState.currentTrick = {
+                trickNumber: 1,
+                cardsPlayed: [],
+                leadSuit: null
+            };
+            
+            // Update UI to show it's player's turn
+            this.updateTurnIndicators();
+            this.updateCardPlayability();
+            
+            this.addGameMessage('Your turn! Click a card to play it', 'info');
+        }, 1000);
+    }
+
     clearTrumpSelection() {
         this.elements.trumpOptions.forEach(option => option.classList.remove('selected'));
         this.elements.confirmTrumpBtn.disabled = true;
         this.elements.confirmTrumpBtn.innerHTML = 'Confirm Trump';
     }
 
+    clearTrumpRecommendation() {
+        this.elements.trumpOptions.forEach(option => {
+            option.classList.remove('recommended');
+            const recommendation = option.querySelector('.suit-recommendation');
+            if (recommendation) {
+                recommendation.remove();
+            }
+        });
+    }
+
     handleTrumpDeclarationComplete() {
         // After trump is declared, deal remaining 4 cards
+        this.gameState.gamePhase = 'playing'; // Update phase first
         this.dealRemainingCards();
-        this.gameState.gamePhase = 'playing';
         this.updateUI();
         this.addGameMessage("Trump declared! Dealing remaining cards...", 'success');
     }
 
     dealRemainingCards() {
         // In a real implementation, this would come from the server
-        // For now, simulate dealing the remaining 4 cards
-        if (this.gameState.playerHand.length === 4) {
+        // For demo mode, we already have all 8 cards, just need to render them
+        if (this.gameState.isDemoMode) {
+            // Demo mode: we already have all 8 cards, just render them
+            this.renderPlayerHand();
+            this.addCardDealingAnimation();
+        } else if (this.gameState.playerHand.length === 4) {
+            // Real game: deal remaining 4 cards
             const remainingCards = [
                 { suit: 'hearts', rank: '10' },
                 { suit: 'diamonds', rank: '9' },
@@ -1812,21 +2280,29 @@ class GameManager {
             ];
             
             this.gameState.playerHand = [...this.gameState.playerHand, ...remainingCards];
-            
-            // Animate card dealing
-            setTimeout(() => {
-                this.renderPlayerHand();
-                this.addCardDealingAnimation();
-            }, 500);
+            this.renderPlayerHand();
+            this.addCardDealingAnimation();
+        } else {
+            // If we already have all cards, just render them
+            this.renderPlayerHand();
         }
     }
 
     addCardDealingAnimation() {
         const cards = this.elements.playerHand.querySelectorAll('.card');
         cards.forEach((card, index) => {
-            if (index >= 4) { // Only animate the new cards
-                card.classList.add('card-dealing');
-                card.style.animationDelay = `${(index - 4) * 0.1}s`;
+            if (this.gameState.isDemoMode) {
+                // In demo mode, animate all cards that weren't visible during trump declaration
+                if (index >= 4) {
+                    card.classList.add('card-dealing');
+                    card.style.animationDelay = `${(index - 4) * 0.1}s`;
+                }
+            } else {
+                // In real game, animate new cards
+                if (index >= 4) {
+                    card.classList.add('card-dealing');
+                    card.style.animationDelay = `${(index - 4) * 0.1}s`;
+                }
             }
         });
     }
@@ -1926,12 +2402,20 @@ class GameManager {
 
     // UI State Management
     showLoading(message = 'Loading...') {
-        this.elements.loadingText.textContent = message;
-        this.elements.loadingOverlay.classList.remove('hidden');
+        console.log('[Game] showLoading called with message:', message);
+        if (this.elements.loadingText) {
+            this.elements.loadingText.textContent = message;
+        }
+        if (this.elements.loadingOverlay) {
+            this.elements.loadingOverlay.classList.remove('hidden');
+        }
     }
 
     hideLoading() {
-        this.elements.loadingOverlay.classList.add('hidden');
+        console.log('[Game] hideLoading called');
+        if (this.elements.loadingOverlay) {
+            this.elements.loadingOverlay.classList.add('hidden');
+        }
     }
 
     showError(message) {
@@ -1944,8 +2428,12 @@ class GameManager {
     }
 
     leaveGame() {
-        if (confirm('Are you sure you want to leave the game?')) {
-            if (this.socket) {
+        const confirmMessage = this.gameState.isDemoMode ? 
+            'Are you sure you want to leave the demo?' : 
+            'Are you sure you want to leave the game?';
+            
+        if (confirm(confirmMessage)) {
+            if (this.socket && !this.gameState.isDemoMode) {
                 this.socket.emit('game:leave', { gameId: this.gameState.gameId });
             }
             window.location.href = '/dashboard.html';

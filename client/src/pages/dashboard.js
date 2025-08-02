@@ -407,30 +407,13 @@ class DashboardManager {
         try {
             this.showLoading(true);
             
-            // Call demo room creation API
-            const response = await fetch('/api/games/demo', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.authManager.getToken()}`
-                }
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to create demo room');
-            }
-
-            const data = await response.json();
+            // Generate a simple demo game ID
+            const demoGameId = `demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             
-            if (!data.success) {
-                throw new Error(data.message || 'Failed to create demo room');
-            }
-
-            console.log('[Dashboard] Demo room created:', data.game);
+            console.log('[Dashboard] Creating demo room with ID:', demoGameId);
             
-            // Navigate to game page with demo game ID
-            window.location.href = `game.html?game=${data.game.id}&demo=true`;
+            // Navigate directly to game page with demo game ID
+            window.location.href = `game.html?gameId=${demoGameId}&demo=true`;
             
         } catch (error) {
             console.error('Create demo room error:', error);

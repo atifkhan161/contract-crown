@@ -633,13 +633,80 @@
 
 /* Trump Declaration Modal */
 .trump-modal-content {
-    max-width: 400px;
+    max-width: 500px;
+    width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .trump-instruction {
     text-align: center;
     margin-bottom: var(--spacing-lg);
     color: var(--text-secondary);
+    font-size: var(--font-size-base);
+}
+
+/* Initial cards display in trump modal */
+.trump-cards-display {
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.initial-cards-container {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+    padding: var(--spacing-sm) 0;
+}
+
+.trump-modal-card {
+    width: 60px;
+    height: 84px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.trump-modal-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.trump-modal-card .card-rank {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.trump-modal-card .card-suit {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.trump-modal-card.hearts .card-rank,
+.trump-modal-card.hearts .card-suit,
+.trump-modal-card.diamonds .card-rank,
+.trump-modal-card.diamonds .card-suit {
+    color: #dc3545;
+}
+
+.trump-modal-card.clubs .card-rank,
+.trump-modal-card.clubs .card-suit,
+.trump-modal-card.spades .card-rank,
+.trump-modal-card.spades .card-suit {
+    color: #000;
 }
 
 .trump-selection {
@@ -660,6 +727,8 @@
     cursor: pointer;
     transition: all var(--transition-fast);
     color: var(--text-primary);
+    min-height: 80px;
+    justify-content: center;
 }
 
 .trump-option:hover {
@@ -674,6 +743,7 @@
 }
 
 .trump-option.recommended {
+    position: relative;
     border-color: var(--text-success);
     background: rgba(39, 174, 96, 0.1);
 }
@@ -859,6 +929,44 @@
     
     .trump-selection {
         grid-template-columns: 1fr;
+        gap: var(--spacing-sm);
+    }
+    
+    .trump-modal-content {
+        width: 98vw;
+        max-width: none;
+        margin: 10px;
+    }
+    
+    .trump-cards-display {
+        padding: var(--spacing-sm);
+    }
+    
+    .initial-cards-container {
+        gap: var(--spacing-xs);
+    }
+    
+    .trump-modal-card {
+        width: 50px;
+        height: 70px;
+        font-size: 10px;
+    }
+    
+    .trump-modal-card .card-rank {
+        font-size: 12px;
+    }
+    
+    .trump-modal-card .card-suit {
+        font-size: 14px;
+    }
+    
+    .trump-option {
+        padding: var(--spacing-md);
+        min-height: 70px;
+    }
+    
+    .trump-option .suit-symbol {
+        font-size: 20px;
     }
     
     .player-left,
