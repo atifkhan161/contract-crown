@@ -39,6 +39,7 @@ class DashboardManager {
         
         // Room management
         this.elements.createRoomBtn = document.getElementById('create-room-btn');
+        this.elements.demoRoomBtn = document.getElementById('demo-room-btn');
         this.elements.roomsList = document.getElementById('rooms-list');
         this.elements.noRooms = document.getElementById('no-rooms');
         
@@ -73,6 +74,9 @@ class DashboardManager {
         this.elements.createRoomBtn.addEventListener('click', () => this.showCreateRoomModal());
         this.elements.closeModalBtn.addEventListener('click', () => this.hideCreateRoomModal());
         this.elements.cancelCreateBtn.addEventListener('click', () => this.hideCreateRoomModal());
+        
+        // Demo room
+        this.elements.demoRoomBtn.addEventListener('click', () => this.handleCreateDemoRoom());
         
         // Modal overlay click to close
         this.elements.createRoomModal.addEventListener('click', (e) => {
@@ -395,6 +399,42 @@ class DashboardManager {
             console.error('Delete room error:', error);
             this.showError(error.message || 'Failed to delete room');
         } finally {
+            this.showLoading(false);
+        }
+    }
+
+    async handleCreateDemoRoom() {
+        try {
+            this.showLoading(true);
+            
+            // Call demo room creation API
+            const response = await fetch('/api/games/demo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authManager.getToken()}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to create demo room');
+            }
+
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to create demo room');
+            }
+
+            console.log('[Dashboard] Demo room created:', data.game);
+            
+            // Navigate to game page with demo game ID
+            window.location.href = `game.html?game=${data.game.id}&demo=true`;
+            
+        } catch (error) {
+            console.error('Create demo room error:', error);
+            this.showError(error.message || 'Failed to create demo room');
             this.showLoading(false);
         }
     }

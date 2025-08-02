@@ -11,6 +11,7 @@ import authRoutes from './routes/auth.js';
 import roomsRoutes from './routes/rooms.js';
 import waitingRoomsRoutes from './routes/waiting-rooms.js';
 import usersRoutes from './routes/users.js';
+import gamesRoutes from './routes/games.js';
 import testAuthRoutes from './routes/test-auth.js';
 
 // ES module equivalent of __dirname
@@ -717,6 +718,9 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   
   // Users routes
   app.use('/api/users', usersRoutes);
+  
+  // Games routes
+  app.use('/api/games', gamesRoutes);
 
   // API routes placeholder for other endpoints
   app.use('/api', (req, res, next) => {

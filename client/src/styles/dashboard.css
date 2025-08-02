@@ -171,6 +171,39 @@
   gap: var(--spacing-sm);
 }
 
+/* Demo button specific styles */
+.btn-demo {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 1px solid #667eea;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-demo:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  border-color: #5a6fd8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-demo:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
+}
+
+.btn-demo .btn-icon {
+  font-size: 1.1em;
+  margin-right: var(--spacing-xs);
+}
+
+/* Section header room actions container */
+.section-header .room-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
 .no-rooms {
   padding: var(--spacing-xxl);
   text-align: center;
@@ -340,6 +373,10 @@
     flex-direction: column;
     gap: var(--spacing-md);
     align-items: stretch;
+  }
+  
+  .section-header .room-actions {
+    justify-content: center;
   }
   
   .room-item {
