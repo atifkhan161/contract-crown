@@ -40,7 +40,7 @@ class GameManager {
             leadSuit: null,
             currentTurnPlayer: null
         };
-        
+
         this.elements = {};
         this.init();
     }
@@ -59,7 +59,7 @@ class GameManager {
 
             this.initializeElements();
             this.setupEventListeners();
-            
+
             if (isDemoMode) {
                 // For demo mode, skip WebSocket and load demo directly
                 console.log('[Game] Demo mode detected, loading demo game...');
@@ -80,9 +80,9 @@ class GameManager {
                 this.initializeWebSocket();
                 this.showLoading('Connecting to game...');
             }
-            
+
             this.updateUI();
-            
+
         } catch (error) {
             console.error('Failed to initialize game:', error);
             this.showError('Failed to initialize game. Please try again.');
@@ -102,17 +102,17 @@ class GameManager {
         this.elements.playerLeftName = document.getElementById('player-left-name');
         this.elements.playerRightName = document.getElementById('player-right-name');
         this.elements.playerBottomName = document.getElementById('player-bottom-name');
-        
+
         this.elements.playerTopCards = document.getElementById('player-top-cards');
         this.elements.playerLeftCards = document.getElementById('player-left-cards');
         this.elements.playerRightCards = document.getElementById('player-right-cards');
         this.elements.playerBottomCards = document.getElementById('player-bottom-cards');
-        
+
         this.elements.playerTopTurn = document.getElementById('player-top-turn');
         this.elements.playerLeftTurn = document.getElementById('player-left-turn');
         this.elements.playerRightTurn = document.getElementById('player-right-turn');
         this.elements.playerBottomTurn = document.getElementById('player-bottom-turn');
-        
+
         this.elements.playerTopHand = document.getElementById('player-top-hand');
         this.elements.playerLeftHand = document.getElementById('player-left-hand');
         this.elements.playerRightHand = document.getElementById('player-right-hand');
@@ -126,7 +126,7 @@ class GameManager {
         this.elements.playedCardLeft = document.getElementById('played-card-left');
         this.elements.playedCardRight = document.getElementById('played-card-right');
         this.elements.playedCardBottom = document.getElementById('played-card-bottom');
-        
+
         // Score elements
         this.elements.team1Score = document.getElementById('team-1-score');
         this.elements.team2Score = document.getElementById('team-2-score');
@@ -172,12 +172,12 @@ class GameManager {
         }
 
         this.socket = io();
-        
+
         this.socket.on('connect', () => {
             console.log('Connected to game server');
             this.updateConnectionStatus('connected');
             this.joinGame();
-            
+
             // Fallback: hide loading after 5 seconds if no game state received
             setTimeout(() => {
                 if (this.elements.loadingOverlay && !this.elements.loadingOverlay.classList.contains('hidden')) {
@@ -225,21 +225,21 @@ class GameManager {
     joinGame() {
         const urlParams = new URLSearchParams(window.location.search);
         const gameId = urlParams.get('gameId');
-        
+
         if (!gameId) {
             this.showError('No game ID provided');
             return;
         }
 
         this.gameState.gameId = gameId;
-        
+
         // Join the game room for regular multiplayer games
-        this.socket.emit('join-game-room', { 
+        this.socket.emit('join-game-room', {
             gameId: gameId,
             userId: this.authManager.getUserId(),
             username: this.authManager.getUsername()
         });
-        
+
         // Request initial game state
         setTimeout(() => {
             this.socket.emit('request-game-state', { gameId: gameId });
@@ -251,7 +251,7 @@ class GameManager {
             console.log('[Game] Loading demo game:', gameId);
             console.log('[Game] AuthManager:', this.authManager);
             console.log('[Game] Current user:', this.authManager?.getCurrentUser());
-            
+
             // Create demo game data directly on client side
             const demoGame = {
                 id: gameId,
@@ -290,14 +290,14 @@ class GameManager {
             };
 
             console.log('[Game] Demo game created:', demoGame);
-            
+
             // Set up demo game state
             this.setupDemoGameState(demoGame);
-            
+
             // Hide loading and show demo game
             this.hideLoading();
             this.addGameMessage('Demo game loaded with 3 AI bots', 'success');
-            
+
         } catch (error) {
             console.error('Load demo game error:', error);
             this.showError(error.message || 'Failed to load demo game');
@@ -305,9 +305,194 @@ class GameManager {
         }
     }
 
+    /**
+     * Generate a complete 32-card deck for demo games
+     * @returns {Array} Array of card objects
+     */
+    generateDemoDeck() {
+        const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+        const ranks = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        const deck = [];
+
+        for (const suit of suits) {
+            for (const rank of ranks) {
+                deck.push({ suit, rank });
+            }
+        }
+
+        return deck;
+    }
+
+    /**
+     * Shuffle deck using Fisher-Yates algorithm with multiple passes
+     * @param {Array} deck - Array of cards to shuffle
+     * @returns {Array} Shuffled deck
+     */
+    shuffleDemoDeck(deck) {
+        const shuffled = [...deck];
+
+        // Multiple shuffle passes for better randomization
+        for (let pass = 0; pass < 3; pass++) {
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+        }
+
+        return shuffled;
+    }
+
+    /**
+     * Validate that no player has 3 or more Aces or 7s
+     * @param {Array} hands - Array of player hands
+     * @returns {boolean} True if hands are valid
+     */
+    validateDemoHandDistribution(hands) {
+        for (let i = 0; i < hands.length; i++) {
+            const hand = hands[i];
+            const aces = hand.filter(card => card.rank === 'A').length;
+            const sevens = hand.filter(card => card.rank === '7').length;
+
+            if (aces >= 3 || sevens >= 3) {
+                console.log(`[Game] Invalid hand for player ${i}: ${aces} Aces, ${sevens} 7s - reshuffling required`);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Ensure all cards dealt are unique (no duplicates)
+     * @param {Array} hands - Array of player hands
+     * @returns {boolean} True if all cards are unique
+     */
+    validateDemoUniqueCards(hands) {
+        const allDealtCards = [];
+
+        for (let i = 0; i < hands.length; i++) {
+            const hand = hands[i];
+            for (const card of hand) {
+                const cardId = `${card.suit}-${card.rank}`;
+                if (allDealtCards.includes(cardId)) {
+                    console.log(`[Game] Duplicate card found: ${cardId} - reshuffling required`);
+                    return false;
+                }
+                allDealtCards.push(cardId);
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Generate validated demo cards for all players
+     * @returns {Object} Object containing hands for human player and bots
+     */
+    generateDemoCards() {
+        const maxAttempts = 10;
+        let attempts = 0;
+
+        while (attempts < maxAttempts) {
+            attempts++;
+
+            // Generate and shuffle deck
+            const deck = this.generateDemoDeck();
+            const shuffledDeck = this.shuffleDemoDeck(deck);
+
+            // Deal 8 cards to each of 4 players
+            const hands = [];
+            for (let player = 0; player < 4; player++) {
+                const startIndex = player * 8;
+                hands.push(shuffledDeck.slice(startIndex, startIndex + 8));
+            }
+
+            // Validate unique cards
+            if (!this.validateDemoUniqueCards(hands)) {
+                console.log(`[Game] Attempt ${attempts}: Duplicate cards detected, reshuffling...`);
+                continue;
+            }
+
+            // Validate hand distribution
+            if (!this.validateDemoHandDistribution(hands)) {
+                console.log(`[Game] Attempt ${attempts}: Invalid hand distribution, reshuffling...`);
+                continue;
+            }
+
+            // Valid deal found
+            console.log(`[Game] Valid demo card distribution found after ${attempts} attempt(s)`);
+
+            // Log hand summaries for debugging
+            hands.forEach((hand, index) => {
+                const handSummary = hand.map(c => `${c.rank}${c.suit.charAt(0).toUpperCase()}`).join(', ');
+                const aces = hand.filter(c => c.rank === 'A').length;
+                const sevens = hand.filter(c => c.rank === '7').length;
+                const playerType = index === 0 ? 'Human' : `Bot ${index}`;
+                console.log(`[Game] ${playerType}: ${handSummary} (${aces}A, ${sevens}7)`);
+            });
+
+            return {
+                humanPlayerHand: hands[0], // Human player gets first hand
+                botHands: {
+                    bot_1: hands[1],
+                    bot_2: hands[2],
+                    bot_3: hands[3]
+                },
+                attempts
+            };
+        }
+
+        // Fallback to basic cards if validation fails
+        console.warn(`[Game] Failed to generate valid demo cards after ${maxAttempts} attempts, using fallback`);
+        return {
+            humanPlayerHand: [
+                { suit: 'hearts', rank: 'A' },
+                { suit: 'diamonds', rank: 'K' },
+                { suit: 'clubs', rank: 'Q' },
+                { suit: 'spades', rank: 'J' },
+                { suit: 'hearts', rank: '10' },
+                { suit: 'diamonds', rank: '9' },
+                { suit: 'clubs', rank: '8' },
+                { suit: 'spades', rank: '7' }
+            ],
+            botHands: {
+                bot_1: [
+                    { suit: 'hearts', rank: 'K' },
+                    { suit: 'diamonds', rank: 'Q' },
+                    { suit: 'clubs', rank: 'J' },
+                    { suit: 'spades', rank: '10' },
+                    { suit: 'hearts', rank: '9' },
+                    { suit: 'diamonds', rank: '8' },
+                    { suit: 'clubs', rank: '7' },
+                    { suit: 'spades', rank: 'A' }
+                ],
+                bot_2: [
+                    { suit: 'hearts', rank: 'Q' },
+                    { suit: 'diamonds', rank: 'J' },
+                    { suit: 'clubs', rank: '10' },
+                    { suit: 'spades', rank: '9' },
+                    { suit: 'hearts', rank: '8' },
+                    { suit: 'diamonds', rank: '7' },
+                    { suit: 'clubs', rank: 'A' },
+                    { suit: 'spades', rank: 'K' }
+                ],
+                bot_3: [
+                    { suit: 'hearts', rank: 'J' },
+                    { suit: 'diamonds', rank: '10' },
+                    { suit: 'clubs', rank: '9' },
+                    { suit: 'spades', rank: '8' },
+                    { suit: 'hearts', rank: '7' },
+                    { suit: 'diamonds', rank: 'A' },
+                    { suit: 'clubs', rank: 'K' },
+                    { suit: 'spades', rank: 'Q' }
+                ]
+            },
+            attempts: maxAttempts
+        };
+    }
+
     setupDemoGameState(demoGame) {
         console.log('[Game] Setting up demo game state:', demoGame);
-        
+
         // Update game state with demo data
         this.gameState.isDemoMode = true;
         this.gameState.status = 'ready';
@@ -318,7 +503,7 @@ class GameManager {
             cardsPlayed: [],
             leadSuit: null
         };
-        
+
         // Set up players (human + 3 bots)
         this.gameState.players = {};
         demoGame.players.forEach((player, index) => {
@@ -339,29 +524,22 @@ class GameManager {
             this.gameState.currentPlayer = 'human_player'; // fallback
         }
 
-        // Initialize demo game with sample cards for trump declaration
-        this.gameState.playerHand = [
-            { suit: 'hearts', rank: 'A' },
-            { suit: 'hearts', rank: 'K' },
-            { suit: 'diamonds', rank: 'Q' },
-            { suit: 'spades', rank: 'J' },
-            { suit: 'clubs', rank: '10' },
-            { suit: 'hearts', rank: '9' },
-            { suit: 'diamonds', rank: '8' },
-            { suit: 'spades', rank: '7' }
-        ];
+        // Initialize demo game with properly shuffled and validated cards
+        const demoCards = this.generateDemoCards();
+        this.gameState.playerHand = demoCards.humanPlayerHand;
+        this.gameState.botHands = demoCards.botHands;
 
         // Set trump declarer (for demo, let human player declare trump)
         this.gameState.trumpDeclarer = this.gameState.currentPlayer;
         this.gameState.isMyTurn = true;
 
         console.log('[Game] Demo game state setup complete:', this.gameState);
-        
+
         // Update UI
         this.updateUI();
-        
+
         console.log('[Game] UI updated, showing trump declaration modal in 1 second');
-        
+
         // Show trump declaration modal after a short delay
         setTimeout(() => {
             console.log('[Game] Showing trump declaration modal');
@@ -375,7 +553,7 @@ class GameManager {
         console.log('Room joined:', data);
         this.hideLoading();
         this.addGameMessage(`Joined game room with ${data.playerCount} players`, 'success');
-        
+
         // Update game state with room data
         this.gameState.players = {};
         data.players.forEach(player => {
@@ -386,14 +564,14 @@ class GameManager {
                 isConnected: player.isConnected
             };
         });
-        
+
         this.updateUI();
     }
 
     handlePlayerJoined(data) {
         console.log('Player joined:', data);
         this.addGameMessage(`${data.player.username} joined the game`, 'info');
-        
+
         // Update players list
         this.gameState.players[data.player.userId] = {
             username: data.player.username,
@@ -401,19 +579,19 @@ class GameManager {
             teamAssignment: data.player.teamAssignment,
             isConnected: true
         };
-        
+
         this.updateUI();
     }
 
     handlePlayerLeft(data) {
         console.log('Player left:', data);
         this.addGameMessage(`${data.playerName} left the game`, 'warning');
-        
+
         // Remove player from state
         if (this.gameState.players[data.playerId]) {
             delete this.gameState.players[data.playerId];
         }
-        
+
         this.updateUI();
     }
 
@@ -421,48 +599,48 @@ class GameManager {
         console.log('Player ready changed:', data);
         const readyText = data.isReady ? 'ready' : 'not ready';
         this.addGameMessage(`${data.playerName} is ${readyText}`, 'info');
-        
+
         // Update player ready status
         if (this.gameState.players[data.playerId]) {
             this.gameState.players[data.playerId].isReady = data.isReady;
         }
-        
+
         this.updateUI();
     }
 
     handleTeamsFormed(data) {
         console.log('Teams formed:', data);
         this.addGameMessage(`Teams formed by ${data.formedBy}`, 'success');
-        
+
         // Update team assignments
         data.players.forEach(player => {
             if (this.gameState.players[player.userId]) {
                 this.gameState.players[player.userId].teamAssignment = player.teamAssignment;
             }
         });
-        
+
         this.updateUI();
     }
 
     handleGameStarting(data) {
         console.log('Game starting:', data);
         this.addGameMessage(`Game starting! Started by ${data.startedBy}`, 'success');
-        
+
         // Update game phase
         this.gameState.gamePhase = 'starting';
         this.gameState.status = 'starting';
-        
+
         this.updateUI();
     }
 
     // Game State Management
     handleGameStateUpdate(data) {
         console.log('Game state update:', data);
-        
+
         this.gameState = { ...this.gameState, ...data };
         this.updateUI();
         this.hideLoading();
-        
+
         // Handle different game phases
         if (data.gamePhase === 'trump_declaration' && data.trumpDeclarer === this.gameState.currentPlayer) {
             setTimeout(() => {
@@ -484,7 +662,7 @@ class GameManager {
 
     handleCardPlayed(data) {
         console.log('Card played:', data);
-        
+
         // Update current trick state
         if (data.cardsInTrick) {
             this.gameState.currentTrick = {
@@ -502,18 +680,18 @@ class GameManager {
         // Render the played card with animation
         const playerPosition = this.getPlayerPositionById(data.playedBy);
         this.renderPlayedCard(data.playedBy, data.card, playerPosition);
-        
+
         // Update opponent hand sizes
         this.updateOpponentHandSize(data.playedBy);
-        
+
         // Update UI elements
         this.updateTurnIndicators();
         this.updateCardPlayability();
-        
+
         // Add game message
         const playerName = data.playedByName || this.getPlayerNameById(data.playedBy);
         this.addGameMessage(`${playerName} played ${data.card.rank} of ${data.card.suit}`, 'info');
-        
+
         // Show visual feedback for suit following
         this.highlightLeadSuit(data.card);
     }
@@ -539,14 +717,14 @@ class GameManager {
             // This mapping should be set up during game initialization
             // For now, use a simple mapping
         };
-        
+
         // If not found, determine position based on player order
         const players = Object.keys(this.gameState.players || {});
         const currentIndex = players.indexOf(this.getCurrentPlayerId());
         const targetIndex = players.indexOf(playerId);
-        
+
         if (currentIndex === -1 || targetIndex === -1) return 'top';
-        
+
         const relativePosition = (targetIndex - currentIndex + 4) % 4;
         const positions = ['bottom', 'left', 'top', 'right'];
         return positions[relativePosition];
@@ -585,7 +763,7 @@ class GameManager {
     highlightLeadSuit(card) {
         const currentTrick = this.gameState.currentTrick;
         if (!currentTrick || !currentTrick.cardsPlayed) return;
-        
+
         // If this is the first card, it sets the lead suit
         if (currentTrick.cardsPlayed.length === 1) {
             this.gameState.leadSuit = card.suit;
@@ -604,21 +782,21 @@ class GameManager {
             clubs: '♣',
             spades: '♠'
         };
-        
+
         const message = `Lead suit: ${suitSymbols[suit]} ${suit.charAt(0).toUpperCase() + suit.slice(1)}`;
         this.addGameMessage(message, 'info');
-        
+
         // Add visual indicator to trick area
         const trickArea = this.elements.trickArea;
         if (trickArea) {
-            const leadSuitIndicator = trickArea.querySelector('.lead-suit-indicator') || 
+            const leadSuitIndicator = trickArea.querySelector('.lead-suit-indicator') ||
                 document.createElement('div');
             leadSuitIndicator.className = 'lead-suit-indicator';
             leadSuitIndicator.innerHTML = `
                 <span class="lead-suit-label">Lead:</span>
                 <span class="lead-suit-symbol ${suit}">${suitSymbols[suit]}</span>
             `;
-            
+
             if (!trickArea.querySelector('.lead-suit-indicator')) {
                 trickArea.appendChild(leadSuitIndicator);
             }
@@ -627,7 +805,7 @@ class GameManager {
 
     handleTrickWon(data) {
         console.log('Trick won:', data);
-        
+
         // Update game state with trick winner
         this.gameState.currentTrick = {
             ...this.gameState.currentTrick,
@@ -638,11 +816,11 @@ class GameManager {
 
         // Show trick winner animation
         this.showTrickWinnerAnimation(data.winnerId, data.winningCard);
-        
+
         // Add game message
         const winnerName = data.winnerName || this.getPlayerNameById(data.winnerId);
         this.addGameMessage(`${winnerName} won the trick with ${data.winningCard.rank} of ${data.winningCard.suit}`, 'success');
-        
+
         // Clear played cards and prepare for next trick after animation
         setTimeout(() => {
             this.clearPlayedCards();
@@ -661,10 +839,10 @@ class GameManager {
         playedCards.forEach(card => {
             const cardRank = card.querySelector('.card-rank')?.textContent;
             const cardSuit = card.querySelector('.card-suit')?.textContent;
-            
+
             if (cardRank === winningCard.rank && this.getSuitSymbol(winningCard.suit) === cardSuit) {
                 card.classList.add('winning-card');
-                
+
                 // Add pulsing animation
                 setTimeout(() => {
                     card.classList.add('winner-pulse');
@@ -718,7 +896,7 @@ class GameManager {
 
         // Clear lead suit for new trick
         this.gameState.leadSuit = null;
-        
+
         // Remove lead suit indicator
         const leadSuitIndicator = document.querySelector('.lead-suit-indicator');
         if (leadSuitIndicator) {
@@ -727,7 +905,7 @@ class GameManager {
 
         // Update UI
         this.updateUI();
-        
+
         // Check if this was the last trick of the round
         if (this.gameState.currentRound && this.gameState.currentRound.currentTrick > 8) {
             this.addGameMessage('Round complete! Calculating scores...', 'info');
@@ -739,7 +917,7 @@ class GameManager {
 
     handleRoundScores(data) {
         console.log('Round scores:', data);
-        
+
         // Update game state with new scores
         this.gameState.scores = data.scores;
         this.gameState.currentRound = {
@@ -752,13 +930,13 @@ class GameManager {
 
         // Show round completion animation
         this.showRoundCompletionAnimation(data);
-        
+
         // Update score display with animation
         this.updateScoreDisplay(true);
-        
+
         // Show detailed round results
         this.showRoundResults(data);
-        
+
         // Check if game is complete
         if (data.gameComplete) {
             setTimeout(() => {
@@ -820,7 +998,7 @@ class GameManager {
     showRoundResults(data) {
         const message = `Round ${data.roundNumber}: Declaring team ${data.declaringTeamTricks} tricks, Challenging team ${data.challengingTeamTricks} tricks`;
         this.addGameMessage(message, 'success');
-        
+
         // Show score changes
         Object.entries(data.scores).forEach(([teamId, score]) => {
             if (score > 0) {
@@ -852,7 +1030,7 @@ class GameManager {
      */
     prepareNextRound(nextRoundData) {
         console.log('Preparing next round:', nextRoundData);
-        
+
         // Update game state for new round
         this.gameState.currentRound = {
             roundId: nextRoundData.roundId,
@@ -867,7 +1045,7 @@ class GameManager {
         // Reset trump suit for new round
         this.gameState.trumpSuit = null;
         this.gameState.gamePhase = 'trump_declaration';
-        
+
         // Update player hands with new cards
         if (nextRoundData.playerHands && nextRoundData.playerHands[this.getCurrentPlayerId()]) {
             this.gameState.playerHand = nextRoundData.playerHands[this.getCurrentPlayerId()];
@@ -875,13 +1053,13 @@ class GameManager {
 
         // Clear played cards
         this.clearPlayedCards();
-        
+
         // Update UI
         this.updateUI();
-        
+
         // Show new round message
         this.addGameMessage(`Starting Round ${nextRoundData.roundNumber}`, 'success');
-        
+
         // If current player is trump declarer, show trump selection
         if (nextRoundData.trumpDeclarerUserId === this.getCurrentPlayerId()) {
             setTimeout(() => {
@@ -900,10 +1078,10 @@ class GameManager {
      */
     handleGameComplete(data) {
         console.log('Game complete:', data);
-        
+
         this.gameState.status = 'completed';
         this.gameState.winner = data.winningTeam;
-        
+
         // Show game completion modal
         this.showGameCompletionModal(data);
     }
@@ -1081,10 +1259,10 @@ class GameManager {
      */
     formatDuration(duration) {
         if (!duration) return 'N/A';
-        
+
         const minutes = Math.floor(duration / 60000);
         const seconds = Math.floor((duration % 60000) / 1000);
-        
+
         if (minutes > 0) {
             return `${minutes}m ${seconds}s`;
         } else {
@@ -1137,11 +1315,10 @@ class GameManager {
                                 <span class="declarations">Declarations: ${stats.declarations}</span>
                                 <span class="successful">Successful: ${stats.successful}</span>
                                 <span class="failed">Failed: ${stats.failed}</span>
-                                <span class="success-rate">Success Rate: ${
-                                    stats.declarations > 0 
-                                        ? Math.round((stats.successful / stats.declarations) * 100)
-                                        : 0
-                                }%</span>
+                                <span class="success-rate">Success Rate: ${stats.declarations > 0
+                ? Math.round((stats.successful / stats.declarations) * 100)
+                : 0
+            }%</span>
                             </div>
                         </div>
                     `).join('')}
@@ -1215,10 +1392,9 @@ class GameManager {
     shareGameStats(stats) {
         const currentPlayer = (stats.players || stats.playerStats || [])
             .find(p => p.userId === this.getCurrentPlayerId());
-        
-        const shareText = `Just finished a Contract Crown game! ${
-            currentPlayer?.isWinner ? '🏆 Victory!' : 'Good game!'
-        } I won ${currentPlayer?.tricksWon || 0} tricks. Game lasted ${this.formatDuration(stats.duration)}.`;
+
+        const shareText = `Just finished a Contract Crown game! ${currentPlayer?.isWinner ? '🏆 Victory!' : 'Good game!'
+            } I won ${currentPlayer?.tricksWon || 0} tricks. Game lasted ${this.formatDuration(stats.duration)}.`;
 
         if (navigator.share) {
             navigator.share({
@@ -1241,18 +1417,18 @@ class GameManager {
     downloadGameStats(stats) {
         const dataStr = JSON.stringify(stats, null, 2);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
-        
+
         const link = document.createElement('a');
         link.href = URL.createObjectURL(dataBlob);
         link.download = `contract-crown-game-${this.gameState.gameId}-stats.json`;
         link.click();
-        
+
         this.addGameMessage('Game statistics downloaded!', 'success');
     }
 
     handleGameError(data) {
         console.error('Game error:', data);
-        
+
         // Handle specific error types
         if (data.type === 'invalid_card_play') {
             this.handleInvalidCardPlay(data);
@@ -1271,14 +1447,14 @@ class GameManager {
         // Remove loading state from cards
         const playingCards = this.elements.playerHand.querySelectorAll('.card.playing');
         playingCards.forEach(card => card.classList.remove('playing'));
-        
+
         // Re-enable card selection
         this.gameState.isMyTurn = true;
         this.updateCardPlayability();
-        
+
         // Show specific error message
         this.addGameMessage(data.message || 'Invalid card play', 'error');
-        
+
         // Highlight valid cards
         this.highlightValidCards();
     }
@@ -1291,10 +1467,10 @@ class GameManager {
         // Remove loading state
         const playingCards = this.elements.playerHand.querySelectorAll('.card.playing');
         playingCards.forEach(card => card.classList.remove('playing'));
-        
+
         // Show turn violation message
         this.addGameMessage(data.message || "It's not your turn", 'warning');
-        
+
         // Update turn indicators
         this.updateTurnIndicators();
     }
@@ -1304,11 +1480,11 @@ class GameManager {
      */
     highlightValidCards() {
         const cardElements = this.elements.playerHand.querySelectorAll('.card');
-        
+
         cardElements.forEach((cardElement, index) => {
             const card = this.gameState.playerHand[index];
             if (!card) return;
-            
+
             if (this.isCardPlayable(card)) {
                 cardElement.classList.add('valid-play');
                 setTimeout(() => {
@@ -1352,11 +1528,11 @@ class GameManager {
             const position = this.getPlayerPosition(playerId);
             const nameElement = this.elements[`player${position}Name`];
             const cardsElement = this.elements[`player${position}Cards`];
-            
+
             if (nameElement) {
                 nameElement.textContent = player.username || `Player ${player.seatPosition}`;
             }
-            
+
             if (cardsElement) {
                 const cardCount = player.handSize || 8;
                 cardsElement.textContent = `${cardCount} card${cardCount !== 1 ? 's' : ''}`;
@@ -1366,8 +1542,8 @@ class GameManager {
 
     updateTurnIndicators() {
         // Clear all turn indicators
-        [this.elements.playerTopTurn, this.elements.playerLeftTurn, 
-         this.elements.playerRightTurn, this.elements.playerBottomTurn].forEach(indicator => {
+        [this.elements.playerTopTurn, this.elements.playerLeftTurn,
+        this.elements.playerRightTurn, this.elements.playerBottomTurn].forEach(indicator => {
             if (indicator) indicator.classList.remove('active');
         });
 
@@ -1389,10 +1565,10 @@ class GameManager {
                 clubs: '♣',
                 spades: '♠'
             };
-            
+
             const symbol = suitSymbols[this.gameState.trumpSuit] || '?';
             const name = this.gameState.trumpSuit.charAt(0).toUpperCase() + this.gameState.trumpSuit.slice(1);
-            
+
             this.elements.trumpSuit.innerHTML = `
                 <span class="trump-symbol ${this.gameState.trumpSuit}">${symbol}</span>
                 <span class="trump-name">${name}</span>
@@ -1409,28 +1585,28 @@ class GameManager {
         if (this.elements.team1Score) {
             const scoreElement = this.elements.team1Score.querySelector('.score-value');
             const newScore = this.gameState.scores.team1;
-            
+
             if (animated && scoreElement.textContent !== newScore.toString()) {
                 scoreElement.classList.add('updating');
                 setTimeout(() => {
                     scoreElement.classList.remove('updating');
                 }, 800);
             }
-            
+
             scoreElement.textContent = newScore;
         }
-        
+
         if (this.elements.team2Score) {
             const scoreElement = this.elements.team2Score.querySelector('.score-value');
             const newScore = this.gameState.scores.team2;
-            
+
             if (animated && scoreElement.textContent !== newScore.toString()) {
                 scoreElement.classList.add('updating');
                 setTimeout(() => {
                     scoreElement.classList.remove('updating');
                 }, 800);
             }
-            
+
             scoreElement.textContent = newScore;
         }
     }
@@ -1443,7 +1619,7 @@ class GameManager {
         };
 
         const statusInfo = statusMap[status] || statusMap.disconnected;
-        
+
         this.elements.statusText.textContent = statusInfo.text;
         this.elements.statusIndicator.className = `status-indicator ${statusInfo.class}`;
     }
@@ -1453,7 +1629,7 @@ class GameManager {
         if (!this.gameState.playerHand || !this.elements.playerHand) return;
 
         this.elements.playerHand.innerHTML = '';
-        
+
         this.gameState.playerHand.forEach((card, index) => {
             const cardElement = this.createCardElement(card, index);
             this.elements.playerHand.appendChild(cardElement);
@@ -1466,7 +1642,7 @@ class GameManager {
     renderOpponentHands() {
         // Render card backs for opponents based on actual hand sizes
         const positions = ['Top', 'Left', 'Right'];
-        
+
         positions.forEach(position => {
             const handElement = this.elements[`player${position}Hand`];
             if (!handElement) return;
@@ -1477,7 +1653,7 @@ class GameManager {
             const cardCount = player ? (player.handSize || 8) : 8;
 
             handElement.innerHTML = '';
-            
+
             // Create card backs with stacking effect
             for (let i = 0; i < cardCount; i++) {
                 const cardBack = this.createCardBackElement(i, cardCount);
@@ -1533,13 +1709,13 @@ class GameManager {
     createCardBackElement(index, totalCards) {
         const cardBack = document.createElement('div');
         cardBack.className = 'card-back';
-        
+
         // Add stacking effect
         cardBack.style.zIndex = totalCards - index;
-        
+
         // Add subtle animation delay for visual appeal
         cardBack.style.animationDelay = `${index * 0.1}s`;
-        
+
         return cardBack;
     }
 
@@ -1553,7 +1729,7 @@ class GameManager {
             touchStartY = e.touches[0].clientY;
             touchStartTime = Date.now();
             isDragging = false;
-            
+
             // Add touch feedback
             cardElement.classList.add('touching');
         }, { passive: true });
@@ -1562,7 +1738,7 @@ class GameManager {
         cardElement.addEventListener('touchmove', (e) => {
             const touchY = e.touches[0].clientY;
             const deltaY = touchStartY - touchY;
-            
+
             // If moved up significantly, consider it a drag
             if (deltaY > 20) {
                 isDragging = true;
@@ -1573,10 +1749,10 @@ class GameManager {
         // Touch end
         cardElement.addEventListener('touchend', (e) => {
             const touchDuration = Date.now() - touchStartTime;
-            
+
             cardElement.classList.remove('touching');
             cardElement.style.transform = '';
-            
+
             // If it was a quick tap or significant drag up, select the card
             if (touchDuration < 300 || isDragging) {
                 this.handleCardSelection(cardElement);
@@ -1598,43 +1774,43 @@ class GameManager {
     isCardPlayable(card) {
         // Check if it's player's turn
         if (!this.gameState.isMyTurn) return false;
-        
+
         // During trump declaration phase, cards are not playable
         if (this.gameState.gamePhase === 'trump_declaration') return false;
-        
+
         // During playing phase, implement suit following rules
         if (this.gameState.gamePhase === 'playing') {
             const currentTrick = this.gameState.currentTrick;
             if (!currentTrick) return false;
 
             const cardsPlayed = currentTrick.cardsPlayed || [];
-            
+
             // If no cards played yet in trick, any card is playable
             if (cardsPlayed.length === 0) return true;
-            
+
             // Get the lead suit (first card played in trick)
             const leadSuit = cardsPlayed[0].card.suit;
-            
+
             // Must follow suit if possible
             const playerSuitCards = this.gameState.playerHand.filter(c => c.suit === leadSuit);
             if (playerSuitCards.length > 0 && card.suit !== leadSuit) {
                 return false; // Must follow suit
             }
         }
-        
+
         return true;
     }
 
     updateCardPlayability() {
         // Update which cards can be played based on current game state
         const cardElements = this.elements.playerHand.querySelectorAll('.card');
-        
+
         cardElements.forEach((cardElement, index) => {
             const card = this.gameState.playerHand[index];
             if (!card) return;
-            
+
             const isPlayable = this.isCardPlayable(card);
-            
+
             if (isPlayable) {
                 cardElement.classList.remove('disabled');
             } else {
@@ -1648,20 +1824,20 @@ class GameManager {
         if (!slotElement) return;
 
         const cardElement = this.createPlayedCardElement(card);
-        
+
         // Add animation class
         cardElement.classList.add('card-play-animation');
-        
+
         // Clear previous card and add new one
         slotElement.innerHTML = '';
         slotElement.appendChild(cardElement);
         slotElement.classList.add('active');
-        
+
         // Add position-specific animation
         setTimeout(() => {
             cardElement.classList.add('card-played');
         }, 50);
-        
+
         // Remove animation class after animation completes
         setTimeout(() => {
             cardElement.classList.remove('card-play-animation');
@@ -1692,7 +1868,7 @@ class GameManager {
 
     clearPlayedCards() {
         [this.elements.playedCardTop, this.elements.playedCardLeft,
-         this.elements.playedCardRight, this.elements.playedCardBottom].forEach(slot => {
+        this.elements.playedCardRight, this.elements.playedCardBottom].forEach(slot => {
             if (slot) {
                 slot.innerHTML = '';
                 slot.classList.remove('active');
@@ -1786,7 +1962,7 @@ class GameManager {
         this.gameState.playerHand.splice(this.gameState.selectedCard, 1);
         this.gameState.selectedCard = null;
         this.gameState.isMyTurn = false;
-        
+
         this.renderPlayerHand();
         this.addGameMessage(`You played ${card.rank} of ${card.suit}`, 'info');
     }
@@ -1828,7 +2004,7 @@ class GameManager {
     }
 
     simulateBotPlays() {
-        const botPlayers = Object.keys(this.gameState.players).filter(id => 
+        const botPlayers = Object.keys(this.gameState.players).filter(id =>
             this.gameState.players[id].isBot
         );
 
@@ -1856,12 +2032,12 @@ class GameManager {
     playBotCard(botId, botIndex) {
         // Generate a random valid card for the bot
         const botCard = this.generateBotCard();
-        
+
         // Ensure cardsPlayed array exists (defensive programming)
         if (!this.gameState.currentTrick.cardsPlayed) {
             this.gameState.currentTrick.cardsPlayed = [];
         }
-        
+
         // Add bot's card to trick
         this.gameState.currentTrick.cardsPlayed.push({
             playerId: botId,
@@ -1890,15 +2066,15 @@ class GameManager {
 
     simulateBotLead(leadingBotId) {
         console.log(`[Game] Bot ${leadingBotId} leading trick ${this.gameState.currentTrick.trickNumber}`);
-        
+
         // Bot leads the trick
         const botCard = this.generateBotCard();
-        
+
         // Ensure cardsPlayed array exists
         if (!this.gameState.currentTrick.cardsPlayed) {
             this.gameState.currentTrick.cardsPlayed = [];
         }
-        
+
         // Add leading bot's card to trick
         this.gameState.currentTrick.cardsPlayed.push({
             playerId: leadingBotId,
@@ -1910,7 +2086,7 @@ class GameManager {
         this.gameState.leadSuit = botCard.suit;
 
         // Render the played card (determine position based on bot)
-        const botPlayers = Object.keys(this.gameState.players).filter(id => 
+        const botPlayers = Object.keys(this.gameState.players).filter(id =>
             this.gameState.players[id].isBot
         );
         const botIndex = botPlayers.indexOf(leadingBotId);
@@ -1944,17 +2120,17 @@ class GameManager {
         // Simple bot card generation - in a real game this would follow game rules
         const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
         const ranks = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-        
+
         const randomSuit = suits[Math.floor(Math.random() * suits.length)];
         const randomRank = ranks[Math.floor(Math.random() * ranks.length)];
-        
+
         return { suit: randomSuit, rank: randomRank };
     }
 
     determineTrickWinner() {
         const trick = this.gameState.currentTrick;
         console.log(`[Game] determineTrickWinner - Cards played: ${trick?.cardsPlayed?.length || 0}`);
-        
+
         if (!trick || trick.cardsPlayed.length !== 4) {
             console.log(`[Game] Not enough cards played yet, waiting...`);
             return;
@@ -1966,7 +2142,7 @@ class GameManager {
 
         trick.cardsPlayed.forEach(play => {
             const card = play.card;
-            
+
             // Trump cards beat non-trump cards
             if (card.suit === this.gameState.trumpSuit && winningCard.card.suit !== this.gameState.trumpSuit) {
                 winningCard = play;
@@ -2025,10 +2201,10 @@ class GameManager {
             // Bot won, simulate their lead
             this.gameState.isMyTurn = false;
             this.gameState.currentTurnPlayer = winnerId;
-            
+
             const winnerName = this.gameState.players[winnerId]?.username || 'Bot';
             this.addGameMessage(`${winnerName} leads the next trick`, 'info');
-            
+
             // Simulate bot leading after delay
             setTimeout(() => {
                 this.simulateBotLead(winnerId);
@@ -2038,7 +2214,7 @@ class GameManager {
         // Update UI
         this.updateTurnIndicators();
         this.updateCardPlayability();
-        
+
         // Check if this was the last trick
         if (this.gameState.currentTrick.trickNumber > 8) {
             this.addGameMessage('Demo round complete!', 'success');
@@ -2050,7 +2226,7 @@ class GameManager {
 
     showDemoComplete() {
         this.addGameMessage('Demo game finished! Thanks for trying Contract Crown!', 'success');
-        
+
         // Show completion message with option to return to dashboard
         setTimeout(() => {
             if (confirm('Demo complete! Would you like to return to the dashboard to create a real game?')) {
@@ -2076,7 +2252,7 @@ class GameManager {
         }
 
         // Check if player has the card
-        const hasCard = this.gameState.playerHand.some(c => 
+        const hasCard = this.gameState.playerHand.some(c =>
             c.suit === card.suit && c.rank === card.rank
         );
         if (!hasCard) {
@@ -2090,7 +2266,7 @@ class GameManager {
         }
 
         const cardsPlayed = currentTrick.cardsPlayed || [];
-        
+
         // If this is the first card of the trick, any card is valid
         if (cardsPlayed.length === 0) {
             return { isValid: true };
@@ -2098,15 +2274,15 @@ class GameManager {
 
         // Get the lead suit (first card played in trick)
         const leadSuit = cardsPlayed[0].card.suit;
-        
+
         // Check suit-following rules
         const playerSuitCards = this.gameState.playerHand.filter(c => c.suit === leadSuit);
-        
+
         // Must follow suit if possible
         if (playerSuitCards.length > 0 && card.suit !== leadSuit) {
-            return { 
-                isValid: false, 
-                reason: `Must follow suit (${leadSuit}) when possible` 
+            return {
+                isValid: false,
+                reason: `Must follow suit (${leadSuit}) when possible`
             };
         }
 
@@ -2149,7 +2325,7 @@ class GameManager {
         if (this.gameState.gamePhase === 'trump_declaration') {
             const initialCards = this.gameState.playerHand.slice(0, 4);
             this.renderPartialHand(initialCards);
-            
+
             // Update card count display
             this.elements.playerBottomCards.textContent = "4 cards (choosing trump)";
         }
@@ -2159,7 +2335,7 @@ class GameManager {
         if (!this.elements.playerHand) return;
 
         this.elements.playerHand.innerHTML = '';
-        
+
         cards.forEach((card, index) => {
             const cardElement = this.createCardElement(card, index);
             // During trump declaration, cards are not playable
@@ -2173,10 +2349,10 @@ class GameManager {
         if (!trumpCardsContainer) return;
 
         trumpCardsContainer.innerHTML = '';
-        
+
         // Show only the first 4 cards in the trump modal
         const initialCards = this.gameState.playerHand.slice(0, 4);
-        
+
         initialCards.forEach((card, index) => {
             const cardElement = this.createTrumpModalCard(card);
             trumpCardsContainer.appendChild(cardElement);
@@ -2186,7 +2362,7 @@ class GameManager {
     createTrumpModalCard(card) {
         const cardElement = document.createElement('div');
         cardElement.className = `trump-modal-card ${card.suit}`;
-        
+
         const suitSymbols = {
             hearts: '♥',
             diamonds: '♦',
@@ -2205,11 +2381,11 @@ class GameManager {
     selectTrumpSuit(optionElement) {
         // Clear previous selection
         this.elements.trumpOptions.forEach(option => option.classList.remove('selected'));
-        
+
         // Select new option
         optionElement.classList.add('selected');
         this.elements.confirmTrumpBtn.disabled = false;
-        
+
         // Add visual feedback
         const suit = optionElement.dataset.suit;
         this.addGameMessage(`Selected ${suit} as trump suit`, 'info');
@@ -2223,17 +2399,17 @@ class GameManager {
         }
 
         const trumpSuit = selectedOption.dataset.suit;
-        
+
         // Validate trump declaration
         if (!this.validateTrumpDeclaration(trumpSuit)) {
             this.addGameMessage('Invalid trump selection', 'error');
             return;
         }
-        
+
         // Show loading state
         this.elements.confirmTrumpBtn.disabled = true;
         this.elements.confirmTrumpBtn.innerHTML = '<span class="spinner"></span> Declaring...';
-        
+
         if (this.gameState.isDemoMode) {
             // Handle demo mode trump declaration locally
             this.handleDemoTrumpDeclaration(trumpSuit);
@@ -2269,18 +2445,18 @@ class GameManager {
         setTimeout(() => {
             // Update game state
             this.gameState.trumpSuit = trumpSuit;
-            
+
             // Update UI
             this.updateTrumpDisplay();
             this.hideTrumpDeclarationModal();
-            
+
             // Handle trump declaration completion (this will render all cards)
             this.handleTrumpDeclarationComplete();
-            
+
             // Add success message
             this.addGameMessage(`Trump suit set to ${trumpSuit}`, 'success');
             this.addGameMessage('Demo game started! Play against 3 AI bots', 'info');
-            
+
             // Set up first trick - human player starts
             this.gameState.isMyTurn = true;
             this.gameState.currentTurnPlayer = this.gameState.currentPlayer;
@@ -2289,11 +2465,11 @@ class GameManager {
                 cardsPlayed: [],
                 leadSuit: null
             };
-            
+
             // Update UI to show it's player's turn
             this.updateTurnIndicators();
             this.updateCardPlayability();
-            
+
             this.addGameMessage('Your turn! Click a card to play it', 'info');
         }, 1000);
     }
@@ -2326,18 +2502,21 @@ class GameManager {
         // In a real implementation, this would come from the server
         // For demo mode, we already have all 8 cards, just need to render them
         if (this.gameState.isDemoMode) {
-            // Demo mode: we already have all 8 cards, just render them
+            // Demo mode: we already have all 8 validated cards, just render them
+            console.log(`[Game] Demo mode: rendering ${this.gameState.playerHand.length} validated cards`);
             this.renderPlayerHand();
             this.addCardDealingAnimation();
         } else if (this.gameState.playerHand.length === 4) {
-            // Real game: deal remaining 4 cards
+            // Real game: this would be handled by server with proper validation
+            // For now, use fallback cards (this should not happen in production)
+            console.warn('[Game] Using fallback card dealing - should be handled by server');
             const remainingCards = [
                 { suit: 'hearts', rank: '10' },
                 { suit: 'diamonds', rank: '9' },
                 { suit: 'clubs', rank: '8' },
                 { suit: 'spades', rank: '7' }
             ];
-            
+
             this.gameState.playerHand = [...this.gameState.playerHand, ...remainingCards];
             this.renderPlayerHand();
             this.addCardDealingAnimation();
@@ -2369,11 +2548,11 @@ class GameManager {
     getSuitRecommendation() {
         // Analyze first 4 cards to suggest best trump suit
         if (this.gameState.playerHand.length < 4) return null;
-        
+
         const firstFour = this.gameState.playerHand.slice(0, 4);
         const suitCounts = {};
         const highCards = ['A', 'K', 'Q', 'J'];
-        
+
         firstFour.forEach(card => {
             if (!suitCounts[card.suit]) {
                 suitCounts[card.suit] = { count: 0, highCards: 0 };
@@ -2383,11 +2562,11 @@ class GameManager {
                 suitCounts[card.suit].highCards++;
             }
         });
-        
+
         // Find suit with most cards or highest value cards
         let bestSuit = null;
         let bestScore = 0;
-        
+
         Object.entries(suitCounts).forEach(([suit, data]) => {
             const score = data.count * 2 + data.highCards * 3;
             if (score > bestScore) {
@@ -2395,7 +2574,7 @@ class GameManager {
                 bestSuit = suit;
             }
         });
-        
+
         return bestSuit;
     }
 
@@ -2405,7 +2584,7 @@ class GameManager {
             const recommendedOption = document.querySelector(`[data-suit="${recommendedSuit}"]`);
             if (recommendedOption) {
                 recommendedOption.classList.add('recommended');
-                
+
                 // Add recommendation text
                 const recommendation = document.createElement('div');
                 recommendation.className = 'suit-recommendation';
@@ -2435,7 +2614,7 @@ class GameManager {
     handleGameError(data) {
         console.error('Game error:', data);
         this.addGameMessage(data.message || 'A game error occurred', 'error');
-        
+
         // Handle specific error types
         if (data.type === 'invalid_move') {
             this.highlightValidCards();
@@ -2448,7 +2627,7 @@ class GameManager {
         const messageElement = document.createElement('div');
         messageElement.className = `game-message ${type}`;
         messageElement.textContent = message;
-        
+
         this.elements.gameMessages.appendChild(messageElement);
         this.elements.gameMessages.scrollTop = this.elements.gameMessages.scrollHeight;
 
@@ -2487,10 +2666,10 @@ class GameManager {
     }
 
     leaveGame() {
-        const confirmMessage = this.gameState.isDemoMode ? 
-            'Are you sure you want to leave the demo?' : 
+        const confirmMessage = this.gameState.isDemoMode ?
+            'Are you sure you want to leave the demo?' :
             'Are you sure you want to leave the game?';
-            
+
         if (confirm(confirmMessage)) {
             if (this.socket && !this.gameState.isDemoMode) {
                 this.socket.emit('game:leave', { gameId: this.gameState.gameId });

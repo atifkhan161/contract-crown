@@ -223,21 +223,117 @@ class GameEngine {
     }
 
     /**
-     * Shuffle deck using Fisher-Yates algorithm
+     * Shuffle deck using Fisher-Yates algorithm with enhanced randomization
      * @param {Array} deck - Array of cards to shuffle
      * @returns {Array} Shuffled deck
      */
     shuffleDeck(deck) {
         const shuffled = [...deck];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        
+        // Multiple shuffle passes for better randomization
+        for (let pass = 0; pass < 3; pass++) {
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
         }
+        
         return shuffled;
     }
 
     /**
-     * Deal initial 4 cards to each player
+     * Validate that no player has 3 or more Aces or 7s
+     * @param {Object} playerHands - Object with playerId as key and hand array as value
+     * @returns {boolean} True if hands are valid, false if reshuffling needed
+     */
+    validateHandDistribution(playerHands) {
+        for (const [playerId, hand] of Object.entries(playerHands)) {
+            const aces = hand.filter(card => card.rank === 'A').length;
+            const sevens = hand.filter(card => card.rank === '7').length;
+            
+            if (aces >= 3 || sevens >= 3) {
+                console.log(`[GameEngine] Invalid hand for player ${playerId}: ${aces} Aces, ${sevens} 7s - reshuffling required`);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Ensure all cards dealt are unique (no duplicates)
+     * @param {Object} playerHands - Object with playerId as key and hand array as value
+     * @returns {boolean} True if all cards are unique
+     */
+    validateUniqueCards(playerHands) {
+        const allDealtCards = [];
+        
+        for (const [playerId, hand] of Object.entries(playerHands)) {
+            for (const card of hand) {
+                const cardId = `${card.suit}-${card.rank}`;
+                if (allDealtCards.includes(cardId)) {
+                    console.log(`[GameEngine] Duplicate card found: ${cardId} - reshuffling required`);
+                    return false;
+                }
+                allDealtCards.push(cardId);
+            }
+        }
+        
+        return true;
+    }
+
+    /**
+     * Deal cards with validation and automatic reshuffling
+     * @param {Array} shuffledDeck - Pre-shuffled deck
+     * @param {Array} players - Array of player objects
+     * @param {number} cardsPerPlayer - Number of cards to deal per player
+     * @param {number} maxAttempts - Maximum reshuffling attempts
+     * @returns {Object} Valid player hands and remaining deck
+     */
+    dealCardsWithValidation(shuffledDeck, players, cardsPerPlayer, maxAttempts = 10) {
+        let attempts = 0;
+        
+        while (attempts < maxAttempts) {
+            attempts++;
+            
+            // Deal cards to players
+            const playerHands = {};
+            let cardIndex = 0;
+            
+            for (const player of players) {
+                playerHands[player.user_id] = shuffledDeck.slice(cardIndex, cardIndex + cardsPerPlayer);
+                cardIndex += cardsPerPlayer;
+            }
+            
+            // Validate unique cards
+            if (!this.validateUniqueCards(playerHands)) {
+                console.log(`[GameEngine] Attempt ${attempts}: Duplicate cards detected, reshuffling...`);
+                shuffledDeck = this.shuffleDeck(shuffledDeck);
+                continue;
+            }
+            
+            // Validate hand distribution (no 3+ Aces or 7s)
+            if (!this.validateHandDistribution(playerHands)) {
+                console.log(`[GameEngine] Attempt ${attempts}: Invalid hand distribution, reshuffling...`);
+                shuffledDeck = this.shuffleDeck(shuffledDeck);
+                continue;
+            }
+            
+            // Valid deal found
+            console.log(`[GameEngine] Valid card distribution found after ${attempts} attempt(s)`);
+            const remainingDeck = shuffledDeck.slice(cardIndex);
+            
+            return {
+                playerHands,
+                remainingDeck,
+                attempts
+            };
+        }
+        
+        throw new Error(`Failed to find valid card distribution after ${maxAttempts} attempts`);
+    }
+
+    /**
+     * Deal initial 4 cards to each player with validation
      * @param {string} gameId - Game ID
      * @returns {Object} Object containing player hands and remaining deck
      */
@@ -258,24 +354,16 @@ class GameEngine {
             // Check if this is a demo game for logging
             const isDemoMode = await this.isDemoMode(gameId);
             if (isDemoMode) {
-                console.log(`[GameEngine] Dealing initial cards for demo game ${gameId}`);
+                console.log(`[GameEngine] Dealing initial cards for demo game ${gameId} with validation`);
             }
 
             // Generate and shuffle deck
             const deck = this.generateDeck();
             const shuffledDeck = this.shuffleDeck(deck);
 
-            // Deal 4 cards to each player
-            const playerHands = {};
-            let cardIndex = 0;
-
-            for (const player of players) {
-                playerHands[player.user_id] = shuffledDeck.slice(cardIndex, cardIndex + 4);
-                cardIndex += 4;
-            }
-
-            // Store remaining 16 cards for later dealing
-            const remainingDeck = shuffledDeck.slice(16);
+            // Deal cards with validation (4 cards per player)
+            const dealResult = this.dealCardsWithValidation(shuffledDeck, players, 4);
+            const { playerHands, remainingDeck, attempts } = dealResult;
 
             // Update player hands in database
             for (const player of players) {
@@ -286,7 +374,16 @@ class GameEngine {
                 `, [JSON.stringify(playerHands[player.user_id]), gameId, player.user_id]);
             }
 
-            console.log(`[GameEngine] Dealt initial 4 cards to each player in game ${gameId}`);
+            console.log(`[GameEngine] Dealt initial 4 cards to each player in game ${gameId} (${attempts} shuffle attempts)`);
+
+            // Log hand summary for demo games
+            if (isDemoMode) {
+                for (const [playerId, hand] of Object.entries(playerHands)) {
+                    const isBot = await this.isPlayerBotInDatabase(playerId);
+                    const handSummary = hand.map(c => `${c.rank}${c.suit.charAt(0)}`).join(', ');
+                    console.log(`[GameEngine] ${isBot ? 'Bot' : 'Human'} ${playerId}: ${handSummary}`);
+                }
+            }
 
             return {
                 playerHands,
@@ -301,33 +398,39 @@ class GameEngine {
     }
 
     /**
-     * Deal final 4 cards to each player after trump declaration
+     * Deal final 4 cards to each player after trump declaration with validation
      * @param {string} gameId - Game ID
      * @param {Array} remainingDeck - Remaining 16 cards to deal
      * @returns {Object} Updated player hands
      */
     async dealFinalCards(gameId, remainingDeck) {
         try {
-            // Get current player hands
+            // Get current player hands and players
             const players = await this.getGamePlayers(gameId);
-            const updatedHands = {};
-
-            let cardIndex = 0;
+            const currentHands = {};
+            
+            // Load current hands from database
             for (const player of players) {
-                // Get current hand from database
                 const currentHandResult = await dbConnection.query(`
                     SELECT current_hand FROM game_players 
                     WHERE game_id = ? AND user_id = ?
                 `, [gameId, player.user_id]);
 
-                const currentHand = JSON.parse(currentHandResult[0].current_hand || '[]');
+                currentHands[player.user_id] = JSON.parse(currentHandResult[0].current_hand || '[]');
+            }
 
-                // Add 4 more cards to make 8 total
-                const additionalCards = remainingDeck.slice(cardIndex, cardIndex + 4);
-                const fullHand = [...currentHand, ...additionalCards];
+            // Deal additional 4 cards with validation
+            const dealResult = this.dealCardsWithValidation(remainingDeck, players, 4);
+            const { playerHands: additionalCards, attempts } = dealResult;
 
+            // Combine current hands with additional cards
+            const updatedHands = {};
+            for (const player of players) {
+                const currentHand = currentHands[player.user_id];
+                const newCards = additionalCards[player.user_id];
+                const fullHand = [...currentHand, ...newCards];
+                
                 updatedHands[player.user_id] = fullHand;
-                cardIndex += 4;
 
                 // Update database with full hand
                 await dbConnection.query(`
@@ -337,7 +440,29 @@ class GameEngine {
                 `, [JSON.stringify(fullHand), gameId, player.user_id]);
             }
 
-            console.log(`[GameEngine] Dealt final 4 cards to each player in game ${gameId}`);
+            // Validate final hands (8 cards each)
+            if (!this.validateUniqueCards(updatedHands)) {
+                throw new Error('Final hand validation failed - duplicate cards detected');
+            }
+
+            if (!this.validateHandDistribution(updatedHands)) {
+                throw new Error('Final hand validation failed - invalid distribution detected');
+            }
+
+            console.log(`[GameEngine] Dealt final 4 cards to each player in game ${gameId} (${attempts} shuffle attempts)`);
+
+            // Check if this is a demo game for enhanced logging
+            const isDemoMode = await this.isDemoMode(gameId);
+            if (isDemoMode) {
+                for (const [playerId, hand] of Object.entries(updatedHands)) {
+                    const isBot = await this.isPlayerBotInDatabase(playerId);
+                    const handSummary = hand.map(c => `${c.rank}${c.suit.charAt(0)}`).join(', ');
+                    const aces = hand.filter(c => c.rank === 'A').length;
+                    const sevens = hand.filter(c => c.rank === '7').length;
+                    console.log(`[GameEngine] Final hand - ${isBot ? 'Bot' : 'Human'} ${playerId}: ${handSummary} (${aces}A, ${sevens}7)`);
+                }
+            }
+
             return updatedHands;
         } catch (error) {
             console.error('[GameEngine] Deal final cards error:', error.message);
