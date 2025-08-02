@@ -4,12 +4,14 @@ import path from 'path';
 
 async function runMigration() {
     try {
+        const migrationName = process.argv[2] || 'add_ready_status_and_teams';
+        
         console.log('Initializing database connection...');
         await dbConnection.initialize();
         
-        console.log('Running migration: add_ready_status_and_teams.sql');
+        console.log(`Running migration: ${migrationName}.sql`);
         
-        const migrationPath = path.join(process.cwd(), 'server/database/migrations/add_ready_status_and_teams.sql');
+        const migrationPath = path.join(process.cwd(), `database/migrations/${migrationName}.sql`);
         const migration = fs.readFileSync(migrationPath, 'utf8');
         const statements = migration.split(';').filter(stmt => stmt.trim());
         
