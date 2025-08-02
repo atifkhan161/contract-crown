@@ -7,7 +7,7 @@ import BotAI from './BotAI.js';
  */
 class BotPlayer {
     constructor(options = {}) {
-        this.id = options.id || `bot_${uuidv4()}`;
+        this.id = options.id || uuidv4();
         this.name = options.name || this.generateBotName();
         this.personality = options.personality || this.generatePersonality();
         this.isBot = true;
