@@ -1832,15 +1832,22 @@ class GameManager {
             this.gameState.players[id].isBot
         );
 
+        // Find which bots haven't played yet
+        const playedPlayerIds = this.gameState.currentTrick.cardsPlayed.map(play => play.playerId);
+        const remainingBots = botPlayers.filter(botId => !playedPlayerIds.includes(botId));
+
+        console.log(`[Game] simulateBotPlays - Cards played: ${this.gameState.currentTrick.cardsPlayed.length}, Remaining bots: ${remainingBots.length}`);
+
         let delay = 0;
-        botPlayers.forEach((botId, index) => {
+        remainingBots.forEach((botId, index) => {
             setTimeout(() => {
-                this.playBotCard(botId, index);
+                const botIndex = botPlayers.indexOf(botId);
+                this.playBotCard(botId, botIndex);
             }, delay);
             delay += 2000; // 2 second delay between bot plays
         });
 
-        // After all bots play, determine trick winner
+        // After all remaining bots play, determine trick winner
         setTimeout(() => {
             this.determineTrickWinner();
         }, delay + 1000);
@@ -1881,6 +1888,58 @@ class GameManager {
         this.updatePlayerInfo();
     }
 
+    simulateBotLead(leadingBotId) {
+        console.log(`[Game] Bot ${leadingBotId} leading trick ${this.gameState.currentTrick.trickNumber}`);
+        
+        // Bot leads the trick
+        const botCard = this.generateBotCard();
+        
+        // Ensure cardsPlayed array exists
+        if (!this.gameState.currentTrick.cardsPlayed) {
+            this.gameState.currentTrick.cardsPlayed = [];
+        }
+        
+        // Add leading bot's card to trick
+        this.gameState.currentTrick.cardsPlayed.push({
+            playerId: leadingBotId,
+            card: botCard
+        });
+
+        // Set lead suit
+        this.gameState.currentTrick.leadSuit = botCard.suit;
+        this.gameState.leadSuit = botCard.suit;
+
+        // Render the played card (determine position based on bot)
+        const botPlayers = Object.keys(this.gameState.players).filter(id => 
+            this.gameState.players[id].isBot
+        );
+        const botIndex = botPlayers.indexOf(leadingBotId);
+        const positions = ['left', 'top', 'right'];
+        const position = positions[botIndex] || 'top';
+
+        this.renderPlayedCard(leadingBotId, botCard, position);
+
+        // Update bot hand size
+        if (this.gameState.players[leadingBotId]) {
+            this.gameState.players[leadingBotId].handSize--;
+        }
+
+        // Add game message
+        const botName = this.gameState.players[leadingBotId].username;
+        this.addGameMessage(`${botName} played ${botCard.rank} of ${botCard.suit}`, 'info');
+
+        // Update UI
+        this.updatePlayerInfo();
+
+        // Now it's the human player's turn
+        setTimeout(() => {
+            this.gameState.isMyTurn = true;
+            this.addGameMessage('Your turn!', 'info');
+            this.updateTurnIndicators();
+            this.updateCardPlayability();
+        }, 2000);
+    }
+
     generateBotCard() {
         // Simple bot card generation - in a real game this would follow game rules
         const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
@@ -1894,7 +1953,12 @@ class GameManager {
 
     determineTrickWinner() {
         const trick = this.gameState.currentTrick;
-        if (!trick || trick.cardsPlayed.length !== 4) return;
+        console.log(`[Game] determineTrickWinner - Cards played: ${trick?.cardsPlayed?.length || 0}`);
+        
+        if (!trick || trick.cardsPlayed.length !== 4) {
+            console.log(`[Game] Not enough cards played yet, waiting...`);
+            return;
+        }
 
         // Simple winner determination - highest trump or highest of lead suit
         let winningCard = trick.cardsPlayed[0];
@@ -1967,12 +2031,7 @@ class GameManager {
             
             // Simulate bot leading after delay
             setTimeout(() => {
-                this.playBotCard(winnerId, 0);
-                // Then continue with other bots and human
-                setTimeout(() => {
-                    this.gameState.isMyTurn = true;
-                    this.addGameMessage('Your turn!', 'info');
-                }, 2000);
+                this.simulateBotLead(winnerId);
             }, 1500);
         }
 
