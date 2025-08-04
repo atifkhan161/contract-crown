@@ -128,6 +128,19 @@ export class GameState {
     }
 
     /**
+     * Reset trick for new round
+     */
+    resetTrickForNewRound() {
+        this.state.currentTrick = {
+            trickNumber: 1,
+            cardsPlayed: [],
+            leadSuit: null,
+            leadingPlayerId: null
+        };
+        this.state.leadSuit = null;
+    }
+
+    /**
      * Get players in clockwise seat order
      * @returns {Array} Array of player objects in seat order
      */

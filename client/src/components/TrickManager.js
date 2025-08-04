@@ -8,6 +8,7 @@ export class TrickManager {
         this.gameState = gameState;
         this.uiManager = uiManager;
         this.onTrickComplete = null; // Callback for trick completion
+        this.onNewRoundStart = null; // Callback for new round start
     }
 
     /**
@@ -16,6 +17,14 @@ export class TrickManager {
      */
     setTrickCompleteCallback(callback) {
         this.onTrickComplete = callback;
+    }
+
+    /**
+     * Set callback for new round start events
+     * @param {Function} callback - Function to call when new round starts
+     */
+    setNewRoundStartCallback(callback) {
+        this.onNewRoundStart = callback;
     }
 
     /**
@@ -359,11 +368,11 @@ export class TrickManager {
                 nextTrumpDeclarer = state.trumpDeclarer;
             } else {
                 // Other team won, next player in clockwise order declares
-                nextTrumpDeclarer = this.getNextPlayerInOrder(state.trumpDeclarer);
+                nextTrumpDeclarer = this.gameState.getNextPlayerInOrder(state.trumpDeclarer);
             }
         } else {
             // Fallback to next player in order
-            nextTrumpDeclarer = this.getNextPlayerInOrder(state.trumpDeclarer);
+            nextTrumpDeclarer = this.gameState.getNextPlayerInOrder(state.trumpDeclarer);
         }
         
         // Reset for next round
@@ -378,15 +387,26 @@ export class TrickManager {
             isMyTurn: false
         });
 
-        // Clear trick
-        this.gameState.clearTrick();
+        // Reset trick for new round
+        this.gameState.resetTrickForNewRound();
 
-        // In a real game, new cards would be dealt here
-        // For demo, we could generate new hands
-
-        const declarerName = this.gameState.getPlayerNameById(nextTrumpDeclarer);
-        this.uiManager.addGameMessage(`Round ${state.currentRound + 1} begins! ${declarerName} will declare trump.`, 'success');
-        this.uiManager.updateUI();
+        // Deal new cards for the new round
+        if (state.isDemoMode) {
+            // For demo mode, we need to call the DemoGameManager to setup new round
+            // This will be handled by the GameManager
+            const declarerName = this.gameState.getPlayerNameById(nextTrumpDeclarer);
+            this.uiManager.addGameMessage(`Round ${state.currentRound + 1} begins! ${declarerName} will declare trump.`, 'success');
+            
+            // Trigger new round setup callback
+            if (this.onNewRoundStart) {
+                this.onNewRoundStart(nextTrumpDeclarer);
+            }
+        } else {
+            // For multiplayer, server handles card dealing
+            const declarerName = this.gameState.getPlayerNameById(nextTrumpDeclarer);
+            this.uiManager.addGameMessage(`Round ${state.currentRound + 1} begins! ${declarerName} will declare trump.`, 'success');
+            this.uiManager.updateUI();
+        }
     }
 
     /**

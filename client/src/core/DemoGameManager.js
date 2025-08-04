@@ -30,6 +30,7 @@ export class DemoGameManager {
         // this.cardManager.setCardPlayCallback((card) => this.handleCardPlay(card));
         // this.trumpManager.setTrumpDeclarationCallback((suit) => this.handleTrumpDeclaration(suit));
         this.trickManager.setTrickCompleteCallback((winner, trick) => this.handleTrickComplete(winner, trick));
+        this.trickManager.setNewRoundStartCallback((trumpDeclarer) => this.setupNewRound(trumpDeclarer));
     }
 
     /**
@@ -201,7 +202,7 @@ export class DemoGameManager {
         this.cardManager.renderPlayedCard('human_player', card, 'bottom');
         
         // Update turn to next player
-        const nextPlayer = this.getNextPlayer('human_player');
+        const nextPlayer = this.gameState.getNextPlayerInOrder('human_player');
         this.updateTurn(nextPlayer);
         
         // Schedule bot plays
@@ -361,7 +362,7 @@ export class DemoGameManager {
             this.uiManager.updateUI();
             
             // Update turn
-            const nextPlayer = this.getNextPlayer(currentPlayer);
+            const nextPlayer = this.gameState.getNextPlayerInOrder(currentPlayer);
             this.updateTurn(nextPlayer);
             
             // Add message
@@ -429,17 +430,7 @@ export class DemoGameManager {
         }, null);
     }
 
-    /**
-     * Get next player in turn order
-     * @param {string} currentPlayer - Current player ID
-     * @returns {string} Next player ID
-     */
-    getNextPlayer(currentPlayer) {
-        const playerOrder = ['human_player', 'bot_1', 'bot_2', 'bot_3'];
-        const currentIndex = playerOrder.indexOf(currentPlayer);
-        const nextIndex = (currentIndex + 1) % playerOrder.length;
-        return playerOrder[nextIndex];
-    }
+
 
     /**
      * Get bot's position on screen
@@ -500,6 +491,125 @@ export class DemoGameManager {
     resetBotPlayState() {
         this.cleanupBotPlays();
         console.log('[DemoGameManager] Bot play state reset');
+    }
+
+    /**
+     * Setup new round with fresh cards
+     * @param {string} trumpDeclarer - Player who will declare trump this round
+     */
+    setupNewRound(trumpDeclarer) {
+        console.log('[DemoGameManager] Setting up new round, trump declarer:', trumpDeclarer);
+        
+        // Generate and distribute new cards
+        const cardDistribution = this.generateDemoCards();
+        
+        // Sort the human player's hand by suit
+        const sortedPlayerHand = this.sortCardsBySuit(cardDistribution.humanPlayerHand);
+        
+        // During trump declaration, only show initial 4 cards
+        const initialCards = sortedPlayerHand.slice(0, 4);
+        
+        // Store the full hand for later use
+        this.fullPlayerHand = sortedPlayerHand;
+
+        // Update game state for new round
+        this.gameState.updateState({
+            gamePhase: 'trump_declaration',
+            trumpSuit: null,
+            trumpDeclarer: trumpDeclarer,
+            playerHand: initialCards,
+            currentTurnPlayer: null,
+            isMyTurn: (trumpDeclarer === 'human_player'),
+            leadSuit: null
+        });
+
+        // Update all players' hand sizes
+        Object.keys(this.gameState.getState().players).forEach(playerId => {
+            this.gameState.updatePlayer(playerId, { handSize: 8 });
+        });
+
+        // Store new bot hands
+        this.botHands = cardDistribution.botHands;
+
+        // Reset bot play state
+        this.resetBotPlayState();
+
+        // Reset trick for new round
+        this.gameState.resetTrickForNewRound();
+
+        // Render player hand (only initial 4 cards)
+        this.cardManager.renderPlayerHand();
+        
+        // Update UI
+        this.uiManager.updateUI();
+        
+        // Show trump declaration modal if human player is declaring
+        if (trumpDeclarer === 'human_player') {
+            setTimeout(() => {
+                this.trumpManager.showTrumpDeclarationModal();
+            }, 1000);
+        } else {
+            // Bot declares trump automatically
+            setTimeout(() => {
+                this.handleBotTrumpDeclaration(trumpDeclarer);
+            }, 2000);
+        }
+        
+        console.log('[DemoGameManager] New round setup complete');
+    }
+
+    /**
+     * Handle bot trump declaration
+     * @param {string} botId - Bot player ID
+     */
+    handleBotTrumpDeclaration(botId) {
+        const botHand = this.botHands[botId];
+        if (!botHand) {
+            console.error('[DemoGameManager] Bot hand not found for trump declaration:', botId);
+            return;
+        }
+
+        // Simple bot trump selection - choose suit with most cards in initial 4 cards
+        const initialCards = botHand.slice(0, 4);
+        const suitCounts = {};
+        
+        initialCards.forEach(card => {
+            suitCounts[card.suit] = (suitCounts[card.suit] || 0) + 1;
+        });
+
+        // Find suit with most cards
+        const trumpSuit = Object.keys(suitCounts).reduce((a, b) => 
+            suitCounts[a] > suitCounts[b] ? a : b
+        );
+
+        const botName = this.gameState.getPlayerNameById(botId);
+        this.uiManager.addGameMessage(`${botName} declares ${trumpSuit} as trump`, 'info');
+
+        // Update game state
+        this.gameState.updateState({
+            trumpSuit: trumpSuit,
+            gamePhase: 'playing',
+            currentTurnPlayer: botId, // Bot who declared trump leads first trick
+            isMyTurn: false
+        });
+
+        // Update trump display
+        this.uiManager.updateTrumpDisplay();
+        this.uiManager.updateUI();
+
+        // If human player, give them full hand
+        if (this.fullPlayerHand) {
+            this.gameState.updateState({
+                playerHand: this.fullPlayerHand
+            });
+            this.cardManager.renderPlayerHand();
+        }
+
+        // Start the first trick with the bot leading
+        this.uiManager.addGameMessage(`${botName} leads the first trick`, 'info');
+        
+        // Schedule bot to play first card
+        this.scheduleNextBotPlay(1500);
     }
 
     /**
