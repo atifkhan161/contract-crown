@@ -31,32 +31,43 @@ sudo reboot
 
 ## Quick Deployment
 
-### 1. Clone and Setup
+### Option 1: With Built-in MySQL (Easiest)
 ```bash
-# Clone the repository
-git clone <your-repo-url>
-cd contract-crown
+# Set your details
+export DOCKER_USERNAME=your-dockerhub-username
+export PI_HOST=192.168.1.100
 
-# Copy environment file
-cp .env.example .env
-
-# Edit environment file (optional)
-nano .env
-```
-
-### 2. Build and Start
-```bash
-# Make scripts executable
+# Deploy with MySQL included
 chmod +x docker-scripts/*.sh
-
-# Build the container
-./docker-scripts/build.sh
-
-# Start the application
-./docker-scripts/start.sh
+./docker-scripts/deploy-pi-with-mysql.sh
+# Choose option 2 when prompted
 ```
 
-### 3. Access Your Game
+### Option 2: With Existing MySQL
+```bash
+# If you already have MySQL running on your Pi
+export PI_HOST=192.168.1.100
+./docker-scripts/deploy-pi-with-mysql.sh
+# Choose option 1 when prompted
+
+# Then edit .env on your Pi:
+ssh pi@192.168.1.100
+nano .env
+# Set DB_PASSWORD=your-mysql-password
+```
+
+### Option 3: Manual Build and Deploy
+```bash
+# Build and push image
+export DOCKER_USERNAME=your-dockerhub-username
+./docker-scripts/build-and-push.sh
+
+# Deploy to Pi
+export PI_HOST=192.168.1.100
+./docker-scripts/deploy-to-pi.sh
+```
+
+### 4. Access Your Game
 - **Local access**: http://localhost:3000
 - **Network access**: http://YOUR_PI_IP:3000
 - **Demo game**: http://YOUR_PI_IP:3000/game.html?demo=true
@@ -104,16 +115,52 @@ Once running, you can access the game from any device on your network:
 
 ## Troubleshooting
 
+### Database Connection Issues
+```bash
+# Check if MySQL is running
+sudo systemctl status mysql
+# or for container
+docker-compose logs mysql
+
+# Test database connection
+mysql -h localhost -u root -p
+# Enter your MySQL password
+
+# Check database exists
+mysql -h localhost -u root -p -e "SHOW DATABASES;"
+
+# Create database if missing
+mysql -h localhost -u root -p -e "CREATE DATABASE contract_crown;"
+```
+
 ### Container Won't Start
 ```bash
 # Check logs
 docker-compose logs
+
+# Check specific service logs
+docker-compose logs contract-crown
+docker-compose logs mysql
 
 # Check if port is in use
 sudo netstat -tlnp | grep :3000
 
 # Restart Docker service
 sudo systemctl restart docker
+```
+
+### Database Connection Errors
+```bash
+# Error: connect ECONNREFUSED ::1:3306
+# Fix: Update .env file with correct database host
+nano .env
+# Set DB_HOST=localhost (for host MySQL)
+# Set DB_HOST=mysql (for container MySQL)
+
+# Error: Access denied for user
+# Fix: Check database credentials
+mysql -h localhost -u contractcrown -p
+# Update DB_USER and DB_PASSWORD in .env
 ```
 
 ### Out of Space

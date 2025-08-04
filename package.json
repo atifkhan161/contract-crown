@@ -17,7 +17,9 @@
     "test:server": "cd server && npm test",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
-    "test:e2e": "cypress run"
+    "test:e2e": "cypress run",
+    "docker:build": "docker image build --pull --file ./Dockerfile --tag contractcrown:latest --label com.microsoft.created-by=visual-studio-code . --platform linux/arm64",
+    "docker:build:win": "docker image build --pull --file \"%INIT_CWD%/Dockerfile\" --tag contract-crown:win --label com.microsoft.created-by=visual-studio-code \"%INIT_CWD%\" --platform linux/arm64"
   },
   "dependencies": {},
   "devDependencies": {

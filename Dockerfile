@@ -1,7 +1,23 @@
-# Raspberry Pi optimized Docker container for Contract Crown
-# Single container with Express server serving both API and static files
+# Multi-stage build for Raspberry Pi optimized Contract Crown
+# Stage 1: Build the client
+FROM node:18-alpine AS client-builder
 
-FROM node:18-alpine
+WORKDIR /app/client
+
+# Copy client package files
+COPY client/package*.json ./
+
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci
+
+# Copy client source code
+COPY client/ ./
+
+# Build the client
+RUN npm run build
+
+# Stage 2: Production image
+FROM node:18-alpine AS production
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
@@ -13,35 +29,22 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S contractcrown -u 1001
 
-# Copy package files first for better caching
+# Copy server package files
 COPY --chown=contractcrown:nodejs server/package*.json ./server/
-COPY --chown=contractcrown:nodejs client/package*.json ./client/
 
-# Install server dependencies
+# Install server dependencies (production only)
 WORKDIR /app/server
 RUN npm ci --only=production && npm cache clean --force
 
-# Install client dependencies and build
-WORKDIR /app/client
-RUN npm ci --only=production && npm cache clean --force
+# Copy server source code
+COPY --chown=contractcrown:nodejs server/ ./
 
-# Copy source code
-COPY --chown=contractcrown:nodejs server/ /app/server/
-COPY --chown=contractcrown:nodejs client/ /app/client/
+# Create the expected client directory structure
+RUN mkdir -p ../client
 
-# Build the client
-RUN npm run build
-
-# Move built client to server's public directory
-RUN mkdir -p /app/server/public && \
-    cp -r /app/client/dist/* /app/server/public/ && \
-    cp -r /app/client/*.html /app/server/public/ 2>/dev/null || true && \
-    cp -r /app/client/src /app/server/public/ 2>/dev/null || true && \
-    cp -r /app/client/manifest.json /app/server/public/ 2>/dev/null || true && \
-    cp -r /app/client/favicon.webp /app/server/public/ 2>/dev/null || true
-
-# Set working directory to server
-WORKDIR /app/server
+# Copy built client from builder stage to the expected location
+# The server expects static files at ../client/dist relative to server directory
+COPY --from=client-builder --chown=contractcrown:nodejs /app/client/dist ../client/dist
 
 # Set environment variables
 ENV NODE_ENV=production

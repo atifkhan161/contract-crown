@@ -7,10 +7,10 @@ class DatabaseConnection {
   constructor() {
     this.pool = null;
     this.config = {
-      host: process.env.DB_HOST || 'localhost',
+      host: process.env.DB_HOST || '192.168.1.100',
       port: parseInt(process.env.DB_PORT) || 3306,
       user: process.env.DB_USER || 'root',
-      password: process.env.DB_PASSWORD || '',
+      password: process.env.DB_PASSWORD || 'casaos',
       database: process.env.DB_NAME || 'contract_crown',
       waitForConnections: true,
       connectionLimit: 10,
@@ -23,12 +23,12 @@ class DatabaseConnection {
     try {
       // Create connection pool
       this.pool = mysql.createPool(this.config);
-      
+
       // Test the connection
       const connection = await this.pool.getConnection();
       console.log('[Database] Connected to MariaDB successfully');
       connection.release();
-      
+
       return this.pool;
     } catch (error) {
       console.error('[Database] Connection failed:', error.message);
@@ -41,7 +41,7 @@ class DatabaseConnection {
       if (!this.pool) {
         throw new Error('Database pool not initialized');
       }
-      
+
       const [rows] = await this.pool.execute(sql, params);
       return rows;
     } catch (error) {
@@ -54,12 +54,12 @@ class DatabaseConnection {
 
   async transaction(callback) {
     const connection = await this.pool.getConnection();
-    
+
     try {
       await connection.beginTransaction();
-      
+
       const result = await callback(connection);
-      
+
       await connection.commit();
       return result;
     } catch (error) {
