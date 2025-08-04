@@ -82,8 +82,15 @@
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
 }
 
 /* Main Game Layout */
@@ -110,11 +117,11 @@
     border: 1px solid var(--border-color);
     padding: var(--spacing-md);
     display: grid;
-    grid-template-areas: 
-        ". top ."
+    grid-template-areas:
+        "trump-corner top score-corner"
         "left center right"
         ". bottom .";
-    grid-template-columns: 1fr 2fr 1fr;
+    grid-template-columns: auto 1fr auto;
     grid-template-rows: auto 1fr auto;
     gap: var(--spacing-md);
     min-height: 500px;
@@ -408,6 +415,7 @@
         opacity: 0;
         transform: translateY(-50px) rotate(10deg);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) rotate(0deg);
@@ -432,7 +440,21 @@
     position: relative;
 }
 
-/* Trump Display */
+/* Trump Display - Corner Position */
+.trump-display-corner {
+    grid-area: trump-corner;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: var(--bg-input);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    align-self: start;
+    justify-self: start;
+}
+
+/* Legacy trump display for compatibility */
 .trump-display {
     display: flex;
     align-items: center;
@@ -550,7 +572,18 @@
     color: var(--text-secondary);
 }
 
-/* Score Display */
+/* Score Display - Corner Position */
+.score-display-corner {
+    grid-area: score-corner;
+    background: var(--bg-input);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    align-self: start;
+    justify-self: end;
+}
+
+/* Legacy score display for compatibility */
 .score-display {
     background: var(--bg-input);
     padding: var(--spacing-md);
@@ -887,97 +920,130 @@
 /* Mobile Responsive */
 @media (max-width: 768px) {
     .game-table {
-        grid-template-columns: 80px 1fr 80px;
+        grid-template-areas:
+            "trump-corner top score-corner"
+            "left center right"
+            ". bottom .";
+        grid-template-columns: auto 1fr auto;
         grid-template-rows: auto 1fr auto;
         gap: var(--spacing-sm);
         padding: var(--spacing-sm);
         min-height: 400px;
     }
-    
+
     .header-content {
         padding: 0 var(--spacing-sm);
     }
-    
+
     .game-title {
         font-size: var(--font-size-base);
     }
-    
+
+    /* Ensure trump and score displays are compact on mobile */
+    .trump-display-corner,
+    .score-display-corner {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: var(--font-size-sm);
+    }
+
+    .trump-display-corner .trump-symbol,
+    .score-display-corner .score-value {
+        font-size: var(--font-size-base);
+    }
+
+    .team-scores {
+        gap: var(--spacing-xs);
+    }
+
     .card {
         width: 45px;
         height: 68px;
         padding: 2px;
     }
-    
+
     .card-rank {
         font-size: var(--font-size-xs);
     }
-    
+
     .card-suit {
         font-size: var(--font-size-base);
     }
-    
+
     .played-card {
         width: 40px;
         height: 60px;
         padding: 2px;
     }
-    
+
     .trick-cards {
         width: 150px;
         height: 150px;
     }
-    
+
     .trump-selection {
         grid-template-columns: 1fr;
         gap: var(--spacing-sm);
     }
-    
+
     .trump-modal-content {
         width: 98vw;
         max-width: none;
         margin: 10px;
     }
-    
+
     .trump-cards-display {
         padding: var(--spacing-sm);
     }
-    
+
     .initial-cards-container {
         gap: var(--spacing-xs);
     }
-    
+
     .trump-modal-card {
         width: 50px;
         height: 70px;
         font-size: 10px;
     }
-    
+
     .trump-modal-card .card-rank {
         font-size: 12px;
     }
-    
+
     .trump-modal-card .card-suit {
         font-size: 14px;
     }
-    
+
     .trump-option {
         padding: var(--spacing-md);
         min-height: 70px;
     }
-    
+
     .trump-option .suit-symbol {
         font-size: 20px;
     }
-    
+
+    /* Remove rotation on mobile for better readability */
     .player-left,
     .player-right {
         transform: none;
     }
-    
+
     .player-left .player-info,
     .player-right .player-info {
         writing-mode: vertical-rl;
         text-orientation: mixed;
+    }
+
+    /* Ensure current player is always at bottom on mobile */
+    .player-bottom {
+        order: 999;
+    }
+
+    /* Better spacing for player hands on mobile */
+    .player-hand {
+        gap: 2px;
+        justify-content: center;
+        flex-wrap: wrap;
     }
 }
 
@@ -985,20 +1051,152 @@
     .game-main {
         padding: var(--spacing-sm);
     }
-    
+
     .card {
         width: 35px;
         height: 53px;
     }
-    
+
     .player-hand {
         gap: 2px;
     }
-    
+
     .game-table {
         min-height: 350px;
     }
-}/* 
+
+    /* Extra compact trump and score on small screens */
+    .trump-display-corner,
+    .score-display-corner {
+        padding: 4px 8px;
+        font-size: var(--font-size-xs);
+    }
+
+    .trump-name,
+    .team-label {
+        display: none;
+        /* Hide text labels on very small screens */
+    }
+}
+
+/* Mobile Landscape Orientation - Optimized for landscape mode */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    .game-header {
+        padding: var(--spacing-xs) 0;
+    }
+
+    .header-content {
+        padding: 0 var(--spacing-sm);
+    }
+
+    .game-title {
+        font-size: var(--font-size-sm);
+    }
+
+    .round-info {
+        font-size: var(--font-size-xs);
+    }
+
+    .game-main {
+        padding: var(--spacing-xs);
+    }
+
+    .game-table {
+        grid-template-areas:
+            "trump-corner top score-corner"
+            "left center right"
+            ". bottom .";
+        grid-template-rows: auto 1fr auto;
+        min-height: 280px;
+        padding: var(--spacing-xs);
+        gap: var(--spacing-xs);
+    }
+
+    /* Force current player to bottom in landscape */
+    .player-bottom {
+        grid-area: bottom !important;
+        order: 999;
+    }
+
+    /* Compact layout for landscape */
+    .trump-display-corner,
+    .score-display-corner {
+        padding: 3px 6px;
+        font-size: var(--font-size-xs);
+    }
+
+    .trump-symbol,
+    .score-value {
+        font-size: var(--font-size-sm);
+    }
+
+    .card {
+        width: 28px;
+        height: 42px;
+    }
+
+    .player-hand {
+        gap: 1px;
+        max-height: 45px;
+        overflow: visible;
+    }
+
+    .trick-cards {
+        width: 100px;
+        height: 100px;
+    }
+
+    .played-card {
+        width: 25px;
+        height: 38px;
+    }
+
+    .player-name {
+        font-size: var(--font-size-xs);
+    }
+
+    .card-count {
+        font-size: var(--font-size-xs);
+        padding: 1px 3px;
+    }
+
+    .turn-indicator {
+        width: 8px;
+        height: 8px;
+    }
+
+    /* Optimize side players for landscape */
+    .player-left,
+    .player-right {
+        transform: none;
+    }
+
+    .player-left .player-info,
+    .player-right .player-info {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        font-size: var(--font-size-xs);
+    }
+
+    /* Compact opponent hands */
+    .card-back {
+        width: 25px;
+        height: 38px;
+        margin-left: -6px;
+    }
+
+    .card-back::before {
+        width: 12px;
+        height: 12px;
+    }
+
+    .card-back::after {
+        width: 6px;
+        height: 6px;
+    }
+}
+
+/* 
 Card play animations and visual feedback */
 .card-dealing {
     animation: dealCard 0.5s ease-out forwards;
@@ -1066,6 +1264,7 @@ Card play animations and visual feedback */
         transform: translateY(-100px) scale(0.8);
         opacity: 0;
     }
+
     to {
         transform: translateY(0) scale(1);
         opacity: 1;
@@ -1076,19 +1275,24 @@ Card play animations and visual feedback */
     0% {
         transform: scale(1);
     }
+
     50% {
         transform: scale(1.1);
     }
+
     100% {
         transform: scale(1.05);
     }
 }
 
 @keyframes highlightValid {
-    0%, 100% {
+
+    0%,
+    100% {
         border-color: transparent;
         box-shadow: none;
     }
+
     50% {
         border-color: var(--success-color);
         box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
@@ -1115,10 +1319,13 @@ Card play animations and visual feedback */
 }
 
 @keyframes turnPulse {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
         transform: scale(1);
     }
+
     50% {
         opacity: 0.7;
         transform: scale(1.1);
@@ -1156,9 +1363,19 @@ Card play animations and visual feedback */
 }
 
 @keyframes errorShake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    75% {
+        transform: translateX(5px);
+    }
 }
 
 /* Success state styling */
@@ -1170,9 +1387,9 @@ Card play animations and visual feedback */
 .game-message.warning {
     background: linear-gradient(135deg, #ffd43b, #fab005);
     color: #333;
-}/
-* Round completion animations */
-.round-completion-overlay {
+}
+
+/ * Round completion animations */ .round-completion-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -1379,8 +1596,13 @@ Card play animations and visual feedback */
 
 /* Keyframe animations */
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes slideIn {
@@ -1388,6 +1610,7 @@ Card play animations and visual feedback */
         transform: translateY(-50px);
         opacity: 0;
     }
+
     to {
         transform: translateY(0);
         opacity: 1;
@@ -1395,24 +1618,35 @@ Card play animations and visual feedback */
 }
 
 @keyframes winnerGlow {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
     }
+
     50% {
         box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
     }
 }
 
 @keyframes winnerPulse {
-    from { transform: scale(1); }
-    to { transform: scale(1.05); }
+    from {
+        transform: scale(1);
+    }
+
+    to {
+        transform: scale(1.05);
+    }
 }
 
 @keyframes trickWinnerCelebration {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: scale(1);
         box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
     }
+
     50% {
         transform: scale(1.1);
         box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
@@ -1424,10 +1658,12 @@ Card play animations and visual feedback */
         transform: scale(0.8) translateY(-50px);
         opacity: 0;
     }
+
     50% {
         transform: scale(1.05) translateY(0);
         opacity: 1;
     }
+
     100% {
         transform: scale(1) translateY(0);
         opacity: 1;
@@ -1435,19 +1671,40 @@ Card play animations and visual feedback */
 }
 
 @keyframes rainbow {
-    0% { color: #ff6b6b; }
-    16% { color: #feca57; }
-    33% { color: #48dbfb; }
-    50% { color: #ff9ff3; }
-    66% { color: #54a0ff; }
-    83% { color: #5f27cd; }
-    100% { color: #ff6b6b; }
+    0% {
+        color: #ff6b6b;
+    }
+
+    16% {
+        color: #feca57;
+    }
+
+    33% {
+        color: #48dbfb;
+    }
+
+    50% {
+        color: #ff9ff3;
+    }
+
+    66% {
+        color: #54a0ff;
+    }
+
+    83% {
+        color: #5f27cd;
+    }
+
+    100% {
+        color: #ff6b6b;
+    }
 }
 
 @keyframes winnerHighlight {
     from {
         box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
     }
+
     to {
         box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
     }
@@ -1458,10 +1715,12 @@ Card play animations and visual feedback */
         transform: scale(1);
         color: inherit;
     }
+
     50% {
         transform: scale(1.2);
         color: #4ade80;
     }
+
     100% {
         transform: scale(1);
         color: inherit;
@@ -1473,37 +1732,43 @@ Card play animations and visual feedback */
 }
 
 @keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
 }
 
 /* Mobile responsiveness for modals */
 @media (max-width: 768px) {
+
     .round-completion-content,
     .game-completion-modal .modal-content {
         padding: 1.5rem;
         margin: 1rem;
     }
-    
+
     .round-stats {
         flex-direction: column;
         gap: 1rem;
     }
-    
+
     .game-actions {
         flex-direction: column;
     }
-    
+
     .game-complete-header h1 {
         font-size: 2rem;
     }
-    
+
     .winner-announcement h2 {
         font-size: 1.5rem;
     }
-}/
-* Statistics Modal */
-.statistics-modal {
+}
+
+/ * Statistics Modal */ .statistics-modal {
     position: fixed;
     top: 0;
     left: 0;
@@ -1807,27 +2072,27 @@ Card play animations and visual feedback */
         width: 98%;
         margin: 1rem;
     }
-    
+
     .statistics-content {
         padding: 1rem;
     }
-    
+
     .stat-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .table-header,
     .table-row {
         grid-template-columns: 1fr;
         gap: 0.5rem;
     }
-    
+
     .table-header span,
     .table-row span {
         padding: 0.25rem 0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
-    
+
     .table-header span:before,
     .table-row span:before {
         content: attr(data-label) ': ';
@@ -1835,15 +2100,15 @@ Card play animations and visual feedback */
         display: inline-block;
         width: 100px;
     }
-    
+
     .trump-stats-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .personal-stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .modal-actions {
         flex-direction: column;
         padding: 1rem;
@@ -1854,18 +2119,17 @@ Card play animations and visual feedback */
     .personal-stats-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .statistics-modal .modal-header {
         padding: 1rem;
     }
-    
+
     .statistics-modal .modal-header h2 {
         font-size: 1.5rem;
     }
 }
-/
-* Card playability states */
-.card.playable {
+
+/ * Card playability states */ .card.playable {
     border-color: var(--success-color, #28a745);
     cursor: pointer;
 }
@@ -1957,10 +2221,12 @@ Card play animations and visual feedback */
         transform: translateY(0) scale(1);
         opacity: 1;
     }
+
     50% {
         transform: translateY(-20px) scale(1.1);
         opacity: 0.8;
     }
+
     100% {
         transform: translateY(0) scale(1);
         opacity: 1;
@@ -1975,10 +2241,1207 @@ Card play animations and visual feedback */
 }
 
 @keyframes cardHighlight {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: scale(1);
     }
+
     50% {
         transform: scale(1.05);
+    }
+}
+
+/*
+ Enhanced Mobile-First Layout */
+.game-table {
+    /* Ensure proper grid areas are defined */
+    position: relative;
+}
+
+.trump-display-corner {
+    /* Ensure trump display stays in top-left */
+    position: relative;
+    z-index: 10;
+}
+
+.score-display-corner {
+    /* Ensure score display stays in top-right */
+    position: relative;
+    z-index: 10;
+}
+
+/* Better card spacing and visibility on mobile */
+@media (max-width: 768px) {
+    .player-hand .card {
+        margin: 0 1px;
+        transition: transform 0.2s ease;
+    }
+
+    .player-hand .card:hover,
+    .player-hand .card.selected {
+        transform: translateY(-8px) scale(1.05);
+        z-index: 100;
+    }
+
+    /* Ensure cards don't overflow on small screens */
+    .player-hand {
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: visible;
+        padding: 0 var(--spacing-xs);
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .player-hand::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* Touch-friendly interactions */
+@media (hover: none) and (pointer: coarse) {
+    .card {
+        /* Larger touch targets on touch devices */
+        min-width: 40px;
+        min-height: 60px;
+    }
+
+    .card:active {
+        transform: scale(0.95);
+    }
+
+    .trump-display-corner,
+    .score-display-corner {
+        /* Ensure touch targets are accessible */
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+}
+
+/* Prevent layout shifts during game state changes */
+.game-table * {
+    box-sizing: border-box;
+}
+
+.player-area {
+    /* Prevent player areas from collapsing */
+    min-height: 60px;
+}
+
+.table-center {
+    /* Ensure center area maintains proper spacing */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+/* Responsive typography for better readability */
+@media (max-width: 480px) {
+
+    .trump-label,
+    .team-label {
+        font-size: var(--font-size-xs);
+    }
+
+    .trump-symbol,
+    .score-value {
+        font-size: var(--font-size-sm);
+    }
+
+    .player-name {
+        font-size: var(--font-size-xs);
+    }
+
+    .card-count {
+        font-size: var(--font-size-xs);
+        padding: 2px 4px;
+    }
+}
+
+/* Tru
+mp Modal Landscape Optimization */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    .trump-modal-content {
+        width: 95vw;
+        max-width: 800px;
+        max-height: 85vh;
+        margin: 5px auto;
+        padding: var(--spacing-sm);
+        overflow-y: auto;
+    }
+
+    .modal-header h3 {
+        font-size: var(--font-size-base);
+        margin: 0;
+    }
+
+    .trump-instruction {
+        font-size: var(--font-size-sm);
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .trump-cards-display {
+        padding: var(--spacing-xs);
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .initial-cards-container {
+        gap: var(--spacing-xs);
+        justify-content: center;
+    }
+
+    .trump-modal-card {
+        width: 45px;
+        height: 63px;
+        font-size: 9px;
+    }
+
+    .trump-modal-card .card-rank {
+        font-size: 11px;
+    }
+
+    .trump-modal-card .card-suit {
+        font-size: 13px;
+    }
+
+    .trump-selection {
+        grid-template-columns: 1fr 1fr;
+        gap: var(--spacing-xs);
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .trump-option {
+        padding: var(--spacing-sm);
+        min-height: 50px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: var(--spacing-xs);
+    }
+
+    .trump-option .suit-symbol {
+        font-size: 18px;
+    }
+
+    .trump-option .suit-name {
+        font-size: var(--font-size-xs);
+    }
+
+    .modal-footer {
+        margin-top: var(--spacing-sm);
+    }
+
+    .modal-footer .btn {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: var(--font-size-sm);
+    }
+}
+
+/* Extra small landscape screens */
+@media screen and (max-height: 400px) and (orientation: landscape) {
+    .trump-modal-content {
+        max-height: 90vh;
+        padding: var(--spacing-xs);
+    }
+
+    .modal-header h3 {
+        font-size: var(--font-size-sm);
+    }
+
+    .trump-instruction {
+        font-size: var(--font-size-xs);
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .trump-cards-display {
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .trump-modal-card {
+        width: 40px;
+        height: 56px;
+        font-size: 8px;
+    }
+
+    .trump-modal-card .card-rank {
+        font-size: 10px;
+    }
+
+    .trump-modal-card .card-suit {
+        font-size: 12px;
+    }
+
+    .trump-selection {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+    }
+
+    .trump-option {
+        padding: 4px;
+        min-height: 40px;
+        flex-direction: column;
+    }
+
+    .trump-option .suit-symbol {
+        font-size: 16px;
+    }
+
+    .trump-option .suit-name {
+        font-size: var(--font-size-xs);
+    }
+}
+
+/* Landscape-specific game layout improvements */
+@media screen and (orientation: landscape) and (max-height: 600px) {
+
+    /* Ensure proper spacing and visibility */
+    .game-container {
+        height: calc(100vh - 60px);
+        /* Account for header */
+    }
+
+    .game-messages-section {
+        margin-top: var(--spacing-xs);
+    }
+
+    .game-messages {
+        max-height: 60px;
+        font-size: var(--font-size-xs);
+    }
+
+    .game-message {
+        padding: 2px 4px;
+        margin-bottom: 2px;
+        font-size: var(--font-size-xs);
+    }
+
+    /* Better touch targets for landscape */
+    .card:hover,
+    .card.selected {
+        transform: translateY(-6px) scale(1.03);
+    }
+
+    /* Optimize center area for landscape */
+    .table-center {
+        min-height: 150px;
+        gap: var(--spacing-xs);
+    }
+
+    .trick-info {
+        font-size: var(--font-size-xs);
+    }
+}
+
+/* Enh
+anced landscape card interactions */
+@media screen and (orientation: landscape) {
+
+    /* Ensure cards are always visible and accessible */
+    .player-hand {
+        position: relative;
+        z-index: 10;
+    }
+
+    .player-hand .card {
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .player-hand .card:hover,
+    .player-hand .card.selected {
+        z-index: 100;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Better visibility for trump and score in landscape */
+    .trump-display-corner,
+    .score-display-corner {
+        backdrop-filter: blur(4px);
+        background: rgba(var(--bg-input-rgb, 45, 55, 72), 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Ensure proper spacing between UI elements */
+    .player-area {
+        position: relative;
+    }
+
+    .player-top,
+    .player-left,
+    .player-right {
+        z-index: 5;
+    }
+
+    .player-bottom {
+        z-index: 15;
+        /* Highest priority for current player */
+    }
+}
+
+/* Prevent content overflow in landscape */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+    body {
+        overflow: hidden;
+    }
+
+    #app {
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .game-main {
+        overflow: hidden;
+    }
+
+    .game-container {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    /* Ensure all content fits within viewport */
+    .game-table {
+        height: calc(100vh - 120px);
+        /* Account for header and messages */
+        overflow: hidden;
+    }
+
+    .game-messages-section {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        background: var(--bg-primary);
+        border-top: 1px solid var(--border-color);
+    }
+
+    .game-messages {
+        max-height: 40px;
+        margin: 0;
+        border: none;
+        border-radius: 0;
+    }
+}
+
+/* Responsive font scaling for landscape */
+@media screen and (orientation: landscape) and (max-width: 900px) {
+    :root {
+        --font-size-xs: 10px;
+        --font-size-sm: 12px;
+        --font-size-base: 14px;
+        --font-size-lg: 16px;
+        --font-size-xl: 18px;
+    }
+}
+
+/*
+ Safe area handling for devices with notches */
+@supports (padding: max(0px)) {
+    .game-header {
+        padding-left: max(var(--spacing-sm), env(safe-area-inset-left));
+        padding-right: max(var(--spacing-sm), env(safe-area-inset-right));
+        padding-top: max(var(--spacing-sm), env(safe-area-inset-top));
+    }
+
+    .game-main {
+        padding-left: max(var(--spacing-md), env(safe-area-inset-left));
+        padding-right: max(var(--spacing-md), env(safe-area-inset-right));
+        padding-bottom: max(var(--spacing-md), env(safe-area-inset-bottom));
+    }
+
+    @media screen and (orientation: landscape) {
+        .game-main {
+            padding-left: max(var(--spacing-xs), env(safe-area-inset-left));
+            padding-right: max(var(--spacing-xs), env(safe-area-inset-right));
+        }
+
+        .trump-display-corner {
+            margin-left: max(0px, env(safe-area-inset-left));
+        }
+
+        .score-display-corner {
+            margin-right: max(0px, env(safe-area-inset-right));
+        }
+    }
+}
+
+/* Prevent zoom on input focus (mobile Safari) */
+input,
+select,
+textarea {
+    font-size: 16px;
+}
+
+@media screen and (max-width: 768px) {
+
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+        /* Prevent zoom on iOS */
+    }
+}
+
+/* Improve touch responsiveness */
+.card,
+.trump-option,
+.btn {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Better focus indicators for accessibility */
+.card:focus,
+.trump-option:focus,
+.btn:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Landscape-specific improvements for very wide screens */
+@media screen and (orientation: landscape) and (min-width: 900px) {
+    .game-table {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .trump-display-corner,
+    .score-display-corner {
+        font-size: var(--font-size-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .card {
+        width: 50px;
+        height: 75px;
+    }
+
+    .trump-modal-content {
+        max-width: 600px;
+    }
+}
+
+/ * Toast Messages System - Removed duplicate definition */ .toast-message {
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-lg);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    max-width: 300px;
+    word-wrap: break-word;
+
+    /* Animation properties */
+    opacity: 0;
+    transform: translateY(-20px) scale(0.9);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: toastSlideIn 0.3s ease-out forwards;
+}
+
+.toast-message.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.toast-message.hide {
+    animation: toastSlideOut 0.3s ease-in forwards;
+}
+
+/* Toast message types */
+.toast-message.info {
+    background: rgba(74, 144, 226, 0.9);
+    border-color: rgba(74, 144, 226, 0.3);
+}
+
+.toast-message.success {
+    background: rgba(39, 174, 96, 0.9);
+    border-color: rgba(39, 174, 96, 0.3);
+}
+
+.toast-message.warning {
+    background: rgba(243, 156, 18, 0.9);
+    border-color: rgba(243, 156, 18, 0.3);
+    color: #333;
+}
+
+.toast-message.error {
+    background: rgba(231, 76, 60, 0.9);
+    border-color: rgba(231, 76, 60, 0.3);
+}
+
+/* Toast animations */
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes toastSlideOut {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.9);
+    }
+}
+
+/* Progress bar for toast duration */
+.toast-message::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    animation: toastProgress 3s linear forwards;
+}
+
+@keyframes toastProgress {
+    from {
+        width: 100%;
+    }
+
+    to {
+        width: 0%;
+    }
+}
+
+/* Mobile responsive toast */
+@media (max-width: 768px) {
+    .toast-container {
+        top: 70px !important;
+        right: 10px !important;
+        left: auto !important;
+        max-width: 280px;
+    }
+
+    .toast-message {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: var(--font-size-xs);
+        max-width: 260px;
+    }
+}
+
+/* Landscape mode adjustments */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+    .toast-container {
+        top: 50px !important;
+        right: 10px !important;
+        left: auto !important;
+        max-width: 250px;
+        align-items: flex-end;
+    }
+
+    .toast-message {
+        padding: 4px 8px;
+        font-size: var(--font-size-xs);
+        max-width: 200px;
+    }
+
+    .toast-message::after {
+        height: 1px;
+    }
+}
+
+/* Toast stacking - newer toasts push older ones up */
+.toast-message:not(:last-child) {
+    margin-bottom: var(--spacing-xs);
+}
+
+/* Hover to pause auto-dismiss (desktop only) */
+@media (hover: hover) {
+    .toast-message:hover::after {
+        animation-play-state: paused;
+    }
+}
+
+/* Accessibility improvements */
+.toast-message[role="alert"] {
+    /* Screen reader announcements */
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .toast-message {
+        background: rgba(0, 0, 0, 0.95);
+        border: 2px solid white;
+    }
+
+    .toast-message.info {
+        background: rgba(0, 100, 200, 0.95);
+    }
+
+    .toast-message.success {
+        background: rgba(0, 150, 0, 0.95);
+    }
+
+    .toast-message.warning {
+        background: rgba(200, 150, 0, 0.95);
+        color: black;
+    }
+
+    .toast-message.error {
+        background: rgba(200, 0, 0, 0.95);
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .toast-message {
+        animation: none;
+        transition: opacity 0.2s ease;
+    }
+
+    .toast-message::after {
+        animation: none;
+    }
+
+    @keyframes toastSlideIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes toastSlideOut {
+        from {
+            opacity: 1;
+        }
+
+        to {
+            opacity: 0;
+        }
+    }
+}
+
+/ * Enhanced Toast Features */
+/* Toast with action button */
+.toast-message.with-action {
+    padding-right: 60px;
+    position: relative;
+}
+
+.toast-action {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    pointer-events: auto;
+}
+
+.toast-action:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-50%) scale(1.05);
+}
+
+/* Toast positioning variants */
+.toast-container.top-left {
+    top: 80px;
+    left: 20px;
+    transform: none;
+    align-items: flex-start;
+}
+
+.toast-container.top-right {
+    top: 80px;
+    right: 20px;
+    left: auto;
+    transform: none;
+    align-items: flex-end;
+}
+
+.toast-container.bottom-center {
+    top: auto;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Lead suit toast - special styling */
+.toast-message.lead-suit {
+    background: rgba(138, 43, 226, 0.9);
+    border-color: rgba(138, 43, 226, 0.3);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.toast-message.lead-suit .suit-symbol {
+    font-size: var(--font-size-base);
+    font-weight: bold;
+}
+
+.toast-message.lead-suit .suit-symbol.hearts,
+.toast-message.lead-suit .suit-symbol.diamonds {
+    color: #ff6b6b;
+}
+
+.toast-message.lead-suit .suit-symbol.clubs,
+.toast-message.lead-suit .suit-symbol.spades {
+    color: #ffffff;
+}
+
+/* Trump declaration toast */
+.toast-message.trump-declared {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.9), rgba(255, 193, 7, 0.9));
+    color: #333;
+    border-color: rgba(255, 215, 0, 0.5);
+    font-weight: 600;
+}
+
+/* Trick winner toast */
+.toast-message.trick-winner {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.9), rgba(56, 142, 60, 0.9));
+    border-color: rgba(76, 175, 80, 0.3);
+    animation: toastWinnerPulse 0.5s ease-in-out;
+}
+
+@keyframes toastWinnerPulse {
+
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-2px) scale(1.02);
+    }
+}
+
+/* Game phase toast */
+.toast-message.game-phase {
+    background: rgba(63, 81, 181, 0.9);
+    border-color: rgba(63, 81, 181, 0.3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Compact toast for frequent messages */
+.toast-message.compact {
+    padding: 4px 8px;
+    font-size: var(--font-size-xs);
+    min-height: auto;
+}
+
+.toast-message.compact::after {
+    height: 1px;
+}
+
+/* Toast icons */
+.toast-icon {
+    display: inline-block;
+    margin-right: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+}
+
+/* Responsive adjustments for very small screens */
+@media (max-width: 480px) {
+    .toast-container {
+        max-width: 90vw;
+    }
+
+    .toast-message {
+        max-width: 250px;
+        font-size: var(--font-size-xs);
+    }
+
+    .toast-message.with-action {
+        padding-right: 50px;
+    }
+
+    .toast-action {
+        right: 4px;
+        padding: 2px 6px;
+    }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    .toast-message {
+        background: rgba(20, 20, 20, 0.95);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+}
+
+/* Animation performance optimization */
+.toast-message {
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* Toast
+ Messages System - Top Right Corner */
+.toast-container {
+    position: fixed !important;
+    top: 80px !important;
+    /* Below header */
+    right: 20px !important;
+    left: auto !important;
+    /* Override any left positioning */
+    transform: none !important;
+    /* Override any transform */
+    z-index: 1000;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--spacing-xs);
+    max-width: 320px;
+}
+
+.toast-message {
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-lg);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    max-width: 300px;
+    word-wrap: break-word;
+
+    /* Animation properties */
+    opacity: 0;
+    transform: translateX(20px) scale(0.9);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: toastSlideInRight 0.3s ease-out forwards;
+}
+
+.toast-message.show {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+}
+
+.toast-message.hide {
+    animation: toastSlideOutRight 0.3s ease-in forwards;
+}
+
+/* Toast message types */
+.toast-message.info {
+    background: rgba(74, 144, 226, 0.9);
+    border-color: rgba(74, 144, 226, 0.3);
+}
+
+.toast-message.success {
+    background: rgba(39, 174, 96, 0.9);
+    border-color: rgba(39, 174, 96, 0.3);
+}
+
+.toast-message.warning {
+    background: rgba(243, 156, 18, 0.9);
+    border-color: rgba(243, 156, 18, 0.3);
+    color: #333;
+}
+
+.toast-message.error {
+    background: rgba(231, 76, 60, 0.9);
+    border-color: rgba(231, 76, 60, 0.3);
+}
+
+/* Toast animations - slide from right */
+@keyframes toastSlideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px) scale(0.8);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes toastSlideOutRight {
+    from {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateX(20px) scale(0.9);
+    }
+}
+
+/* Progress bar for toast duration */
+.toast-message::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    animation: toastProgress 3s linear forwards;
+}
+
+@keyframes toastProgress {
+    from {
+        width: 100%;
+    }
+
+    to {
+        width: 0%;
+    }
+}
+
+/* Lead suit toast - special styling */
+.toast-message.lead-suit {
+    background: rgba(138, 43, 226, 0.9);
+    border-color: rgba(138, 43, 226, 0.3);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    text-align: left;
+}
+
+.toast-message.lead-suit .suit-symbol {
+    font-size: var(--font-size-base);
+    font-weight: bold;
+}
+
+.toast-message.lead-suit .suit-symbol.hearts,
+.toast-message.lead-suit .suit-symbol.diamonds {
+    color: #ff6b6b;
+}
+
+.toast-message.lead-suit .suit-symbol.clubs,
+.toast-message.lead-suit .suit-symbol.spades {
+    color: #ffffff;
+}
+
+/* Trump declaration toast */
+.toast-message.trump-declared {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.9), rgba(255, 193, 7, 0.9));
+    color: #333;
+    border-color: rgba(255, 215, 0, 0.5);
+    font-weight: 600;
+}
+
+/* Trick winner toast */
+.toast-message.trick-winner {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.9), rgba(56, 142, 60, 0.9));
+    border-color: rgba(76, 175, 80, 0.3);
+    animation: toastWinnerPulse 0.5s ease-in-out;
+}
+
+@keyframes toastWinnerPulse {
+
+    0%,
+    100% {
+        transform: translateX(0) scale(1);
+    }
+
+    50% {
+        transform: translateX(-2px) scale(1.02);
+    }
+}
+
+/* Game phase toast */
+.toast-message.game-phase {
+    background: rgba(63, 81, 181, 0.9);
+    border-color: rgba(63, 81, 181, 0.3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Compact toast for frequent messages */
+.toast-message.compact {
+    padding: 4px 8px;
+    font-size: var(--font-size-xs);
+    min-height: auto;
+}
+
+.toast-message.compact::after {
+    height: 1px;
+}
+
+/* Toast with action button */
+.toast-message.with-action {
+    padding-right: 60px;
+    position: relative;
+}
+
+.toast-action {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    pointer-events: auto;
+}
+
+.toast-action:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-50%) scale(1.05);
+}
+
+/* Mobile responsive toast */
+@media (max-width: 768px) {
+    .toast-container {
+        top: 70px;
+        right: 10px;
+        max-width: 280px;
+    }
+
+    .toast-message {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: var(--font-size-xs);
+        max-width: 260px;
+    }
+}
+
+/* Landscape mode adjustments */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+    .toast-container {
+        top: 50px;
+        right: 10px;
+        max-width: 250px;
+    }
+
+    .toast-message {
+        padding: 4px 8px;
+        font-size: var(--font-size-xs);
+        max-width: 200px;
+    }
+
+    .toast-message::after {
+        height: 1px;
+    }
+}
+
+/* Toast stacking - newer toasts push older ones down */
+.toast-message:not(:last-child) {
+    margin-bottom: var(--spacing-xs);
+}
+
+/* Hover to pause auto-dismiss (desktop only) */
+@media (hover: hover) {
+    .toast-message:hover::after {
+        animation-play-state: paused;
+    }
+}
+
+/* Accessibility improvements */
+.toast-message[role="alert"] {
+    /* Screen reader announcements */
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .toast-message {
+        background: rgba(0, 0, 0, 0.95);
+        border: 2px solid white;
+    }
+
+    .toast-message.info {
+        background: rgba(0, 100, 200, 0.95);
+    }
+
+    .toast-message.success {
+        background: rgba(0, 150, 0, 0.95);
+    }
+
+    .toast-message.warning {
+        background: rgba(200, 150, 0, 0.95);
+        color: black;
+    }
+
+    .toast-message.error {
+        background: rgba(200, 0, 0, 0.95);
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .toast-message {
+        animation: none;
+        transition: opacity 0.2s ease;
+    }
+
+    .toast-message::after {
+        animation: none;
+    }
+
+    @keyframes toastSlideInRight {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes toastSlideOutRight {
+        from {
+            opacity: 1;
+        }
+
+        to {
+            opacity: 0;
+        }
+    }
+}
+
+/* Animation performance optimization */
+.toast-message {
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    .toast-message {
+        background: rgba(20, 20, 20, 0.95);
+        border-color: rgba(255, 255, 255, 0.2);
     }
 }

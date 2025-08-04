@@ -59,7 +59,7 @@ export class UIManager {
         this.elements.confirmTrumpBtn = document.getElementById('confirm-trump-btn');
 
         // Messages and overlays
-        this.elements.gameMessages = document.getElementById('game-messages');
+        this.elements.toastContainer = document.getElementById('toast-container');
         this.elements.loadingOverlay = document.getElementById('loading-overlay');
         this.elements.loadingText = document.getElementById('loading-text');
         this.elements.errorModal = document.getElementById('error-modal');
@@ -233,23 +233,93 @@ export class UIManager {
     }
 
     /**
-     * Add game message to the message area
+     * Add game message as a disappearing toast
      * @param {string} message - Message text
      * @param {string} type - Message type (info, success, warning, error)
+     * @param {number} duration - Duration in milliseconds (default: 3000)
      */
-    addGameMessage(message, type = 'info') {
-        const messageElement = document.createElement('div');
-        messageElement.className = `game-message ${type}`;
-        messageElement.textContent = message;
-
-        this.elements.gameMessages.appendChild(messageElement);
-        this.elements.gameMessages.scrollTop = this.elements.gameMessages.scrollHeight;
-
-        // Remove old messages if too many
-        const messages = this.elements.gameMessages.children;
-        if (messages.length > 10) {
-            messages[0].remove();
+    addGameMessage(message, type = 'info', duration = 3000) {
+        if (!this.elements.toastContainer) {
+            console.warn('[UIManager] Toast container not found');
+            return;
         }
+
+        // Create toast element
+        const toastElement = document.createElement('div');
+        toastElement.className = `toast-message ${type}`;
+        toastElement.textContent = message;
+        toastElement.setAttribute('role', 'alert');
+        toastElement.setAttribute('aria-live', 'polite');
+
+        // Add to container
+        this.elements.toastContainer.appendChild(toastElement);
+
+        // Trigger show animation
+        requestAnimationFrame(() => {
+            toastElement.classList.add('show');
+        });
+
+        // Auto-dismiss after duration
+        const dismissTimer = setTimeout(() => {
+            this.dismissToast(toastElement);
+        }, duration);
+
+        // Store timer reference for potential cancellation
+        toastElement._dismissTimer = dismissTimer;
+
+        // Limit number of toasts (remove oldest if too many)
+        const toasts = this.elements.toastContainer.children;
+        if (toasts.length > 5) {
+            this.dismissToast(toasts[0]);
+        }
+
+        // Optional: Pause auto-dismiss on hover (desktop only)
+        if (window.matchMedia('(hover: hover)').matches) {
+            toastElement.addEventListener('mouseenter', () => {
+                if (toastElement._dismissTimer) {
+                    clearTimeout(toastElement._dismissTimer);
+                }
+            });
+
+            toastElement.addEventListener('mouseleave', () => {
+                toastElement._dismissTimer = setTimeout(() => {
+                    this.dismissToast(toastElement);
+                }, 1000); // Shorter duration after hover
+            });
+        }
+    }
+
+    /**
+     * Dismiss a specific toast message
+     * @param {HTMLElement} toastElement - Toast element to dismiss
+     */
+    dismissToast(toastElement) {
+        if (!toastElement || !toastElement.parentNode) return;
+
+        // Clear any pending timer
+        if (toastElement._dismissTimer) {
+            clearTimeout(toastElement._dismissTimer);
+        }
+
+        // Add hide animation
+        toastElement.classList.add('hide');
+
+        // Remove from DOM after animation
+        setTimeout(() => {
+            if (toastElement.parentNode) {
+                toastElement.parentNode.removeChild(toastElement);
+            }
+        }, 300); // Match animation duration
+    }
+
+    /**
+     * Clear all toast messages
+     */
+    clearAllToasts() {
+        if (!this.elements.toastContainer) return;
+
+        const toasts = Array.from(this.elements.toastContainer.children);
+        toasts.forEach(toast => this.dismissToast(toast));
     }
 
     /**
@@ -346,35 +416,11 @@ export class UIManager {
     }
 
     /**
-     * Show lead suit indicator
+     * Show lead suit indicator as toast
      * @param {string} suit - Lead suit
      */
     showLeadSuitIndicator(suit) {
-        const suitSymbols = {
-            hearts: '♥',
-            diamonds: '♦',
-            clubs: '♣',
-            spades: '♠'
-        };
-
-        const message = `Lead suit: ${suitSymbols[suit]} ${suit.charAt(0).toUpperCase() + suit.slice(1)}`;
-        this.addGameMessage(message, 'info');
-
-        // Add visual indicator to trick area
-        const trickArea = this.elements.trickArea;
-        if (trickArea) {
-            const leadSuitIndicator = trickArea.querySelector('.lead-suit-indicator') ||
-                document.createElement('div');
-            leadSuitIndicator.className = 'lead-suit-indicator';
-            leadSuitIndicator.innerHTML = `
-                <span class="lead-suit-label">Lead:</span>
-                <span class="lead-suit-symbol ${suit}">${suitSymbols[suit]}</span>
-            `;
-
-            if (!trickArea.querySelector('.lead-suit-indicator')) {
-                trickArea.appendChild(leadSuitIndicator);
-            }
-        }
+        this.showLeadSuitToast(suit);
     }
 
     /**
@@ -436,4 +482,172 @@ export class UIManager {
     getElements() {
         return this.elements;
     }
-}
+
+    /**
+     * Show success toast message
+     * @param {string} message - Success message
+     * @param {number} duration - Duration in milliseconds
+     */
+    showSuccessToast(message, duration = 3000) {
+        this.addGameMessage(message, 'success', duration);
+    }
+
+    /**
+     * Show error toast message
+     * @param {string} message - Error message
+     * @param {number} duration - Duration in milliseconds
+     */
+    showErrorToast(message, duration = 4000) {
+        this.addGameMessage(message, 'error', duration);
+    }
+
+    /**
+     * Show warning toast message
+     * @param {string} message - Warning message
+     * @param {number} duration - Duration in milliseconds
+     */
+    showWarningToast(message, duration = 3500) {
+        this.addGameMessage(message, 'warning', duration);
+    }
+
+    /**
+     * Show info toast message
+     * @param {string} message - Info message
+     * @param {number} duration - Duration in milliseconds
+     */
+    showInfoToast(message, duration = 3000) {
+        this.addGameMessage(message, 'info', duration);
+    }    /*
+*
+     * Show lead suit toast with suit symbol
+     * @param {string} suit - Lead suit (hearts, diamonds, clubs, spades)
+     */
+    showLeadSuitToast(suit) {
+        const suitSymbols = {
+            hearts: '♥',
+            diamonds: '♦',
+            clubs: '♣',
+            spades: '♠'
+        };
+
+        const symbol = suitSymbols[suit] || '?';
+        const suitName = suit.charAt(0).toUpperCase() + suit.slice(1);
+        
+        const toastElement = document.createElement('div');
+        toastElement.className = `toast-message lead-suit`;
+        toastElement.innerHTML = `
+            <span>Lead suit:</span>
+            <span class="suit-symbol ${suit}">${symbol}</span>
+            <span>${suitName}</span>
+        `;
+        toastElement.setAttribute('role', 'alert');
+        toastElement.setAttribute('aria-live', 'polite');
+
+        this.elements.toastContainer.appendChild(toastElement);
+
+        requestAnimationFrame(() => {
+            toastElement.classList.add('show');
+        });
+
+        setTimeout(() => {
+            this.dismissToast(toastElement);
+        }, 4000);
+    }
+
+    /**
+     * Show trump declaration toast
+     * @param {string} suit - Trump suit
+     * @param {string} playerName - Player who declared trump
+     */
+    showTrumpDeclaredToast(suit, playerName = 'You') {
+        const suitSymbols = {
+            hearts: '♥',
+            diamonds: '♦',
+            clubs: '♣',
+            spades: '♠'
+        };
+
+        const symbol = suitSymbols[suit] || '?';
+        const suitName = suit.charAt(0).toUpperCase() + suit.slice(1);
+        const message = `${playerName} declared ${symbol} ${suitName} as Trump!`;
+        
+        this.addGameMessage(message, 'trump-declared', 4000);
+    }
+
+    /**
+     * Show trick winner toast
+     * @param {string} winnerName - Name of trick winner
+     * @param {number} trickNumber - Trick number
+     */
+    showTrickWinnerToast(winnerName, trickNumber) {
+        const message = `${winnerName} wins Trick ${trickNumber}!`;
+        this.addGameMessage(message, 'trick-winner', 3000);
+    }
+
+    /**
+     * Show game phase toast
+     * @param {string} phase - Game phase (e.g., "Round 2", "Final Trick")
+     */
+    showGamePhaseToast(phase) {
+        this.addGameMessage(phase, 'game-phase', 2500);
+    }
+
+    /**
+     * Show compact toast for frequent updates
+     * @param {string} message - Message text
+     * @param {string} type - Message type
+     */
+    showCompactToast(message, type = 'info') {
+        const toastElement = document.createElement('div');
+        toastElement.className = `toast-message compact ${type}`;
+        toastElement.textContent = message;
+        toastElement.setAttribute('role', 'status');
+        toastElement.setAttribute('aria-live', 'polite');
+
+        this.elements.toastContainer.appendChild(toastElement);
+
+        requestAnimationFrame(() => {
+            toastElement.classList.add('show');
+        });
+
+        setTimeout(() => {
+            this.dismissToast(toastElement);
+        }, 2000);
+    }
+
+    /**
+     * Show toast with action button
+     * @param {string} message - Message text
+     * @param {string} actionText - Action button text
+     * @param {Function} actionCallback - Action button callback
+     * @param {string} type - Message type
+     * @param {number} duration - Duration (0 for persistent)
+     */
+    showActionToast(message, actionText, actionCallback, type = 'info', duration = 0) {
+        const toastElement = document.createElement('div');
+        toastElement.className = `toast-message with-action ${type}`;
+        toastElement.innerHTML = `
+            ${message}
+            <button class="toast-action">${actionText}</button>
+        `;
+        toastElement.setAttribute('role', 'alert');
+        toastElement.setAttribute('aria-live', 'polite');
+
+        const actionButton = toastElement.querySelector('.toast-action');
+        actionButton.addEventListener('click', () => {
+            actionCallback();
+            this.dismissToast(toastElement);
+        });
+
+        this.elements.toastContainer.appendChild(toastElement);
+
+        requestAnimationFrame(() => {
+            toastElement.classList.add('show');
+        });
+
+        if (duration > 0) {
+            setTimeout(() => {
+                this.dismissToast(toastElement);
+            }, duration);
+        }
+    }}
