@@ -1,0 +1,118 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+UX/
+
+# Development files
+.vscode/
+.kiro/
+cypress/
+cypress.config.js
+
+# Node modules (will be installed in container)
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Environment files (use docker-compose environment instead)
+.env
+.env.local
+.env.development
+.env.production
+server/.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# next.js build output
+.next
+
+# nuxt.js build output
+.nuxt
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Test files
+test/
+tests/
+*.test.js
+*.spec.js
+
+# Development and testing scripts
+test-*.js
+diagnose-*.js
+fix-*.js
+check-*.js
+run-*.js
+websocket-integration-test.js
+
+# Build artifacts that will be created in container
+dist/
+build/
+
+# IDE files
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
