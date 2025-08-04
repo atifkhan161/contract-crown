@@ -24,11 +24,11 @@ export class GameState {
             trumpDeclarer: 'player1',
             scores: { team1: 0, team2: 0 },
             playerHand: [
-                // Initial 4 cards for trump declaration
+                // Initial 4 cards for trump declaration (sorted by suit)
+                { suit: 'spades', rank: 'J' },
                 { suit: 'hearts', rank: 'A' },
                 { suit: 'hearts', rank: 'K' },
-                { suit: 'diamonds', rank: 'Q' },
-                { suit: 'spades', rank: 'J' }
+                { suit: 'diamonds', rank: 'Q' }
             ],
             selectedCard: null,
             isMyTurn: false,
@@ -108,6 +108,8 @@ export class GameState {
         );
         if (index !== -1) {
             this.state.playerHand.splice(index, 1);
+            // Keep hand sorted after removal
+            this.state.playerHand = this.sortCardsBySuit(this.state.playerHand);
         }
     }
 
@@ -192,6 +194,27 @@ export class GameState {
      */
     getCardsOfSuit(suit) {
         return this.state.playerHand.filter(c => c.suit === suit);
+    }
+
+    /**
+     * Sort cards by suit (spades, hearts, diamonds, clubs) and then by rank
+     * @param {Array} cards - Cards to sort
+     * @returns {Array} Sorted cards
+     */
+    sortCardsBySuit(cards) {
+        const suitOrder = ['spades', 'hearts', 'diamonds', 'clubs'];
+        const rankOrder = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        
+        return [...cards].sort((a, b) => {
+            // First sort by suit
+            const suitComparison = suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
+            if (suitComparison !== 0) {
+                return suitComparison;
+            }
+            
+            // Then sort by rank within the same suit
+            return rankOrder.indexOf(a.rank) - rankOrder.indexOf(b.rank);
+        });
     }
 
     /**

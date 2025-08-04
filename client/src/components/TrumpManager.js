@@ -77,10 +77,11 @@ export class TrumpManager {
 
         container.innerHTML = '';
 
-        // Show first 4 cards for trump declaration
+        // Show first 4 cards for trump declaration, sorted by suit
         const initialCards = playerHand.slice(0, 4);
+        const sortedCards = this.sortCardsBySuit(initialCards);
         
-        initialCards.forEach((card, index) => {
+        sortedCards.forEach((card, index) => {
             const cardElement = this.createTrumpCardElement(card, index);
             container.appendChild(cardElement);
         });
@@ -277,12 +278,15 @@ export class TrumpManager {
     }
 
     /**
-     * Get recommended trump suit based on hand analysis
+     * Get recommended trump suit based on hand analysis (initial 4 cards only)
      * @returns {string} Recommended trump suit
      */
     getRecommendedTrumpSuit() {
         const state = this.gameState.getState();
         const playerHand = state.playerHand || [];
+        
+        // Use only initial 4 cards for trump recommendation
+        const initialCards = playerHand.slice(0, 4);
 
         // Count cards by suit
         const suitCounts = {
@@ -296,7 +300,7 @@ export class TrumpManager {
         const suitStrength = {};
         
         Object.keys(suitCounts).forEach(suit => {
-            const suitCards = playerHand.filter(card => card.suit === suit);
+            const suitCards = initialCards.filter(card => card.suit === suit);
             suitCounts[suit] = suitCards.length;
             
             let strength = suitCards.length;
@@ -389,5 +393,26 @@ export class TrumpManager {
         if (!trumpSuit) return [];
         
         return hand.filter(card => card.suit === trumpSuit);
+    }
+
+    /**
+     * Sort cards by suit (spades, hearts, diamonds, clubs) and then by rank
+     * @param {Array} cards - Cards to sort
+     * @returns {Array} Sorted cards
+     */
+    sortCardsBySuit(cards) {
+        const suitOrder = ['spades', 'hearts', 'diamonds', 'clubs'];
+        const rankOrder = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        
+        return [...cards].sort((a, b) => {
+            // First sort by suit
+            const suitComparison = suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
+            if (suitComparison !== 0) {
+                return suitComparison;
+            }
+            
+            // Then sort by rank within the same suit
+            return rankOrder.indexOf(a.rank) - rankOrder.indexOf(b.rank);
+        });
     }
 }

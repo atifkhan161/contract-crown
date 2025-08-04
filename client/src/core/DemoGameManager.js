@@ -13,6 +13,7 @@ export class DemoGameManager {
         
         this.botHands = {};
         this.gameId = null;
+        this.fullPlayerHand = null; // Store full 8-card hand during trump declaration
         
         // Bot play state management to prevent multiple plays
         this.botPlayTimeout = null;
@@ -95,7 +96,16 @@ export class DemoGameManager {
         // Generate and distribute cards
         const cardDistribution = this.generateDemoCards();
         
-        // Update game state
+        // Sort the human player's hand by suit
+        const sortedPlayerHand = this.sortCardsBySuit(cardDistribution.humanPlayerHand);
+        
+        // During trump declaration, only show initial 4 cards
+        const initialCards = sortedPlayerHand.slice(0, 4);
+        
+        // Store the full hand for later use
+        this.fullPlayerHand = sortedPlayerHand;
+
+        // Update game state with only initial 4 cards during trump declaration
         this.gameState.updateState({
             gameId: this.gameId,
             isDemoMode: true,
@@ -103,7 +113,7 @@ export class DemoGameManager {
             currentPlayer: 'human_player',
             trumpDeclarer: 'human_player',
             gamePhase: 'trump_declaration',
-            playerHand: cardDistribution.humanPlayerHand,
+            playerHand: initialCards,
             isMyTurn: true,
             status: 'playing'
         });
@@ -111,7 +121,7 @@ export class DemoGameManager {
         // Store bot hands
         this.botHands = cardDistribution.botHands;
 
-        // Render player hand
+        // Render player hand (only initial 4 cards)
         this.cardManager.renderPlayerHand();
         
         // Update UI after setup to show opponent hands
@@ -205,6 +215,13 @@ export class DemoGameManager {
     async handleTrumpDeclaration(suit) {
         console.log('[DemoGameManager] Trump declared:', suit);
         
+        // Give player the remaining 4 cards after trump declaration
+        if (this.fullPlayerHand) {
+            this.gameState.updateState({
+                playerHand: this.fullPlayerHand
+            });
+        }
+        
         // Update game state
         this.gameState.updateState({
             trumpSuit: suit,
@@ -212,6 +229,9 @@ export class DemoGameManager {
             currentTurnPlayer: 'human_player',
             isMyTurn: true
         });
+        
+        // Re-render player hand with all 8 cards
+        this.cardManager.renderPlayerHand();
         
         // Update UI
         this.uiManager.updateUI();
@@ -460,6 +480,7 @@ export class DemoGameManager {
     cleanup() {
         console.log('[DemoGameManager] Cleaning up demo game');
         this.botHands = {};
+        this.fullPlayerHand = null;
     }
 
     /**
@@ -479,5 +500,26 @@ export class DemoGameManager {
     resetBotPlayState() {
         this.cleanupBotPlays();
         console.log('[DemoGameManager] Bot play state reset');
+    }
+
+    /**
+     * Sort cards by suit (spades, hearts, diamonds, clubs) and then by rank
+     * @param {Array} cards - Cards to sort
+     * @returns {Array} Sorted cards
+     */
+    sortCardsBySuit(cards) {
+        const suitOrder = ['spades', 'hearts', 'diamonds', 'clubs'];
+        const rankOrder = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        
+        return [...cards].sort((a, b) => {
+            // First sort by suit
+            const suitComparison = suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
+            if (suitComparison !== 0) {
+                return suitComparison;
+            }
+            
+            // Then sort by rank within the same suit
+            return rankOrder.indexOf(a.rank) - rankOrder.indexOf(b.rank);
+        });
     }
 }
