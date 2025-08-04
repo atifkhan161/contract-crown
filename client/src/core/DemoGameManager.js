@@ -229,11 +229,7 @@ export class DemoGameManager {
         console.log('[DemoGameManager] Trick complete, winner:', winner);
         
         // Clear any pending bot plays
-        if (this.botPlayTimeout) {
-            clearTimeout(this.botPlayTimeout);
-            this.botPlayTimeout = null;
-        }
-        this.isBotPlaying = false;
+        this.cleanupBotPlays();
         
         // Winner leads next trick
         this.updateTurn(winner.playerId);
@@ -465,11 +461,11 @@ export class DemoGameManager {
         console.log('[DemoGameManager] Cleaning up demo game');
         this.botHands = {};
     }
-}    /**
 
+    /**
      * Cleanup method to clear any pending bot plays
      */
-    cleanup() {
+    cleanupBotPlays() {
         if (this.botPlayTimeout) {
             clearTimeout(this.botPlayTimeout);
             this.botPlayTimeout = null;
@@ -481,6 +477,7 @@ export class DemoGameManager {
      * Reset bot play state (useful for new rounds/games)
      */
     resetBotPlayState() {
-        this.cleanup();
+        this.cleanupBotPlays();
         console.log('[DemoGameManager] Bot play state reset');
     }
+}
