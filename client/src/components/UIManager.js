@@ -79,6 +79,7 @@ export class UIManager {
             this.updateTurnIndicators();
             this.updateTrumpDisplay();
             this.updateScoreDisplay();
+            this.updateRoundScoreDisplay();
             this.updateOpponentHands(); // Add this to ensure opponent hands are always updated
             console.log('[UIManager] updateUI completed successfully');
         } catch (error) {
@@ -188,6 +189,7 @@ export class UIManager {
     updateScoreDisplay(animated = false) {
         const state = this.gameState.getState();
         
+        // Update trick scores (current round)
         if (this.elements.team1Score) {
             const scoreElement = this.elements.team1Score.querySelector('.score-value');
             const newScore = state.scores.team1;
@@ -205,6 +207,48 @@ export class UIManager {
         if (this.elements.team2Score) {
             const scoreElement = this.elements.team2Score.querySelector('.score-value');
             const newScore = state.scores.team2;
+
+            if (animated && scoreElement.textContent !== newScore.toString()) {
+                scoreElement.classList.add('updating');
+                setTimeout(() => {
+                    scoreElement.classList.remove('updating');
+                }, 800);
+            }
+
+            scoreElement.textContent = newScore;
+        }
+
+        // Update round scores (game points) - handled separately
+        this.updateRoundScoreDisplay(animated);
+    }
+
+    /**
+     * Update round score display (game points)
+     * @param {boolean} animated - Whether to show animation
+     */
+    updateRoundScoreDisplay(animated = false) {
+        const state = this.gameState.getState();
+        const roundScores = state.roundScores || { team1: 0, team2: 0 };
+        
+        const team1RoundScore = document.getElementById('team-1-round-score');
+        if (team1RoundScore) {
+            const scoreElement = team1RoundScore.querySelector('.score-value');
+            const newScore = roundScores.team1;
+
+            if (animated && scoreElement.textContent !== newScore.toString()) {
+                scoreElement.classList.add('updating');
+                setTimeout(() => {
+                    scoreElement.classList.remove('updating');
+                }, 800);
+            }
+
+            scoreElement.textContent = newScore;
+        }
+
+        const team2RoundScore = document.getElementById('team-2-round-score');
+        if (team2RoundScore) {
+            const scoreElement = team2RoundScore.querySelector('.score-value');
+            const newScore = roundScores.team2;
 
             if (animated && scoreElement.textContent !== newScore.toString()) {
                 scoreElement.classList.add('updating');

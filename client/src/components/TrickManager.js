@@ -173,20 +173,8 @@ export class TrickManager {
         const isTeam1 = team1Players.includes(winnerPlayerId);
         const teamKey = isTeam1 ? 'team1' : 'team2';
 
-        // Calculate points from cards won
-        let points = 0;
-        cardsWon.forEach(card => {
-            // In Contract Crown, typically Aces and 10s are worth points
-            if (card.rank === 'A') points += 4;
-            else if (card.rank === '10') points += 3;
-            else if (card.rank === 'K') points += 2;
-            else if (card.rank === 'Q') points += 1;
-        });
-
-        // Add base point for winning trick
-        points += 1;
-
-        currentScores[teamKey] += points;
+        // Add 1 point for winning the trick (simplified scoring)
+        currentScores[teamKey] += 1;
 
         // Update game state
         this.gameState.updateState({ scores: currentScores });
@@ -194,7 +182,7 @@ export class TrickManager {
         // Update UI with animation
         this.uiManager.updateScoreDisplay(true);
 
-        console.log(`[TrickManager] ${teamKey} scores ${points} points. New scores:`, currentScores);
+        console.log(`[TrickManager] ${teamKey} wins trick ${state.currentTrick.trickNumber}. Scores: Team1=${currentScores.team1}, Team2=${currentScores.team2}`);
     }
 
     /**
@@ -237,35 +225,154 @@ export class TrickManager {
         
         this.uiManager.addGameMessage('Round complete!', 'success');
         
-        // Show final scores
+        // Show trick scores
         const scores = state.scores;
         this.uiManager.addGameMessage(
-            `Final scores - Team 1: ${scores.team1}, Team 2: ${scores.team2}`,
+            `Tricks won - Team 1: ${scores.team1}, Team 2: ${scores.team2}`,
             'info'
         );
 
-        // Check for game winner (example: first to 50 points)
-        const winningScore = 50;
-        if (scores.team1 >= winningScore || scores.team2 >= winningScore) {
-            this.handleGameComplete();
-        } else {
-            // Start next round
-            setTimeout(() => this.startNextRound(), 3000);
+        // Determine round winner based on trump declaring team rules
+        const roundWinner = this.determineRoundWinner(scores, state.trumpDeclarer);
+        
+        if (roundWinner) {
+            this.uiManager.addGameMessage(`${roundWinner.teamName} wins the round!`, 'success');
+            
+            // Update round scores
+            this.updateRoundScores(roundWinner.teamKey);
+            
+            // Check for game winner (first to win required number of rounds)
+            if (this.checkGameWinner()) {
+                this.handleGameComplete();
+                return;
+            }
         }
+
+        // Start next round
+        setTimeout(() => this.startNextRound(roundWinner), 3000);
+    }
+
+    /**
+     * Determine round winner based on trump declaring team rules
+     * @param {Object} scores - Current trick scores
+     * @param {string} trumpDeclarer - Player who declared trump
+     * @returns {Object} Round winner information
+     */
+    determineRoundWinner(scores, trumpDeclarer) {
+        // Determine which team declared trump
+        const team1Players = ['player1', 'player3', 'human_player', 'bot_2'];
+        const team2Players = ['player2', 'player4', 'bot_1', 'bot_3'];
+        
+        const trumpDeclaringTeam = team1Players.includes(trumpDeclarer) ? 'team1' : 'team2';
+        const nonDeclaringTeam = trumpDeclaringTeam === 'team1' ? 'team2' : 'team1';
+        
+        const declaringTeamScore = scores[trumpDeclaringTeam];
+        const nonDeclaringTeamScore = scores[nonDeclaringTeam];
+        
+        // Trump declaring team needs more than 4 tricks (5 or more) to win
+        // Non-declaring team needs 4 or more tricks to win
+        if (declaringTeamScore >= 5) {
+            return {
+                teamKey: trumpDeclaringTeam,
+                teamName: trumpDeclaringTeam === 'team1' ? 'Team 1' : 'Team 2',
+                reason: `Trump declaring team won ${declaringTeamScore} tricks (needed 5+)`
+            };
+        } else if (nonDeclaringTeamScore >= 4) {
+            return {
+                teamKey: nonDeclaringTeam,
+                teamName: nonDeclaringTeam === 'team1' ? 'Team 1' : 'Team 2',
+                reason: `Non-declaring team won ${nonDeclaringTeamScore} tricks (needed 4+)`
+            };
+        }
+        
+        // This shouldn't happen in an 8-trick game, but handle edge case
+        return {
+            teamKey: declaringTeamScore > nonDeclaringTeamScore ? trumpDeclaringTeam : nonDeclaringTeam,
+            teamName: declaringTeamScore > nonDeclaringTeamScore ? 
+                (trumpDeclaringTeam === 'team1' ? 'Team 1' : 'Team 2') : 
+                (nonDeclaringTeam === 'team1' ? 'Team 1' : 'Team 2'),
+            reason: 'Won by having more tricks'
+        };
+    }
+
+    /**
+     * Update round scores (accumulate tricks won by winning team)
+     * @param {string} winningTeam - Team that won the round
+     */
+    updateRoundScores(winningTeam) {
+        const state = this.gameState.getState();
+        const roundScores = state.roundScores || { team1: 0, team2: 0 };
+        const currentScores = state.scores;
+        
+        // Add the number of tricks the winning team scored this round
+        const tricksWon = currentScores[winningTeam];
+        roundScores[winningTeam] += tricksWon;
+        
+        this.gameState.updateState({ roundScores });
+        
+        // Update round score display with animation
+        this.uiManager.updateRoundScoreDisplay(true);
+        
+        this.uiManager.addGameMessage(
+            `${winningTeam === 'team1' ? 'Team 1' : 'Team 2'} adds ${tricksWon} points to their score`,
+            'info'
+        );
+        
+        this.uiManager.addGameMessage(
+            `Game scores - Team 1: ${roundScores.team1}, Team 2: ${roundScores.team2}`,
+            'info'
+        );
+    }
+
+    /**
+     * Check if there's a game winner
+     * @returns {boolean} True if game is complete
+     */
+    checkGameWinner() {
+        const state = this.gameState.getState();
+        const roundScores = state.roundScores || { team1: 0, team2: 0 };
+        
+        // Game ends when a team reaches 52 points
+        const pointsToWin = 52;
+        
+        return roundScores.team1 >= pointsToWin || roundScores.team2 >= pointsToWin;
     }
 
     /**
      * Start the next round
+     * @param {Object} roundWinner - Information about the round winner
      */
-    startNextRound() {
+    startNextRound(roundWinner) {
         const state = this.gameState.getState();
+        
+        // Determine next trump declarer based on round result
+        let nextTrumpDeclarer;
+        
+        if (roundWinner) {
+            // If the trump declaring team won, they declare again
+            // If they lost, next player in clockwise order declares
+            const team1Players = ['player1', 'player3', 'human_player', 'bot_2'];
+            const currentDeclarerTeam = team1Players.includes(state.trumpDeclarer) ? 'team1' : 'team2';
+            
+            if (roundWinner.teamKey === currentDeclarerTeam) {
+                // Same team won, same player declares trump again
+                nextTrumpDeclarer = state.trumpDeclarer;
+            } else {
+                // Other team won, next player in clockwise order declares
+                nextTrumpDeclarer = this.getNextPlayerInOrder(state.trumpDeclarer);
+            }
+        } else {
+            // Fallback to next player in order
+            nextTrumpDeclarer = this.getNextPlayerInOrder(state.trumpDeclarer);
+        }
         
         // Reset for next round
         this.gameState.updateState({
             currentRound: state.currentRound + 1,
             gamePhase: 'trump_declaration',
             trumpSuit: null,
-            trumpDeclarer: this.getNextTrumpDeclarer(),
+            trumpDeclarer: nextTrumpDeclarer,
+            scores: { team1: 0, team2: 0 }, // Reset trick scores for new round
             leadSuit: null,
             currentTurnPlayer: null,
             isMyTurn: false
@@ -277,36 +384,37 @@ export class TrickManager {
         // In a real game, new cards would be dealt here
         // For demo, we could generate new hands
 
-        this.uiManager.addGameMessage(`Round ${state.currentRound + 1} begins!`, 'success');
+        const declarerName = this.gameState.getPlayerNameById(nextTrumpDeclarer);
+        this.uiManager.addGameMessage(`Round ${state.currentRound + 1} begins! ${declarerName} will declare trump.`, 'success');
         this.uiManager.updateUI();
     }
 
     /**
-     * Get the next trump declarer (rotates clockwise)
-     * @returns {string} Next trump declarer player ID
+     * Get the next player in clockwise order
+     * @param {string} currentPlayerId - Current player ID
+     * @returns {string} Next player ID
      */
-    getNextTrumpDeclarer() {
-        const state = this.gameState.getState();
-        const currentDeclarer = state.trumpDeclarer;
-        
-        return this.gameState.getNextPlayerInOrder(currentDeclarer);
+    getNextPlayerInOrder(currentPlayerId) {
+        return this.gameState.getNextPlayerInOrder(currentPlayerId);
     }
+
+
 
     /**
      * Handle game completion
      */
     handleGameComplete() {
         const state = this.gameState.getState();
-        const scores = state.scores;
+        const roundScores = state.roundScores || { team1: 0, team2: 0 };
         
-        const winner = scores.team1 > scores.team2 ? 'Team 1' : 'Team 2';
-        const finalScore = `${scores.team1} - ${scores.team2}`;
+        const winner = roundScores.team1 > roundScores.team2 ? 'Team 1' : 'Team 2';
+        const finalScore = `${roundScores.team1} - ${roundScores.team2}`;
         
-        this.uiManager.addGameMessage(`Game Over! ${winner} wins ${finalScore}`, 'success');
+        this.uiManager.addGameMessage(`Game Over! ${winner} wins with ${finalScore} points`, 'success');
         
         // Show game over modal or redirect
         setTimeout(() => {
-            if (confirm(`Game Over! ${winner} wins ${finalScore}\n\nReturn to lobby?`)) {
+            if (confirm(`Game Over! ${winner} wins with ${finalScore} points\n\nReturn to lobby?`)) {
                 window.location.href = '/lobby.html';
             }
         }, 2000);

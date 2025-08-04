@@ -22,7 +22,8 @@ export class GameState {
             },
             trumpSuit: null,
             trumpDeclarer: 'player1',
-            scores: { team1: 0, team2: 0 },
+            scores: { team1: 0, team2: 0 }, // Trick scores for current round
+            roundScores: { team1: 0, team2: 0 }, // Round wins
             playerHand: [
                 // Initial 4 cards for trump declaration (sorted by suit)
                 { suit: 'spades', rank: 'J' },
@@ -237,7 +238,8 @@ export class GameState {
             },
             trumpSuit: null,
             trumpDeclarer: null,
-            scores: { team1: 0, team2: 0 },
+            scores: { team1: 0, team2: 0 }, // Trick scores for current round
+            roundScores: { team1: 0, team2: 0 }, // Round wins
             playerHand: [],
             selectedCard: null,
             isMyTurn: false,

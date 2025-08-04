@@ -1,25 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Game - Contract Crown</title>
     <meta name="description" content="Contract Crown card game - play your hand">
-    
+
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/webp" href="/favicon.webp">
-    
+
     <!-- Apple PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Contract Crown">
-    
+
     <link rel="stylesheet" href="src/styles/theme.css">
     <link rel="stylesheet" href="src/styles/main.css">
     <link rel="stylesheet" href="src/styles/game.css">
 </head>
+
 <body>
     <div id="app">
         <!-- Header -->
@@ -87,7 +89,8 @@
                     </div>
 
                     <!-- Right Player (Opponent) -->
-                    <div class="player-area player-right" id="player-right" data-position="right" style="grid-area: right;">
+                    <div class="player-area player-right" id="player-right" data-position="right"
+                        style="grid-area: right;">
                         <div class="player-info">
                             <div class="player-name" id="player-right-name">Player 4</div>
                             <div class="player-status">
@@ -111,17 +114,38 @@
                         </div>
                     </div>
 
+                    <!-- Round Scores - Below Trump -->
+                    <div class="round-score-display" id="round-score-display">
+                        <div class="score-section">
+                            <div class="score-title">Game Score</div>
+                            <div class="team-scores">
+                                <div class="team-score" id="team-1-round-score">
+                                    <div class="team-label">Team 1</div>
+                                    <div class="score-value">0</div>
+                                </div>
+                                <div class="score-separator">-</div>
+                                <div class="team-score" id="team-2-round-score">
+                                    <div class="team-label">Team 2</div>
+                                    <div class="score-value">0</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Score Display - Top Right -->
                     <div class="score-display-corner" id="score-display">
-                        <div class="team-scores">
-                            <div class="team-score" id="team-1-score">
-                                <div class="team-label">Team 1</div>
-                                <div class="score-value">0</div>
-                            </div>
-                            <div class="score-separator">-</div>
-                            <div class="team-score" id="team-2-score">
-                                <div class="team-label">Team 2</div>
-                                <div class="score-value">0</div>
+                        <div class="score-section">
+                            <div class="score-title">Current Round Tricks</div>
+                            <div class="team-scores">
+                                <div class="team-score" id="team-1-score">
+                                    <div class="team-label">Team 1</div>
+                                    <div class="score-value">0</div>
+                                </div>
+                                <div class="score-separator">-</div>
+                                <div class="team-score" id="team-2-score">
+                                    <div class="team-label">Team 2</div>
+                                    <div class="score-value">0</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -143,7 +167,8 @@
                     </div>
 
                     <!-- Bottom Player (Current User) -->
-                    <div class="player-area player-bottom" id="player-bottom" data-position="bottom" style="grid-area: bottom;">
+                    <div class="player-area player-bottom" id="player-bottom" data-position="bottom"
+                        style="grid-area: bottom;">
                         <div class="player-info">
                             <div class="player-name" id="player-bottom-name">You</div>
                             <div class="player-status">
@@ -173,14 +198,14 @@
                 </div>
                 <div class="modal-body">
                     <p class="trump-instruction">Your initial 4 cards - choose the trump suit:</p>
-                    
+
                     <!-- Initial 4 cards display -->
                     <div class="trump-cards-display">
                         <div id="trump-initial-cards" class="initial-cards-container">
                             <!-- Cards will be populated by JavaScript -->
                         </div>
                     </div>
-                    
+
                     <div class="trump-selection">
                         <button class="trump-option" data-suit="hearts">
                             <span class="suit-symbol hearts">♥</span>
@@ -238,4 +263,5 @@
     <script type="module" src="src/core/auth.js"></script>
     <script type="module" src="src/pages/game.js"></script>
 </body>
+
 </html>
