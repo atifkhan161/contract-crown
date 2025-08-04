@@ -117,13 +117,15 @@ export class UIManager {
             }
 
             if (cardsElement) {
-                const cardCount = player.handSize || 8;
-                cardsElement.textContent = `${cardCount} card${cardCount !== 1 ? 's' : ''}`;
+                const cardCount = player.handSize !== undefined ? player.handSize : 8;
+                cardsElement.textContent = cardCount === 0 ? 'No cards' : `${cardCount} card${cardCount !== 1 ? 's' : ''}`;
             }
 
             // Render opponent hands (card backs) for non-human players
+            // Only render if player has cards and is not the current human player
             if (playerId !== 'human_player' && playerId !== state.currentPlayer) {
-                this.renderOpponentHand(playerId, player.handSize || 8);
+                const cardCount = player.handSize !== undefined ? player.handSize : 8;
+                this.renderOpponentHand(playerId, cardCount);
             }
         });
     }
@@ -464,11 +466,18 @@ export class UIManager {
         // Clear existing cards
         handElement.innerHTML = '';
 
-        // Create card backs
+        // Don't render any cards if cardCount is 0 (8th turn scenario)
+        if (cardCount <= 0) {
+            console.log(`[UIManager] No cards to render for ${playerId} at position ${position}`);
+            return;
+        }
+
+        // Create card backs with smoother animations
         for (let i = 0; i < cardCount; i++) {
             const cardBack = document.createElement('div');
             cardBack.className = 'card-back';
-            cardBack.style.animationDelay = `${i * 0.1}s`; // Stagger animation
+            // Reduced stagger delay for smoother animation (0.05s instead of 0.1s)
+            cardBack.style.animationDelay = `${i * 0.05}s`;
             handElement.appendChild(cardBack);
         }
         
@@ -650,4 +659,75 @@ export class UIManager {
                 this.dismissToast(toastElement);
             }, duration);
         }
+    }
+
+    /**
+     * Smoothly remove a card from opponent hand
+     * @param {string} playerId - Player ID
+     * @param {number} newCardCount - New card count after card is played
+     */
+    smoothRemoveOpponentCard(playerId, newCardCount) {
+        const position = this.getPlayerPosition(playerId);
+        const handElement = this.elements[`player${position}Hand`];
+        
+        if (!handElement) {
+            console.warn(`[UIManager] Hand element not found for position: ${position}`);
+            return;
+        }
+
+        const cards = handElement.children;
+        if (cards.length > 0) {
+            // Add removal animation to the last card
+            const lastCard = cards[cards.length - 1];
+            lastCard.classList.add('removing');
+            
+            // Remove the card after animation completes
+            setTimeout(() => {
+                if (lastCard.parentNode) {
+                    lastCard.parentNode.removeChild(lastCard);
+                }
+                
+                // Update the remaining cards count display
+                this.updatePlayerCardCount(playerId, newCardCount);
+            }, 300); // Match animation duration
+        }
+    }
+
+    /**
+     * Update player card count display
+     * @param {string} playerId - Player ID
+     * @param {number} cardCount - New card count
+     */
+    updatePlayerCardCount(playerId, cardCount) {
+        const position = this.getPlayerPosition(playerId);
+        const cardsElement = this.elements[`player${position}Cards`];
+        
+        if (cardsElement) {
+            cardsElement.textContent = `${cardCount} card${cardCount !== 1 ? 's' : ''}`;
+        }
+    }
+
+    /**
+     * Animate card play for smoother transitions
+     * @param {HTMLElement} cardElement - Card element to animate
+     * @param {Function} callback - Callback after animation
+     */
+    animateCardPlay(cardElement, callback) {
+        if (!cardElement) return;
+        
+        cardElement.classList.add('playing');
+        
+        setTimeout(() => {
+            if (callback) callback();
+        }, 400); // Match animation duration
+    }
+
+    /**
+     * Clear all card animations and reset to normal state
+     */
+    clearCardAnimations() {
+        const allCards = document.querySelectorAll('.card, .card-back');
+        allCards.forEach(card => {
+            card.classList.remove('playing', 'removing', 'winner', 'trick-complete');
+        });
     }}

@@ -3444,4 +3444,227 @@ textarea {
         background: rgba(20, 20, 20, 0.95);
         border-color: rgba(255, 255, 255, 0.2);
     }
+}/
+* Smooth Card Animations */
+
+/* Card back styling with smooth animations */
+.card-back {
+    width: 40px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--bg-secondary), var(--primary-color));
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    position: relative;
+    margin-left: -8px;
+    transition: all 0.2s ease;
+    opacity: 0;
+    transform: translateY(-10px) scale(0.9);
+    animation: cardBackFadeIn 0.4s ease-out forwards;
+}
+
+.card-back:first-child {
+    margin-left: 0;
+}
+
+.card-back::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    background: var(--text-primary);
+    border-radius: 50%;
+    opacity: 0.8;
+}
+
+.card-back::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    background: var(--primary-color);
+    border-radius: 50%;
+}
+
+/* Smooth card back fade-in animation */
+@keyframes cardBackFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Card removal animation (when cards are played) */
+.card-back.removing {
+    animation: cardBackFadeOut 0.3s ease-in forwards;
+}
+
+@keyframes cardBackFadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-5px) scale(0.95);
+    }
+}
+
+/* Player card animations */
+.card {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover:not(.disabled) {
+    transform: translateY(-8px);
+    transition: all 0.2s ease-out;
+}
+
+.card.selected {
+    transform: translateY(-12px);
+    transition: all 0.2s ease-out;
+}
+
+/* Smooth card play animation */
+.card.playing {
+    animation: cardPlaySmooth 0.4s ease-out forwards;
+}
+
+@keyframes cardPlaySmooth {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(-20px) scale(1.05);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(-40px) scale(0.9);
+        opacity: 0;
+    }
+}
+
+/* Trick completion animation - smoother */
+.played-card.trick-complete {
+    animation: trickCompleteSmooth 0.5s ease-in-out forwards;
+}
+
+@keyframes trickCompleteSmooth {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.7;
+    }
+    100% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+}
+
+/* Winner card highlight - subtle animation */
+.played-card.winner {
+    animation: winnerHighlightSubtle 1s ease-in-out;
+    border: 2px solid #ffd700;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+}
+
+@keyframes winnerHighlightSubtle {
+    0%, 100% {
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+    }
+}
+
+/* Mobile optimizations for smoother animations */
+@media (max-width: 768px) {
+    .card-back {
+        width: 35px;
+        height: 53px;
+        margin-left: -6px;
+    }
+    
+    .card-back::before {
+        width: 12px;
+        height: 12px;
+    }
+    
+    .card-back::after {
+        width: 6px;
+        height: 6px;
+    }
+    
+    /* Faster animations on mobile for better performance */
+    @keyframes cardBackFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-5px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+}
+
+/* Landscape mode optimizations */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+    .card-back {
+        width: 25px;
+        height: 38px;
+        margin-left: -4px;
+    }
+    
+    .card-back::before {
+        width: 10px;
+        height: 10px;
+    }
+    
+    .card-back::after {
+        width: 5px;
+        height: 5px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .card-back {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+    
+    .card {
+        transition: none;
+    }
+    
+    .card:hover:not(.disabled) {
+        transform: translateY(-4px);
+    }
+    
+    .card.selected {
+        transform: translateY(-6px);
+    }
+}
+
+/* Performance optimizations */
+.card-back,
+.card {
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }

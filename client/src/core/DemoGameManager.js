@@ -14,6 +14,10 @@ export class DemoGameManager {
         this.botHands = {};
         this.gameId = null;
         
+        // Bot play state management to prevent multiple plays
+        this.botPlayTimeout = null;
+        this.isBotPlaying = false;
+        
         this.setupCallbacks();
     }
 
@@ -224,15 +228,20 @@ export class DemoGameManager {
     handleTrickComplete(winner, trick) {
         console.log('[DemoGameManager] Trick complete, winner:', winner);
         
+        // Clear any pending bot plays
+        if (this.botPlayTimeout) {
+            clearTimeout(this.botPlayTimeout);
+            this.botPlayTimeout = null;
+        }
+        this.isBotPlaying = false;
+        
         // Winner leads next trick
         this.updateTurn(winner.playerId);
         
         // If a bot won the trick, schedule them to play the first card of the next trick
         if (winner.playerId !== 'human_player') {
             console.log('[DemoGameManager] Bot won trick, scheduling bot to lead next trick');
-            setTimeout(() => {
-                this.playBotCard();
-            }, 2500); // Give time for UI to clear and show next trick message
+            this.scheduleNextBotPlay(2500); // Give time for UI to clear and show next trick message
         }
     }
 
@@ -248,19 +257,45 @@ export class DemoGameManager {
         const cardsInTrick = currentTrick.cardsPlayed.length;
         console.log('[DemoGameManager] Scheduling bot plays, cards in trick:', cardsInTrick);
         
-        // Only schedule if the next player is a bot
+        // Only schedule if the next player is a bot and no bot is currently playing
         const currentTurnPlayer = state.currentTurnPlayer;
-        if (currentTurnPlayer !== 'human_player') {
-            setTimeout(() => {
-                this.playBotCard();
-            }, 1500);
+        if (currentTurnPlayer !== 'human_player' && !this.isBotPlaying) {
+            this.scheduleNextBotPlay(1500);
         }
+    }
+
+    /**
+     * Schedule next bot play with timeout management
+     * @param {number} delay - Delay in milliseconds
+     */
+    scheduleNextBotPlay(delay = 1500) {
+        // Clear any existing timeout
+        if (this.botPlayTimeout) {
+            clearTimeout(this.botPlayTimeout);
+            this.botPlayTimeout = null;
+        }
+        
+        // Don't schedule if already playing
+        if (this.isBotPlaying) {
+            console.log('[DemoGameManager] Bot already playing, skipping schedule');
+            return;
+        }
+        
+        this.botPlayTimeout = setTimeout(() => {
+            this.playBotCard();
+        }, delay);
     }
 
     /**
      * Play a card for the current bot
      */
     playBotCard() {
+        // Prevent multiple simultaneous bot plays
+        if (this.isBotPlaying) {
+            console.log('[DemoGameManager] Bot already playing, skipping');
+            return;
+        }
+        
         const state = this.gameState.getState();
         const currentPlayer = state.currentTurnPlayer;
         
@@ -268,14 +303,19 @@ export class DemoGameManager {
         
         if (!currentPlayer || currentPlayer === 'human_player') {
             console.log('[DemoGameManager] Not a bot turn, skipping');
+            this.isBotPlaying = false;
             return;
         }
         
         const botHand = this.botHands[currentPlayer];
         if (!botHand || botHand.length === 0) {
             console.log('[DemoGameManager] Bot has no cards, skipping');
+            this.isBotPlaying = false;
             return;
         }
+        
+        // Set playing flag
+        this.isBotPlaying = true;
         
         // Simple bot AI - play first valid card
         const validCard = this.getBotValidCard(currentPlayer, botHand);
@@ -312,16 +352,20 @@ export class DemoGameManager {
             const playerName = this.gameState.getPlayerNameById(currentPlayer);
             this.uiManager.addGameMessage(`${playerName} played ${validCard.rank} of ${validCard.suit}`, 'info');
             
+            // Clear playing flag
+            this.isBotPlaying = false;
+            
             // If there are still bots to play in this trick, schedule the next one
             const currentTrick = this.gameState.getState().currentTrick;
             if (currentTrick && currentTrick.cardsPlayed && currentTrick.cardsPlayed.length < 4) {
                 const nextPlayerAfterUpdate = this.gameState.getState().currentTurnPlayer;
                 if (nextPlayerAfterUpdate !== 'human_player') {
-                    setTimeout(() => {
-                        this.playBotCard();
-                    }, 1500);
+                    this.scheduleNextBotPlay(1500);
                 }
             }
+        } else {
+            // Clear playing flag if no valid card found
+            this.isBotPlaying = false;
         }
     }
 
@@ -421,4 +465,22 @@ export class DemoGameManager {
         console.log('[DemoGameManager] Cleaning up demo game');
         this.botHands = {};
     }
-}
+}    /**
+
+     * Cleanup method to clear any pending bot plays
+     */
+    cleanup() {
+        if (this.botPlayTimeout) {
+            clearTimeout(this.botPlayTimeout);
+            this.botPlayTimeout = null;
+        }
+        this.isBotPlaying = false;
+    }
+
+    /**
+     * Reset bot play state (useful for new rounds/games)
+     */
+    resetBotPlayState() {
+        this.cleanup();
+        console.log('[DemoGameManager] Bot play state reset');
+    }
