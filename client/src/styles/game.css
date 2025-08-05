@@ -1,5 +1,20 @@
 /* Game Page Styles - Contract Crown PWA */
 
+/* Mobile-only elements - hidden by default */
+.mobile-leave-btn,
+.mobile-connection-status {
+    display: none !important;
+}
+
+/* Ensure mobile elements are only shown on mobile screens */
+@media (min-width: 1024px) {
+
+    .mobile-leave-btn,
+    .mobile-connection-status {
+        display: none !important;
+    }
+}
+
 /* Header Styles */
 .game-header {
     background: var(--bg-secondary);
@@ -108,6 +123,33 @@
     flex-direction: column;
 }
 
+/* Desktop and tablet specific styles */
+@media (min-width: 1024px) {
+    .game-header {
+        display: block !important;
+    }
+
+    .game-main {
+        padding: var(--spacing-md);
+        height: auto;
+    }
+
+    .game-container {
+        height: auto;
+    }
+
+    .game-table {
+        margin: 0;
+        min-height: 500px;
+    }
+
+    /* Hide mobile-only elements on desktop */
+    .mobile-leave-btn,
+    .mobile-connection-status {
+        display: none !important;
+    }
+}
+
 /* Game Table */
 .game-table {
     flex: 1;
@@ -116,6 +158,7 @@
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
     padding: var(--spacing-md);
+    margin: 0 20px;
     display: grid;
     grid-template-areas:
         "trump-corner top score-corner"
@@ -945,19 +988,139 @@
     margin-bottom: var(--spacing-md);
 }
 
-/* Mobile Responsive */
-@media (max-width: 768px) {
+/* Mobile Responsive - Apply to all mobile and tablet devices */
+@media screen and (max-width: 1023px) {
+
+    /* Hide game header on mobile to save space */
+    .game-header {
+        display: none !important;
+        visibility: hidden !important;
+    }
+
+    /* Add floating leave game button for mobile */
+    .mobile-leave-btn {
+        /* Reset all inherited styles */
+        all: unset !important;
+
+        /* Apply our custom styles */
+        display: block !important;
+        visibility: visible !important;
+        position: fixed !important;
+        top: 15px !important;
+        left: 15px !important;
+        z-index: 1000 !important;
+        background: rgba(44, 62, 80, 0.95) !important;
+        color: white !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        padding: 10px 14px !important;
+        border-radius: 12px !important;
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        backdrop-filter: blur(15px) !important;
+        transition: all 0.15s ease !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+        text-decoration: none !important;
+        outline: none !important;
+        box-sizing: border-box !important;
+        line-height: 1.2 !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+    }
+
+    .mobile-leave-btn:hover {
+        background: rgba(44, 62, 80, 1) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    .mobile-leave-btn:active {
+        transform: translateY(0) !important;
+    }
+
+    .mobile-leave-btn:focus {
+        outline: none !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(74, 144, 226, 0.5) !important;
+    }
+
+    /* Mobile connection status */
+    .mobile-connection-status {
+        /* Reset all inherited styles */
+        all: unset !important;
+
+        /* Apply our custom styles */
+        display: flex !important;
+        visibility: visible !important;
+        align-items: center !important;
+        gap: 4px !important;
+        position: fixed !important;
+        top: 15px !important;
+        right: 15px !important;
+        z-index: 1000 !important;
+        background: rgba(44, 62, 80, 0.95) !important;
+        color: white !important;
+        padding: 10px 14px !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 12px !important;
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        backdrop-filter: blur(15px) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+        box-sizing: border-box !important;
+        line-height: 1.2 !important;
+        white-space: nowrap !important;
+    }
+
+    /* Adjust main game area to use full height */
+    .game-main {
+        padding: 0;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    .game-container {
+        height: 100vh;
+        margin: 0;
+        max-width: none;
+    }
+
     .game-table {
+        margin: 0 10px;
         grid-template-areas:
             "trump-corner top score-corner"
-            "round-score-area center right"
             "left center right"
-            ". bottom .";
+            ". center ."
+            "round-score-area bottom .";
         grid-template-columns: auto 1fr auto;
-        grid-template-rows: auto auto 1fr auto;
-        gap: var(--spacing-sm);
-        padding: var(--spacing-sm);
-        min-height: 400px;
+        grid-template-rows: auto 1fr auto auto;
+        gap: var(--spacing-xs);
+        padding: var(--spacing-xs);
+        min-height: calc(100vh - 20px);
+        border-radius: var(--radius-md);
+    }
+
+    /* Move round score display below center area */
+    .round-score-display {
+        grid-area: round-score-area;
+        align-self: start;
+        justify-self: start;
+        margin-bottom: var(--spacing-xs);
+        padding: 6px 10px;
+        font-size: var(--font-size-xs);
+        border-radius: var(--radius-sm);
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    .round-score-display .score-title {
+        font-size: var(--font-size-xs);
+        margin-bottom: 4px;
+    }
+
+    .round-score-display .score-value {
+        font-size: var(--font-size-sm);
+        font-weight: 600;
     }
 
     .header-content {
@@ -971,13 +1134,19 @@
     /* Ensure trump and score displays are compact on mobile */
     .trump-display-corner,
     .score-display-corner {
-        padding: var(--spacing-xs) var(--spacing-sm);
-        font-size: var(--font-size-sm);
+        padding: 6px 10px;
+        font-size: var(--font-size-xs);
+        border-radius: var(--radius-sm);
+        background: rgba(255, 255, 255, 0.05);
     }
 
     .trump-display-corner .trump-symbol,
     .score-display-corner .score-value {
-        font-size: var(--font-size-base);
+        font-size: var(--font-size-sm);
+    }
+
+    .trump-display-corner .trump-name {
+        font-size: var(--font-size-xs);
     }
 
     .team-scores {
@@ -985,28 +1154,68 @@
     }
 
     .card {
-        width: 45px;
-        height: 68px;
-        padding: 2px;
+        width: 55px;
+        height: 82px;
+        padding: 3px;
     }
 
     .card-rank {
-        font-size: var(--font-size-xs);
+        font-size: var(--font-size-sm);
     }
 
     .card-suit {
-        font-size: var(--font-size-base);
+        font-size: var(--font-size-lg);
+    }
+
+    .card-center .card-suit {
+        font-size: var(--font-size-xl);
+    }
+
+    /* Optimize card interactions for mobile */
+    .card:hover:not(.disabled),
+    .card.hover:not(.disabled) {
+        transform: translateY(-8px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .card.selected {
+        transform: translateY(-12px);
+        box-shadow: 0 8px 25px rgba(74, 144, 226, 0.4);
+    }
+
+    .card.touching {
+        transform: scale(1.02) translateY(-2px);
     }
 
     .played-card {
-        width: 40px;
-        height: 60px;
-        padding: 2px;
+        width: 45px;
+        height: 68px;
+        padding: 3px;
+    }
+
+    .played-card-slot {
+        min-width: 50px;
+        min-height: 75px;
     }
 
     .trick-cards {
-        width: 150px;
-        height: 150px;
+        width: 180px;
+        height: 180px;
+    }
+
+    /* Optimize center table area for mobile */
+    .table-center {
+        padding: var(--spacing-xs) 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .trick-info {
+        margin-top: var(--spacing-xs);
+        font-size: var(--font-size-sm);
+        font-weight: 500;
     }
 
     .trump-selection {
@@ -1051,52 +1260,137 @@
         font-size: 20px;
     }
 
-    /* Remove rotation on mobile for better readability */
+    /* Optimize left and right players for mobile */
     .player-left,
     .player-right {
         transform: none;
+        writing-mode: horizontal-tb;
+    }
+
+    .player-left {
+        justify-self: start;
+        align-self: center;
+    }
+
+    .player-right {
+        justify-self: end;
+        align-self: center;
     }
 
     .player-left .player-info,
     .player-right .player-info {
-        writing-mode: vertical-rl;
-        text-orientation: mixed;
+        writing-mode: horizontal-tb;
+        text-orientation: initial;
+        min-width: 70px;
+        font-size: var(--font-size-xs);
+        text-align: center;
+    }
+
+    .player-left .player-name,
+    .player-right .player-name {
+        font-size: var(--font-size-xs);
+        margin-bottom: 2px;
+        font-weight: 600;
+    }
+
+    .player-left .card-count,
+    .player-right .card-count {
+        font-size: var(--font-size-xs);
+        padding: 2px 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: var(--radius-sm);
     }
 
     /* Ensure current player is always at bottom on mobile */
     .player-bottom {
         order: 999;
+        grid-area: bottom;
+        padding-bottom: var(--spacing-sm);
+    }
+
+    .player-bottom .player-info {
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .player-bottom .player-name {
+        font-size: var(--font-size-sm);
+        font-weight: 600;
+        color: var(--primary-color);
     }
 
     /* Better spacing for player hands on mobile */
     .player-hand {
-        gap: 2px;
+        gap: 4px;
         justify-content: center;
         flex-wrap: wrap;
+        margin-top: var(--spacing-sm);
+        padding: 0 var(--spacing-xs);
+        max-width: 100%;
+    }
+
+    /* Optimize opponent hands for mobile */
+    .opponent-hand {
+        margin-top: var(--spacing-xs);
+    }
+
+    .card-back {
+        width: 30px;
+        height: 45px;
+        margin-left: -6px;
+    }
+
+    .card-back::before {
+        width: 12px;
+        height: 12px;
+    }
+
+    .card-back::after {
+        width: 6px;
+        height: 6px;
     }
 }
 
 @media (max-width: 480px) {
     .game-main {
-        padding: var(--spacing-sm);
+        padding: 0;
+    }
+
+    .game-table {
+        margin: 0 8px;
+        min-height: calc(100vh - 16px);
+        padding: 4px;
+    }
+
+    /* Adjust floating buttons for small screens */
+    .mobile-leave-btn,
+    .mobile-connection-status {
+        top: 10px;
+        padding: 8px 10px;
+        font-size: var(--font-size-xs);
+    }
+
+    .mobile-leave-btn {
+        left: 10px;
+    }
+
+    .mobile-connection-status {
+        right: 10px;
     }
 
     .card {
-        width: 35px;
-        height: 53px;
+        width: 48px;
+        height: 72px;
     }
 
     .player-hand {
         gap: 2px;
-    }
-
-    .game-table {
-        min-height: 350px;
+        padding: 0 var(--spacing-xs);
     }
 
     /* Extra compact trump and score on small screens */
     .trump-display-corner,
-    .score-display-corner {
+    .score-display-corner,
+    .round-score-display {
         padding: 4px 8px;
         font-size: var(--font-size-xs);
     }
@@ -1106,40 +1400,131 @@
         display: none;
         /* Hide text labels on very small screens */
     }
+
+    /* Make cards even smaller for very small screens */
+    .card-back {
+        width: 25px;
+        height: 38px;
+        margin-left: -5px;
+    }
+
+    .played-card {
+        width: 30px;
+        height: 45px;
+    }
+
+    .trick-cards {
+        width: 120px;
+        height: 120px;
+    }
+
+    /* Optimize player info for small screens */
+    .player-left .player-info,
+    .player-right .player-info {
+        min-width: 60px;
+    }
+}
+
+/* Ensure mobile button styles are applied with high specificity */
+@media screen and (max-width: 1023px) {
+    button.mobile-leave-btn {
+        /* Reset all inherited styles */
+        all: unset !important;
+
+        /* Apply our custom styles with maximum specificity */
+        display: block !important;
+        visibility: visible !important;
+        position: fixed !important;
+        top: 15px !important;
+        left: 15px !important;
+        z-index: 1000 !important;
+        background: rgba(44, 62, 80, 0.95) !important;
+        color: white !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        padding: 10px 14px !important;
+        border-radius: 12px !important;
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        backdrop-filter: blur(15px) !important;
+        transition: all 0.15s ease !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+        text-decoration: none !important;
+        outline: none !important;
+        box-sizing: border-box !important;
+        line-height: 1.2 !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+    }
+
+    button.mobile-leave-btn:hover {
+        background: rgba(44, 62, 80, 1) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
+    }
+
+    button.mobile-leave-btn:active {
+        transform: translateY(0) !important;
+    }
 }
 
 /* Mobile Landscape Orientation - Optimized for landscape mode */
-@media screen and (max-height: 500px) and (orientation: landscape) {
+@media screen and (max-width: 1023px) and (max-height: 500px) and (orientation: landscape) {
+
+    /* Hide header in landscape for maximum space */
     .game-header {
-        padding: var(--spacing-xs) 0;
+        display: none !important;
     }
 
-    .header-content {
-        padding: 0 var(--spacing-sm);
+    /* Show mobile leave button in landscape - inherit mobile styles and adjust position */
+    .mobile-leave-btn {
+        /* Keep all the mobile styles and just adjust position/size */
+        top: 8px !important;
+        left: 8px !important;
+        padding: 6px 10px !important;
+        font-size: 12px !important;
     }
 
-    .game-title {
-        font-size: var(--font-size-sm);
-    }
-
-    .round-info {
-        font-size: var(--font-size-xs);
+    /* Mobile connection status in landscape - inherit mobile styles and adjust position */
+    .mobile-connection-status {
+        /* Keep all the mobile styles and just adjust position/size */
+        top: 8px !important;
+        right: 8px !important;
+        padding: 6px 10px !important;
+        font-size: 12px !important;
     }
 
     .game-main {
-        padding: var(--spacing-xs);
+        padding: 0;
+        height: 100vh;
+    }
+
+    .game-container {
+        height: 100vh;
+        margin: 0;
+        max-width: none;
     }
 
     .game-table {
+        margin: 0 20px;
         grid-template-areas:
             "trump-corner top score-corner"
-            "round-score-area center right"
             "left center right"
-            ". bottom .";
-        grid-template-rows: auto auto 1fr auto;
-        min-height: 280px;
+            ". center ."
+            "round-score-area bottom .";
+        grid-template-rows: auto 1fr auto auto;
+        min-height: calc(100vh - 40px);
         padding: var(--spacing-xs);
         gap: var(--spacing-xs);
+    }
+
+    /* Move round score display below turn display */
+    .round-score-display {
+        grid-area: round-score-area;
+        align-self: end;
+        justify-self: start;
+        margin-top: var(--spacing-xs);
     }
 
     /* Force current player to bottom in landscape */
@@ -1150,7 +1535,8 @@
 
     /* Compact layout for landscape */
     .trump-display-corner,
-    .score-display-corner {
+    .score-display-corner,
+    .round-score-display {
         padding: 3px 6px;
         font-size: var(--font-size-xs);
     }
@@ -1199,30 +1585,42 @@
     .player-left,
     .player-right {
         transform: none;
+        writing-mode: horizontal-tb;
+    }
+
+    .player-left {
+        justify-self: start;
+        align-self: center;
+    }
+
+    .player-right {
+        justify-self: end;
+        align-self: center;
     }
 
     .player-left .player-info,
     .player-right .player-info {
-        writing-mode: vertical-rl;
-        text-orientation: mixed;
+        writing-mode: horizontal-tb;
+        text-orientation: initial;
+        min-width: 60px;
         font-size: var(--font-size-xs);
     }
 
     /* Compact opponent hands */
     .card-back {
-        width: 25px;
-        height: 38px;
-        margin-left: -6px;
+        width: 20px;
+        height: 30px;
+        margin-left: -4px;
     }
 
     .card-back::before {
-        width: 12px;
-        height: 12px;
+        width: 8px;
+        height: 8px;
     }
 
     .card-back::after {
-        width: 6px;
-        height: 6px;
+        width: 4px;
+        height: 4px;
     }
 }
 
@@ -3474,9 +3872,9 @@ textarea {
         background: rgba(20, 20, 20, 0.95);
         border-color: rgba(255, 255, 255, 0.2);
     }
-}/
-* Smooth Card Animations */
+}
 
+/ * Smooth Card Animations */
 /* Card back styling with smooth animations */
 .card-back {
     width: 40px;
@@ -3527,6 +3925,7 @@ textarea {
         opacity: 0;
         transform: translateY(-10px) scale(0.9);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -3543,6 +3942,7 @@ textarea {
         opacity: 1;
         transform: translateY(0) scale(1);
     }
+
     to {
         opacity: 0;
         transform: translateY(-5px) scale(0.95);
@@ -3574,10 +3974,12 @@ textarea {
         transform: translateY(0) scale(1);
         opacity: 1;
     }
+
     50% {
         transform: translateY(-20px) scale(1.05);
         opacity: 0.8;
     }
+
     100% {
         transform: translateY(-40px) scale(0.9);
         opacity: 0;
@@ -3594,10 +3996,12 @@ textarea {
         transform: scale(1);
         opacity: 1;
     }
+
     50% {
         transform: scale(1.1);
         opacity: 0.7;
     }
+
     100% {
         transform: scale(0.8);
         opacity: 0;
@@ -3612,9 +4016,12 @@ textarea {
 }
 
 @keyframes winnerHighlightSubtle {
-    0%, 100% {
+
+    0%,
+    100% {
         box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
     }
+
     50% {
         box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
     }
@@ -3627,23 +4034,24 @@ textarea {
         height: 53px;
         margin-left: -6px;
     }
-    
+
     .card-back::before {
         width: 12px;
         height: 12px;
     }
-    
+
     .card-back::after {
         width: 6px;
         height: 6px;
     }
-    
+
     /* Faster animations on mobile for better performance */
     @keyframes cardBackFadeIn {
         from {
             opacity: 0;
             transform: translateY(-5px) scale(0.95);
         }
+
         to {
             opacity: 1;
             transform: translateY(0) scale(1);
@@ -3658,12 +4066,12 @@ textarea {
         height: 38px;
         margin-left: -4px;
     }
-    
+
     .card-back::before {
         width: 10px;
         height: 10px;
     }
-    
+
     .card-back::after {
         width: 5px;
         height: 5px;
@@ -3677,15 +4085,15 @@ textarea {
         opacity: 1;
         transform: none;
     }
-    
+
     .card {
         transition: none;
     }
-    
+
     .card:hover:not(.disabled) {
         transform: translateY(-4px);
     }
-    
+
     .card.selected {
         transform: translateY(-6px);
     }

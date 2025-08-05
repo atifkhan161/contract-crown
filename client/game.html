@@ -24,6 +24,18 @@
 
 <body>
     <div id="app">
+        <!-- Mobile Leave Game Button (hidden on desktop) -->
+        <button id="mobile-leave-game-btn" class="mobile-leave-btn">
+            <span class="btn-icon">←</span>
+            Leave
+        </button>
+
+        <!-- Mobile Connection Status (hidden on desktop) -->
+        <div id="mobile-connection-status" class="mobile-connection-status">
+            <span class="status-indicator" id="mobile-status-indicator"></span>
+            <span class="status-text" id="mobile-status-text">Connecting...</span>
+        </div>
+
         <!-- Header -->
         <header class="game-header">
             <div class="header-content">

@@ -98,10 +98,16 @@ export class GameManager {
      * Set up global event listeners
      */
     setupEventListeners() {
-        // Leave game button
+        // Leave game button (desktop)
         const leaveGameBtn = document.getElementById('leave-game-btn');
         if (leaveGameBtn) {
             leaveGameBtn.addEventListener('click', () => this.leaveGame());
+        }
+
+        // Mobile leave game button
+        const mobileLeaveGameBtn = document.getElementById('mobile-leave-game-btn');
+        if (mobileLeaveGameBtn) {
+            mobileLeaveGameBtn.addEventListener('click', () => this.leaveGame());
         }
 
         // Error modal handlers

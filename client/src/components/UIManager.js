@@ -18,6 +18,10 @@ export class UIManager {
         this.elements.statusIndicator = document.getElementById('status-indicator');
         this.elements.statusText = document.getElementById('status-text');
 
+        // Mobile elements
+        this.elements.mobileStatusIndicator = document.getElementById('mobile-status-indicator');
+        this.elements.mobileStatusText = document.getElementById('mobile-status-text');
+
         // Player elements
         this.elements.playerTopName = document.getElementById('player-top-name');
         this.elements.playerLeftName = document.getElementById('player-left-name');
@@ -274,8 +278,21 @@ export class UIManager {
 
         const statusInfo = statusMap[status] || statusMap.disconnected;
 
-        this.elements.statusText.textContent = statusInfo.text;
-        this.elements.statusIndicator.className = `status-indicator ${statusInfo.class}`;
+        // Update desktop connection status
+        if (this.elements.statusText) {
+            this.elements.statusText.textContent = statusInfo.text;
+        }
+        if (this.elements.statusIndicator) {
+            this.elements.statusIndicator.className = `status-indicator ${statusInfo.class}`;
+        }
+
+        // Update mobile connection status
+        if (this.elements.mobileStatusText) {
+            this.elements.mobileStatusText.textContent = statusInfo.text;
+        }
+        if (this.elements.mobileStatusIndicator) {
+            this.elements.mobileStatusIndicator.className = `status-indicator ${statusInfo.class}`;
+        }
     }
 
     /**
