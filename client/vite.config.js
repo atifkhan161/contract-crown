@@ -51,7 +51,9 @@ export default defineConfig({
         login: resolve(__dirname, 'login.html'),
         register: resolve(__dirname, 'register.html'),
         dashboard: resolve(__dirname, 'dashboard.html'),
-        waitingRoom: resolve(__dirname, 'waiting-room.html')
+        waitingRoom: resolve(__dirname, 'waiting-room.html'),
+        game: resolve(__dirname, 'game.html'),
+        lobby: resolve(__dirname, 'lobby.html')
       }
     }
   },
