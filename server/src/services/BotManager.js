@@ -175,27 +175,26 @@ class BotManager {
             for (const bot of bots) {
                 const botData = bot.toDatabaseFormat();
                 
-                // Insert bot as a temporary user (using only basic columns)
+                // Insert bot as a temporary user with all required fields and unique identifiers
+                const uniqueUsername = `${botData.username}_${botData.user_id.slice(-8)}`;
+                const uniqueEmail = `${botData.user_id}@bot.local`;
+                
                 try {
                     await dbConnection.query(`
-                        INSERT INTO users (user_id, username, email, created_at)
-                        VALUES (?, ?, ?, NOW())
+                        INSERT INTO users (user_id, username, email, password_hash, created_at)
+                        VALUES (?, ?, ?, ?, NOW())
                         ON DUPLICATE KEY UPDATE
-                        username = VALUES(username)
+                        username = VALUES(username),
+                        email = VALUES(email)
                     `, [
                         botData.user_id,
-                        botData.username,
-                        `${botData.user_id}@bot.local` // Dummy email for bots
+                        uniqueUsername,
+                        uniqueEmail,
+                        'BOT_NO_PASSWORD'
                     ]);
                 } catch (columnError) {
-                    // If basic insertion fails, try with minimal columns
-                    await dbConnection.query(`
-                        INSERT IGNORE INTO users (user_id, username)
-                        VALUES (?, ?)
-                    `, [
-                        botData.user_id,
-                        botData.username
-                    ]);
+                    console.error('[BotManager] Failed to insert bot user:', columnError);
+                    throw columnError;
                 }
             }
 

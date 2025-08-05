@@ -279,7 +279,7 @@ class Room {
                 }
 
                 // Increment room version to track state change
-                await this.incrementVersion();
+                await this.incrementVersionInTransaction(connection);
             });
 
             // Remove player from in-memory data
@@ -407,6 +407,46 @@ class Room {
         }
     }
 
+    /**
+     * Increment version within a transaction with retry logic
+     */
+    async incrementVersionInTransaction(connection) {
+        try {
+            // Get the current version from database to avoid stale data
+            const [currentRows] = await connection.execute(`
+                SELECT version FROM rooms WHERE room_id = ?
+            `, [this.room_id]);
+            
+            if (currentRows.length === 0) {
+                throw new Error(`Room ${this.room_id} not found`);
+            }
+            
+            const currentVersion = currentRows[0].version;
+            const newVersion = currentVersion + 1;
+            
+            const result = await connection.execute(`
+                UPDATE rooms 
+                SET version = ?, updated_at = NOW() 
+                WHERE room_id = ? AND version = ?
+            `, [newVersion, this.room_id, currentVersion]);
+            
+            if (result.affectedRows === 0) {
+                // This shouldn't happen within a transaction, but handle gracefully
+                console.warn(`[Room] Version increment had no effect for room ${this.room_id}`);
+            }
+            
+            // Update instance version
+            this.version = newVersion;
+            this.updated_at = new Date();
+            
+            return this;
+            
+        } catch (error) {
+            console.error('[Room] IncrementVersionInTransaction error:', error.message);
+            throw error;
+        }
+    }
+
     canUserJoin(userId) {
         // Check if room is waiting for players
         if (this.status !== 'waiting') {
@@ -501,7 +541,7 @@ class Room {
                 }
 
                 // Increment room version to track state change
-                await this.incrementVersion();
+                await this.incrementVersionInTransaction(connection);
             });
 
             // Update in-memory player data
@@ -602,7 +642,7 @@ class Room {
                 }
 
                 // Increment room version to track state change
-                await this.incrementVersion();
+                await this.incrementVersionInTransaction(connection);
             });
 
             // Update in-memory player data
@@ -808,7 +848,7 @@ class Room {
                 `, [this.room_id]);
 
                 // Increment room version to track state change
-                await this.incrementVersion();
+                await this.incrementVersionInTransaction(connection);
             });
 
             // Update in-memory player data
@@ -838,7 +878,7 @@ class Room {
                 `, [this.room_id]);
 
                 // Increment room version to track state change
-                await this.incrementVersion();
+                await this.incrementVersionInTransaction(connection);
             });
 
             // Update in-memory player data

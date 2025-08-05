@@ -1,6 +1,7 @@
 import Room from '../models/Room.js';
 import Game from '../models/Game.js';
 import BotManager from '../services/BotManager.js';
+import dbConnection from '../../database/connection.js';
 
 /**
  * Waiting Room WebSocket Handler
@@ -225,7 +226,11 @@ class WaitingRoomSocketHandler {
                         }
                     }
                 } catch (dbError) {
-                    console.error('[WaitingRoom] Database update failed on leave:', dbError);
+                    if (dbError.message.includes('concurrent update detected')) {
+                        console.warn('[WaitingRoom] Concurrent update detected on player leave - this is normal during game transitions');
+                    } else {
+                        console.error('[WaitingRoom] Database update failed on leave:', dbError);
+                    }
                 }
 
                 // Clean up socket mappings
@@ -481,6 +486,9 @@ class WaitingRoomSocketHandler {
                     // Update WebSocket room state with team assignments
                     this.updateWebSocketTeamAssignments(room, teams);
 
+                    // Initialize WebSocket room for the new game
+                    await this.initializeGameWebSocketRoom(game.game_id, room, game);
+                    
                     dbUpdateSuccess = true;
                     console.log(`[WaitingRoom] Game ${game.game_code} created successfully from room ${roomId}`);
                 }
@@ -755,15 +763,7 @@ class WaitingRoomSocketHandler {
                 names: ['Bot Alpha', 'Bot Beta', 'Bot Gamma'].slice(0, botsNeeded)
             });
 
-            // Store bots in database
-            try {
-                await BotManager.storeBotPlayersInDatabase(roomId);
-            } catch (botStorageError) {
-                console.warn('[WaitingRoom] Failed to store bots in users table:', botStorageError);
-                // Continue - bots will work in WebSocket-only mode
-            }
-
-            // Add bots to WebSocket room state
+            // Add bots to WebSocket room state first
             for (const bot of bots) {
                 const botPlayerData = {
                     userId: bot.id,
@@ -777,16 +777,45 @@ class WaitingRoomSocketHandler {
                 room.players.set(bot.id, botPlayerData);
             }
 
-            // Add bots to database room
+            // Store bots in database - first create users, then add to room
+            let botsStoredInDatabase = false;
             try {
+                // Step 1: Create bot users with unique identifiers
+                for (const bot of bots) {
+                    const botData = bot.toDatabaseFormat();
+                    const uniqueUsername = `${botData.username}_${botData.user_id.slice(-8)}`;
+                    const uniqueEmail = `${botData.user_id}@bot.local`;
+                    
+                    await dbConnection.query(`
+                        INSERT INTO users (user_id, username, email, password_hash, created_at)
+                        VALUES (?, ?, ?, ?, NOW())
+                        ON DUPLICATE KEY UPDATE
+                        username = VALUES(username),
+                        email = VALUES(email)
+                    `, [
+                        botData.user_id,
+                        uniqueUsername,
+                        uniqueEmail,
+                        'BOT_NO_PASSWORD'
+                    ]);
+                    
+                    console.log(`[WaitingRoom] Created bot user ${uniqueUsername} (${botData.user_id})`);
+                }
+                
+                // Step 2: Add bots to room_players
                 const dbRoom = await Room.findById(roomId);
                 if (dbRoom) {
                     for (const bot of bots) {
                         await dbRoom.addPlayer(bot.id, bot.name, true); // true indicates bot
                     }
+                    console.log(`[WaitingRoom] Added ${bots.length} bots to database room ${roomId}`);
                 }
+                
+                botsStoredInDatabase = true;
+                
             } catch (dbError) {
-                console.warn('[WaitingRoom] Failed to add bots to database room:', dbError);
+                console.error('[WaitingRoom] Failed to store bots in database:', dbError);
+                console.warn('[WaitingRoom] Bots will work in WebSocket-only mode');
                 // Continue with WebSocket-only bots
             }
 
@@ -797,7 +826,8 @@ class WaitingRoomSocketHandler {
 
         } catch (error) {
             console.error('[WaitingRoom] Error adding bots to room:', error);
-            throw error;
+            console.error('[WaitingRoom] Failed to add bots to database room:', error);
+            throw new Error(`Failed to add bots to room: ${error.message}`);
         }
     }
 
@@ -1048,6 +1078,56 @@ class WaitingRoomSocketHandler {
         });
 
         console.log(`[WaitingRoom] Navigation commands sent to room ${roomId}: ${redirectUrl}`);
+    }
+
+    /**
+     * Initialize WebSocket room for a newly created game
+     */
+    async initializeGameWebSocketRoom(gameId, waitingRoom, game) {
+        try {
+            // Create game room data structure
+            const gameRoomData = {
+                gameId: gameId,
+                players: new Map(),
+                teams: { team1: [], team2: [] },
+                createdAt: new Date().toISOString(),
+                status: 'in_progress',
+                hostId: waitingRoom.hostId
+            };
+
+            // Copy players from waiting room to game room
+            for (const [playerId, playerData] of waitingRoom.players.entries()) {
+                gameRoomData.players.set(playerId, {
+                    ...playerData,
+                    gameId: gameId
+                });
+                
+                // Add to appropriate team
+                if (playerData.teamAssignment === 1) {
+                    gameRoomData.teams.team1.push(playerId);
+                } else if (playerData.teamAssignment === 2) {
+                    gameRoomData.teams.team2.push(playerId);
+                }
+            }
+
+            // Set the game room in the socket manager
+            this.socketManager.gameRooms.set(gameId, gameRoomData);
+
+            // Initialize game state
+            this.socketManager.gameStateManager.initializeGameState(gameId, {
+                status: 'in_progress',
+                phase: 'lobby',
+                hostId: waitingRoom.hostId,
+                players: Object.fromEntries(gameRoomData.players),
+                teams: gameRoomData.teams
+            });
+
+            console.log(`[WaitingRoom] Initialized WebSocket room for game ${gameId} with ${gameRoomData.players.size} players`);
+
+        } catch (error) {
+            console.error(`[WaitingRoom] Failed to initialize WebSocket room for game ${gameId}:`, error);
+            throw error;
+        }
     }
 
     // Helper methods
