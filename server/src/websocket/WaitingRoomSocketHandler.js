@@ -1,5 +1,6 @@
 import Room from '../models/Room.js';
 import Game from '../models/Game.js';
+import BotManager from '../services/BotManager.js';
 
 /**
  * Waiting Room WebSocket Handler
@@ -168,7 +169,7 @@ class WaitingRoomSocketHandler {
             if (room && room.players.has(userId)) {
                 const leavingPlayer = room.players.get(userId);
                 const wasHost = String(room.hostId) === String(userId);
-                
+
                 // Remove player from room
                 room.players.delete(userId);
 
@@ -179,12 +180,12 @@ class WaitingRoomSocketHandler {
                 // Enhanced host transfer logic
                 let newHostId = room.hostId;
                 let hostTransferred = false;
-                
+
                 if (wasHost && room.players.size > 0) {
                     // Prioritize connected players for host transfer
                     const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
                     const readyPlayers = connectedPlayers.filter(p => p.isReady);
-                    
+
                     // Prefer ready players, then connected players, then any player
                     let newHost = null;
                     if (readyPlayers.length > 0) {
@@ -194,7 +195,7 @@ class WaitingRoomSocketHandler {
                     } else {
                         newHost = Array.from(room.players.values())[0];
                     }
-                    
+
                     if (newHost) {
                         newHostId = String(newHost.userId);
                         room.hostId = newHostId;
@@ -212,7 +213,7 @@ class WaitingRoomSocketHandler {
                     if (dbRoom) {
                         await dbRoom.removePlayer(userId);
                         dbUpdateSuccess = true;
-                        
+
                         // Update host in database if transferred
                         if (hostTransferred && newHostId !== room.hostId) {
                             try {
@@ -243,7 +244,7 @@ class WaitingRoomSocketHandler {
                 if (room.players.size === 0) {
                     this.socketManager.gameRooms.delete(roomId);
                     console.log(`[WaitingRoom] Cleaned up empty room: ${roomId}`);
-                    
+
                     // Optionally clean up database room if empty
                     try {
                         const dbRoom = await Room.findById(roomId);
@@ -258,19 +259,19 @@ class WaitingRoomSocketHandler {
             }
 
             // Send confirmation to leaving player
-            socket.emit('waiting-room-left', { 
-                roomId, 
+            socket.emit('waiting-room-left', {
+                roomId,
                 success: true,
                 message: 'Successfully left the room',
-                timestamp: new Date().toISOString() 
+                timestamp: new Date().toISOString()
             });
 
         } catch (error) {
             console.error('[WaitingRoom] Error leaving waiting room:', error);
-            socket.emit('waiting-room-error', { 
+            socket.emit('waiting-room-error', {
                 message: 'Failed to leave waiting room',
                 code: 'LEAVE_ROOM_ERROR',
-                details: error.message 
+                details: error.message
             });
         }
     }
@@ -375,7 +376,7 @@ class WaitingRoomSocketHandler {
 
         } catch (error) {
             console.error('[WaitingRoom] Error toggling ready status:', error);
-            socket.emit('ready-toggle-error', { 
+            socket.emit('ready-toggle-error', {
                 message: error.message || 'Failed to update ready status',
                 code: 'READY_TOGGLE_ERROR'
             });
@@ -429,7 +430,7 @@ class WaitingRoomSocketHandler {
             // Validate game start conditions with detailed feedback
             const gameStartInfo = this.calculateGameStartEligibility(room);
             if (!gameStartInfo.canStartGame) {
-                socket.emit('game-start-error', { 
+                socket.emit('game-start-error', {
                     message: gameStartInfo.reason,
                     details: {
                         connectedPlayers: gameStartInfo.totalConnected,
@@ -453,11 +454,20 @@ class WaitingRoomSocketHandler {
 
             console.log(`[WaitingRoom] Game start validated for room ${roomId} by ${username}`);
 
+            // Add bots if needed to reach 4 players
+            const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
+            const botsNeeded = 4 - connectedPlayers.length;
+
+            if (botsNeeded > 0) {
+                console.log(`[WaitingRoom] Adding ${botsNeeded} bots to room ${roomId}`);
+                await this.addBotsToRoom(room, roomId, botsNeeded);
+            }
+
             // Create game with team formation and database entries
             let game = null;
             let teams = null;
             let dbUpdateSuccess = false;
-            
+
             try {
                 const dbRoom = await Room.findById(roomId);
                 if (dbRoom) {
@@ -467,20 +477,20 @@ class WaitingRoomSocketHandler {
                         team1: game.teams.find(t => t.team_number === 1)?.players || [],
                         team2: game.teams.find(t => t.team_number === 2)?.players || []
                     };
-                    
+
                     // Update WebSocket room state with team assignments
                     this.updateWebSocketTeamAssignments(room, teams);
-                    
+
                     dbUpdateSuccess = true;
                     console.log(`[WaitingRoom] Game ${game.game_code} created successfully from room ${roomId}`);
                 }
             } catch (dbError) {
                 console.error('[WaitingRoom] Game creation failed:', dbError);
-                
+
                 // Fallback: form teams in WebSocket only
-                const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
-                if (connectedPlayers.length >= 2) {
-                    const hasTeamAssignments = connectedPlayers.every(p => p.teamAssignment !== null);
+                const allPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
+                if (allPlayers.length >= 2) {
+                    const hasTeamAssignments = allPlayers.every(p => p.teamAssignment !== null);
                     if (!hasTeamAssignments) {
                         teams = await this.formTeamsWebSocketOnly(room);
                     } else {
@@ -496,14 +506,14 @@ class WaitingRoomSocketHandler {
 
         } catch (error) {
             console.error('[WaitingRoom] Error starting game:', error);
-            
+
             // Reset room status on error
             const room = this.socketManager.gameRooms.get(roomId);
             if (room && room.status === 'starting') {
                 room.status = 'waiting';
             }
-            
-            socket.emit('game-start-error', { 
+
+            socket.emit('game-start-error', {
                 message: error.message || 'Failed to start game',
                 code: 'GAME_START_ERROR'
             });
@@ -524,7 +534,7 @@ class WaitingRoomSocketHandler {
             if (room && room.players.has(disconnectedUserId)) {
                 const player = room.players.get(disconnectedUserId);
                 const wasHost = String(room.hostId) === String(disconnectedUserId);
-                
+
                 player.isConnected = false;
                 player.disconnectedAt = new Date().toISOString();
 
@@ -568,12 +578,12 @@ class WaitingRoomSocketHandler {
             // Enhanced host transfer logic if the disconnected player was host
             let newHostId = room.hostId;
             let hostTransferred = false;
-            
+
             if (wasHost && room.players.size > 0) {
                 // Prioritize connected players for host transfer
                 const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
                 const readyPlayers = connectedPlayers.filter(p => p.isReady);
-                
+
                 // Prefer ready players, then connected players, then any player
                 let newHost = null;
                 if (readyPlayers.length > 0) {
@@ -583,7 +593,7 @@ class WaitingRoomSocketHandler {
                 } else {
                     newHost = Array.from(room.players.values())[0];
                 }
-                
+
                 if (newHost) {
                     newHostId = String(newHost.userId);
                     room.hostId = newHostId;
@@ -599,7 +609,7 @@ class WaitingRoomSocketHandler {
                 if (dbRoom) {
                     await dbRoom.removePlayer(userId);
                     dbUpdateSuccess = true;
-                    
+
                     // Update host in database if transferred
                     if (hostTransferred && newHostId !== room.hostId) {
                         try {
@@ -630,7 +640,7 @@ class WaitingRoomSocketHandler {
             if (room.players.size === 0) {
                 this.socketManager.gameRooms.delete(roomId);
                 console.log(`[WaitingRoom] Cleaned up empty room after disconnection timeout: ${roomId}`);
-                
+
                 // Clean up database room if empty
                 try {
                     const dbRoom = await Room.findById(roomId);
@@ -680,7 +690,7 @@ class WaitingRoomSocketHandler {
     async formTeamsWebSocketOnly(room) {
         try {
             const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
-            
+
             if (connectedPlayers.length < 2) {
                 throw new Error('Need at least 2 connected players for team formation');
             }
@@ -732,6 +742,83 @@ class WaitingRoomSocketHandler {
             console.error('[WaitingRoom] Error forming teams in WebSocket:', error);
             throw error;
         }
+    }
+
+    /**
+     * Add bots to room to fill empty slots
+     */
+    async addBotsToRoom(room, roomId, botsNeeded) {
+        try {
+            // Create bots for this game
+            const bots = BotManager.createBotsForGame(roomId, botsNeeded, {
+                difficulty: 'medium',
+                names: ['Bot Alpha', 'Bot Beta', 'Bot Gamma'].slice(0, botsNeeded)
+            });
+
+            // Store bots in database
+            try {
+                await BotManager.storeBotPlayersInDatabase(roomId);
+            } catch (botStorageError) {
+                console.warn('[WaitingRoom] Failed to store bots in users table:', botStorageError);
+                // Continue - bots will work in WebSocket-only mode
+            }
+
+            // Add bots to WebSocket room state
+            for (const bot of bots) {
+                const botPlayerData = {
+                    userId: bot.id,
+                    username: bot.name,
+                    isReady: true, // Bots are always ready
+                    isConnected: true,
+                    teamAssignment: null,
+                    isBot: true
+                };
+
+                room.players.set(bot.id, botPlayerData);
+            }
+
+            // Add bots to database room
+            try {
+                const dbRoom = await Room.findById(roomId);
+                if (dbRoom) {
+                    for (const bot of bots) {
+                        await dbRoom.addPlayer(bot.id, bot.name, true); // true indicates bot
+                    }
+                }
+            } catch (dbError) {
+                console.warn('[WaitingRoom] Failed to add bots to database room:', dbError);
+                // Continue with WebSocket-only bots
+            }
+
+            console.log(`[WaitingRoom] Added ${bots.length} bots to room ${roomId}`);
+
+            // Broadcast bot additions to all players
+            this.broadcastBotsAdded(roomId, bots);
+
+        } catch (error) {
+            console.error('[WaitingRoom] Error adding bots to room:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Broadcast bot additions to all players in room
+     */
+    broadcastBotsAdded(roomId, bots) {
+        const botData = bots.map(bot => ({
+            userId: bot.id,
+            username: bot.name,
+            isReady: true,
+            isConnected: true,
+            isBot: true
+        }));
+
+        this.io.to(roomId).emit('bots-added', {
+            roomId,
+            bots: botData,
+            message: `${bots.length} bot${bots.length > 1 ? 's' : ''} joined the game`,
+            timestamp: new Date().toISOString()
+        });
     }
 
     /**
@@ -792,13 +879,15 @@ class WaitingRoomSocketHandler {
             reason = 'Need at least 2 connected players';
         } else if (!allConnectedReady) {
             reason = `${readyCount}/${connectedPlayers.length} players ready`;
-        } else if (connectedPlayers.length === 4) {
-            // For 4-player games, teams will be formed automatically on start
-            canStartGame = true;
-            reason = 'Ready to start!';
         } else {
+            // Game can start with 2+ ready players, bots will fill remaining slots
             canStartGame = true;
-            reason = 'Ready to start!';
+            const botsNeeded = 4 - connectedPlayers.length;
+            if (botsNeeded > 0) {
+                reason = `Ready to start with ${connectedPlayers.length} players + ${botsNeeded} bots!`;
+            } else {
+                reason = 'Ready to start!';
+            }
         }
 
         return {
@@ -806,7 +895,8 @@ class WaitingRoomSocketHandler {
             reason,
             readyCount,
             totalConnected: connectedPlayers.length,
-            allReady: allConnectedReady
+            allReady: allConnectedReady,
+            botsNeeded: Math.max(0, 4 - connectedPlayers.length)
         };
     }
 
@@ -925,8 +1015,8 @@ class WaitingRoomSocketHandler {
             targetScore: game.target_score
         } : null;
 
-        // Determine redirect URL - use game ID if available, otherwise room ID
-        const redirectUrl = game ? `/game.html?gameId=${game.game_id}` : `/game.html?roomId=${roomId}`;
+        // Determine redirect URL - use game ID if available, otherwise room parameter
+        const redirectUrl = game ? `/game.html?gameId=${game.game_id}` : `/game.html?room=${roomId}`;
 
         this.io.to(roomId).emit('waiting-room-game-starting', {
             roomId,

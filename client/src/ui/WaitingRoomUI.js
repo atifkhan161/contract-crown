@@ -560,14 +560,34 @@ export class WaitingRoomUI {
             slot.classList.add('ready');
         }
 
+        // Add bot styling if this is a bot player
+        if (player.isBot) {
+            slot.classList.add('bot-player');
+        } else {
+            slot.classList.remove('bot-player');
+        }
+
         const nameElement = slot.querySelector('.player-name');
         const readyText = slot.querySelector('.ready-text');
         const hostBadge = slot.querySelector('.host-badge');
         const avatarPlaceholder = slot.querySelector('.avatar-placeholder');
         
-        if (nameElement) nameElement.textContent = player.username || 'Unknown Player';
+        // Display bot name with bot indicator
+        const displayName = player.isBot ? `🤖 ${player.username}` : (player.username || 'Unknown Player');
+        if (nameElement) nameElement.textContent = displayName;
+        
         if (readyText) readyText.textContent = player.isReady ? 'Ready' : 'Not Ready';
-        if (avatarPlaceholder) avatarPlaceholder.textContent = player.username ? player.username.charAt(0).toUpperCase() : '?';
+        
+        // For bots, show a robot icon in avatar, for humans show first letter
+        if (avatarPlaceholder) {
+            if (player.isBot) {
+                avatarPlaceholder.textContent = '🤖';
+                avatarPlaceholder.style.fontSize = '1.2em';
+            } else {
+                avatarPlaceholder.textContent = player.username ? player.username.charAt(0).toUpperCase() : '?';
+                avatarPlaceholder.style.fontSize = '';
+            }
+        }
         
         // Show host badge if this player is the host
         if (player.isHost && hostBadge) {

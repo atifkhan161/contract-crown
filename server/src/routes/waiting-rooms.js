@@ -459,7 +459,7 @@ router.post('/:roomId/start', auth, async (req, res) => {
                 targetScore: game.target_score
             } : null;
 
-            const redirectUrl = game ? `/game.html?gameId=${game.game_id}` : `/game.html?roomId=${roomId}`;
+            const redirectUrl = game ? `/game.html?gameId=${game.game_id}` : `/game.html?room=${roomId}`;
 
             req.io.to(roomId).emit('waiting-room-game-starting-http', {
                 roomId,
@@ -485,7 +485,7 @@ router.post('/:roomId/start', auth, async (req, res) => {
         }
 
         // Prepare response
-        const redirectUrl = game ? `/game.html?gameId=${game.game_id}` : `/game.html?roomId=${roomId}`;
+        const redirectUrl = game ? `/game.html?gameId=${game.game_id}` : `/game.html?room=${roomId}`;
         
         res.json({
             success: true,

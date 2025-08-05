@@ -216,12 +216,14 @@ class Room {
         }
     }
 
-    async addPlayer(userId) {
+    async addPlayer(userId, username = null, isBot = false) {
         try {
-            // Check if user can join
-            const canJoin = this.canUserJoin(userId);
-            if (!canJoin.canJoin) {
-                throw new Error(canJoin.reason);
+            // For bots, skip the canJoin check as they're added automatically
+            if (!isBot) {
+                const canJoin = this.canUserJoin(userId);
+                if (!canJoin.canJoin) {
+                    throw new Error(canJoin.reason);
+                }
             }
 
             // Add player to room
@@ -230,10 +232,17 @@ class Room {
                 VALUES (?, ?, NOW())
             `, [this.room_id, userId]);
 
+            // If it's a bot and we have username, set ready status
+            if (isBot) {
+                await dbConnection.query(`
+                    UPDATE room_players SET is_ready = 1 WHERE room_id = ? AND user_id = ?
+                `, [this.room_id, userId]);
+            }
+
             // Reload players
             await this.loadPlayers();
 
-            console.log(`[Room] User ${userId} joined room ${this.room_id}`);
+            console.log(`[Room] ${isBot ? 'Bot' : 'User'} ${userId} joined room ${this.room_id}`);
             return this;
         } catch (error) {
             console.error('[Room] AddPlayer error:', error.message);

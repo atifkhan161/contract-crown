@@ -45,7 +45,7 @@ export class GameManager {
             // Check game mode
             const urlParams = new URLSearchParams(window.location.search);
             this.isDemoMode = urlParams.get('demo') === 'true';
-            const gameId = urlParams.get('gameId');
+            const gameId = urlParams.get('gameId') || urlParams.get('room');
 
             // Initialize UI
             this.setupEventListeners();

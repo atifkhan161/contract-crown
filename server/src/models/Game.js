@@ -69,7 +69,7 @@ class Game {
                 await connection.execute(`
                     INSERT INTO teams (team_id, game_id, team_number, current_score, player1_id, player2_id)
                     VALUES (?, ?, ?, ?, ?, ?)
-                `, [team1Id, game.game_id, 1, 0, team1Player1.id, team1Player2?.id]);
+                `, [team1Id, game.game_id, 1, 0, team1Player1.id, team1Player2?.id || null]);
 
                 // Create team 2
                 const team2Id = uuidv4();
@@ -79,7 +79,7 @@ class Game {
                 await connection.execute(`
                     INSERT INTO teams (team_id, game_id, team_number, current_score, player1_id, player2_id)
                     VALUES (?, ?, ?, ?, ?, ?)
-                `, [team2Id, game.game_id, 2, 0, team2Player1.id, team2Player2?.id]);
+                `, [team2Id, game.game_id, 2, 0, team2Player1.id, team2Player2?.id || null]);
 
                 // Create game_players entries for all players
                 for (const player of [...teams.team1, ...teams.team2]) {
@@ -88,10 +88,11 @@ class Game {
                         ? teams.team1.findIndex(p => p.id === player.id) + 1
                         : teams.team2.findIndex(p => p.id === player.id) + 3;
 
+                    const gamePlayerId = uuidv4();
                     await connection.execute(`
-                        INSERT INTO game_players (game_id, user_id, team_id, seat_position, joined_at)
-                        VALUES (?, ?, ?, ?, NOW())
-                    `, [game.game_id, player.id, teamId, seatPosition]);
+                        INSERT INTO game_players (game_player_id, game_id, user_id, team_id, seat_position, joined_at)
+                        VALUES (?, ?, ?, ?, ?, NOW())
+                    `, [gamePlayerId, game.game_id, player.id, teamId, seatPosition]);
                 }
             });
 

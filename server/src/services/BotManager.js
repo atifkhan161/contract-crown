@@ -175,22 +175,28 @@ class BotManager {
             for (const bot of bots) {
                 const botData = bot.toDatabaseFormat();
                 
-                // Insert bot as a temporary user
-                await dbConnection.query(`
-                    INSERT INTO users (user_id, username, email, is_bot, bot_personality, bot_difficulty, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, NOW())
-                    ON DUPLICATE KEY UPDATE
-                    username = VALUES(username),
-                    bot_personality = VALUES(bot_personality),
-                    bot_difficulty = VALUES(bot_difficulty)
-                `, [
-                    botData.user_id,
-                    botData.username,
-                    `${botData.user_id}@bot.local`, // Dummy email for bots
-                    botData.is_bot,
-                    botData.bot_personality,
-                    botData.bot_difficulty
-                ]);
+                // Insert bot as a temporary user (using only basic columns)
+                try {
+                    await dbConnection.query(`
+                        INSERT INTO users (user_id, username, email, created_at)
+                        VALUES (?, ?, ?, NOW())
+                        ON DUPLICATE KEY UPDATE
+                        username = VALUES(username)
+                    `, [
+                        botData.user_id,
+                        botData.username,
+                        `${botData.user_id}@bot.local` // Dummy email for bots
+                    ]);
+                } catch (columnError) {
+                    // If basic insertion fails, try with minimal columns
+                    await dbConnection.query(`
+                        INSERT IGNORE INTO users (user_id, username)
+                        VALUES (?, ?)
+                    `, [
+                        botData.user_id,
+                        botData.username
+                    ]);
+                }
             }
 
             console.log(`[BotManager] Stored ${bots.length} bots in database for game ${gameId}`);

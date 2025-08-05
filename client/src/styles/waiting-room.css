@@ -428,6 +428,28 @@
   letter-spacing: 0.5px;
 }
 
+/* Bot Player Styles */
+.player-slot.bot-player {
+  border-color: #9b59b6;
+  background: rgba(155, 89, 182, 0.1);
+}
+
+.player-slot.bot-player.ready {
+  border-color: #8e44ad;
+  background: rgba(142, 68, 173, 0.15);
+}
+
+.player-slot.bot-player .player-name {
+  color: #9b59b6;
+  font-weight: 500;
+}
+
+.player-slot.bot-player .avatar-placeholder {
+  background: rgba(155, 89, 182, 0.2);
+  color: #9b59b6;
+  border: 1px solid #9b59b6;
+}
+
 /* Ready Section */
 .ready-section {
   margin-bottom: var(--spacing-xxl);

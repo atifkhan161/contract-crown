@@ -402,6 +402,11 @@ class WaitingRoomManager {
             this.uiManager.addMessage('Teams have been formed! Starting game...', 'success');
         });
 
+        this.socketManager.on('bots-added', (data) => {
+            console.log('[WaitingRoom] Bots added:', data);
+            this.handleBotsAdded(data);
+        });
+
         this.socketManager.on('navigate-to-game', (data) => {
             this.handleNavigateToGame(data);
         });
@@ -696,7 +701,12 @@ class WaitingRoomManager {
         // All conditions met
         else {
             canStart = true;
-            reason = `Ready to start with ${connectedPlayers.length} players!`;
+            const botsNeeded = 4 - connectedPlayers.length;
+            if (botsNeeded > 0) {
+                reason = `Ready to start with ${connectedPlayers.length} players + ${botsNeeded} bots!`;
+            } else {
+                reason = `Ready to start with ${connectedPlayers.length} players!`;
+            }
         }
 
         return {
@@ -1252,6 +1262,53 @@ class WaitingRoomManager {
         setTimeout(() => {
             window.location.href = redirectUrl;
         }, 2000);
+    }
+
+    handleBotsAdded(data) {
+        console.log('[WaitingRoom] Bots added to room:', data);
+
+        // Add bots to the players list
+        if (data.bots && Array.isArray(data.bots)) {
+            if (!this.roomData) {
+                this.roomData = { players: [] };
+            }
+            if (!this.roomData.players) {
+                this.roomData.players = [];
+            }
+
+            // Add each bot to the players list
+            data.bots.forEach(bot => {
+                const botPlayer = {
+                    id: bot.userId,
+                    user_id: bot.userId,
+                    username: bot.username,
+                    isReady: bot.isReady,
+                    isConnected: bot.isConnected,
+                    teamAssignment: bot.teamAssignment || null,
+                    isBot: true
+                };
+
+                // Check if bot already exists (avoid duplicates)
+                const existingBotIndex = this.roomData.players.findIndex(p => 
+                    p.id === bot.userId || p.user_id === bot.userId
+                );
+
+                if (existingBotIndex === -1) {
+                    this.roomData.players.push(botPlayer);
+                } else {
+                    // Update existing bot data
+                    this.roomData.players[existingBotIndex] = botPlayer;
+                }
+            });
+
+            // Update the UI
+            this.updateRoomDisplay();
+
+            // Show message about bots joining
+            if (data.message) {
+                this.uiManager.addMessage(data.message, 'system');
+            }
+        }
     }
 
     handleNavigateToGame(data) {
