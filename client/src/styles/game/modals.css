@@ -102,26 +102,22 @@
 .initial-cards-container {
   display: flex;
   justify-content: center;
-  gap: var(--spacing-xs); /* Reduced gap */
+  gap: var(--spacing-sm);
   flex-wrap: wrap;
-  padding: var(--spacing-xs) 0; /* Reduced padding */
+  padding: var(--spacing-sm) 0;
 }
 
 .trump-modal-card {
-  width: 40px; /* Smaller cards */
-  height: 56px;
+  width: 50px;
+  height: 70px;
   background: white;
   border: 1px solid #ddd;
-  border-radius: 4px; /* Smaller radius */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 2px; /* Reduced padding */
-  font-size: 9px; /* Smaller font */
+  border-radius: 6px;
+  position: relative;
   font-weight: bold;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Smaller shadow */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease;
+  color: #000;
 }
 
 .trump-modal-card:hover {
@@ -129,27 +125,72 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-.trump-modal-card .card-rank {
-  font-size: 10px; /* Smaller rank */
+/* Trump modal card layout */
+.trump-modal-card .card-corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 10px;
+  font-weight: bold;
   line-height: 1;
+}
+
+.trump-modal-card .card-corner-top {
+  top: 3px;
+  left: 3px;
+}
+
+.trump-modal-card .card-corner-bottom {
+  bottom: 3px;
+  right: 3px;
+  transform: rotate(180deg);
+}
+
+.trump-modal-card .card-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trump-modal-card .card-rank {
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 1;
+  margin-bottom: 1px;
 }
 
 .trump-modal-card .card-suit {
-  font-size: 12px; /* Smaller suit */
+  font-size: 16px;
   line-height: 1;
 }
 
+.trump-modal-card .card-suit-small {
+  font-size: 10px;
+  line-height: 1;
+}
+
+/* Red suits */
 .trump-modal-card.hearts .card-rank,
 .trump-modal-card.hearts .card-suit,
+.trump-modal-card.hearts .card-suit-small,
 .trump-modal-card.diamonds .card-rank,
-.trump-modal-card.diamonds .card-suit {
+.trump-modal-card.diamonds .card-suit,
+.trump-modal-card.diamonds .card-suit-small {
   color: #dc3545;
 }
 
+/* Black suits */
 .trump-modal-card.clubs .card-rank,
 .trump-modal-card.clubs .card-suit,
+.trump-modal-card.clubs .card-suit-small,
 .trump-modal-card.spades .card-rank,
-.trump-modal-card.spades .card-suit {
+.trump-modal-card.spades .card-suit,
+.trump-modal-card.spades .card-suit-small {
   color: #000;
 }
 
@@ -195,10 +236,10 @@
 .trump-option.recommended::before {
   content: '★';
   position: absolute;
-  top: 2px; /* Adjusted position */
-  right: 2px;
+  top: 4px;
+  right: 4px;
   color: var(--text-success);
-  font-size: var(--font-size-xs); /* Smaller star */
+  font-size: var(--font-size-sm);
 }
 
 .suit-recommendation {

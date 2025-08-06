@@ -160,6 +160,33 @@
   .player-hand {
     gap: 3px;
   }
+
+  /* Trump modal responsive styles */
+  .trump-modal-card {
+    width: 45px;
+    height: 63px;
+  }
+
+  .trump-modal-card .card-rank {
+    font-size: 9px;
+  }
+
+  .trump-modal-card .card-suit {
+    font-size: 14px;
+  }
+
+  .trump-modal-card .card-suit-small {
+    font-size: 9px;
+  }
+
+  .trump-option {
+    min-height: 50px;
+    padding: var(--spacing-sm);
+  }
+
+  .suit-symbol {
+    font-size: 1.2rem;
+  }
 }
 
 /* Mobile Landscape - Optimized for landscape mobile */

@@ -46,8 +46,8 @@ export class TrumpManager {
         // Render initial cards for trump declaration
         this.renderTrumpInitialCards();
         
-        // Show recommended suit
-        this.highlightRecommendedSuit();
+        // Set recommended suit as default selection
+        this.setDefaultRecommendedSuit();
         
         // Show modal
         modal.classList.remove('hidden');
@@ -95,7 +95,8 @@ export class TrumpManager {
      */
     createTrumpCardElement(card, index) {
         const cardElement = document.createElement('div');
-        cardElement.className = 'trump-card';
+        cardElement.className = 'trump-modal-card';
+        cardElement.classList.add(card.suit); // Add suit class for styling
         cardElement.dataset.suit = card.suit;
         cardElement.dataset.rank = card.rank;
 
@@ -106,12 +107,17 @@ export class TrumpManager {
             spades: '♠'
         };
 
-        const suitColor = (card.suit === 'hearts' || card.suit === 'diamonds') ? 'red' : 'black';
-        
         cardElement.innerHTML = `
-            <div class="card-content">
-                <div class="card-rank ${suitColor}">${card.rank}</div>
-                <div class="card-suit ${suitColor}">${suitSymbols[card.suit]}</div>
+            <div class="card-corner card-corner-top">
+                <div class="card-rank">${card.rank}</div>
+                <div class="card-suit-small">${suitSymbols[card.suit]}</div>
+            </div>
+            <div class="card-center">
+                <div class="card-suit">${suitSymbols[card.suit]}</div>
+            </div>
+            <div class="card-corner card-corner-bottom">
+                <div class="card-rank">${card.rank}</div>
+                <div class="card-suit-small">${suitSymbols[card.suit]}</div>
             </div>
         `;
 
@@ -257,22 +263,25 @@ export class TrumpManager {
     }
 
     /**
-     * Highlight recommended trump suit
+     * Set recommended trump suit as default selection
      */
-    highlightRecommendedSuit() {
+    setDefaultRecommendedSuit() {
         // Get recommendation from CardManager if available
         const recommendedSuit = this.getRecommendedTrumpSuit();
         
         if (recommendedSuit) {
+            // Clear any previous selections
+            document.querySelectorAll('.trump-option').forEach(option => {
+                option.classList.remove('selected', 'recommended');
+            });
+            
             const recommendedOption = document.querySelector(`.trump-option[data-suit="${recommendedSuit}"]`);
             if (recommendedOption) {
+                // Highlight as recommended (visual only, no label)
                 recommendedOption.classList.add('recommended');
                 
-                // Add tooltip or indicator
-                const indicator = document.createElement('div');
-                indicator.className = 'recommendation-indicator';
-                indicator.textContent = 'Recommended';
-                recommendedOption.appendChild(indicator);
+                // Auto-select the recommended suit
+                this.selectTrumpSuit(recommendedOption);
             }
         }
     }
