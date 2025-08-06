@@ -1,25 +1,24 @@
-/* Trick area, lead suit indicators, and winner animations */
+/* Trick Area Styles - Optimized for 932x430 */
 
-/* Trick Area */
 .trick-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--game-spacing-md);
+  gap: var(--spacing-sm); /* Reduced gap */
 }
 
 .trick-cards {
   position: relative;
-  width: 180px;
-  height: 180px;
+  width: 140px; /* Smaller for compact layout */
+  height: 140px;
   display: grid;
   grid-template-areas:
-    ". top ."
-    "left center right"
-    ". bottom .";
+      ". top ."
+      "left center right"
+      ". bottom .";
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr 1fr 1fr;
-  gap: var(--game-spacing-sm);
+  gap: var(--spacing-xs); /* Reduced gap */
 }
 
 .played-card-slot {
@@ -28,8 +27,8 @@
   justify-content: center;
   border: 2px dashed var(--border-color);
   border-radius: var(--radius-sm);
-  min-width: 42px;
-  min-height: 63px;
+  min-width: 35px; /* Smaller slots */
+  min-height: 53px;
   transition: all var(--transition-fast);
 }
 
@@ -52,103 +51,229 @@
 .played-card-slot.active {
   border-color: var(--primary-color);
   background: rgba(74, 144, 226, 0.1);
-  animation: slotPulse 2s infinite;
-}
-
-.played-card-slot.winner {
-  border-color: var(--status-connected);
-  background: rgba(39, 174, 96, 0.2);
-  animation: winnerGlow 1s ease-in-out;
-}
-
-.played-card-slot.lead-suit {
-  border-color: #f39c12;
-  background: rgba(243, 156, 18, 0.1);
 }
 
 .trick-info {
   text-align: center;
-  font-size: var(--font-size-sm-compact);
+  font-size: var(--font-size-xs); /* Smaller font */
   color: var(--text-secondary);
-  margin-top: var(--game-spacing-xs);
+  margin-top: var(--spacing-xs);
+  font-weight: 500;
 }
 
-.trick-winner {
-  color: var(--status-connected);
-  font-weight: 600;
-}
-
+/* Lead suit indicator - Compact */
 .lead-suit-indicator {
+  position: absolute;
+  top: 5px; /* Adjusted position */
+  left: 5px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 3px 6px; /* Reduced padding */
+  border-radius: 8px; /* Smaller radius */
+  font-size: 10px; /* Smaller font */
   display: flex;
   align-items: center;
-  gap: var(--game-spacing-xs);
-  padding: var(--game-spacing-xs) var(--game-spacing-sm);
-  background: rgba(243, 156, 18, 0.1);
-  border: 1px solid #f39c12;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-xs-compact);
-  color: #f39c12;
-  margin-bottom: var(--game-spacing-sm);
+  gap: 3px; /* Reduced gap */
+  z-index: 100;
+}
+
+.lead-suit-label {
+  font-weight: 500;
 }
 
 .lead-suit-symbol {
-  font-size: var(--font-size-sm);
-  line-height: 1;
+  font-size: 11px; /* Smaller symbol */
+  font-weight: bold;
 }
 
 .lead-suit-symbol.hearts,
 .lead-suit-symbol.diamonds {
-  color: #dc3545;
+  color: #e53e3e;
 }
 
 .lead-suit-symbol.clubs,
 .lead-suit-symbol.spades {
-  color: #000;
+  color: #2d3748;
 }
 
-/* Winner Animations */
-@keyframes slotPulse {
-  0%, 100% { 
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0 rgba(74, 144, 226, 0.4);
-  }
-  50% { 
-    border-color: var(--primary-light);
-    box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.1);
-  }
+/* Trick completion animations - Optimized */
+.played-card.trick-complete {
+  animation: trickCompleteSmooth 0.4s ease-in-out forwards; /* Faster animation */
 }
 
-@keyframes winnerGlow {
-  0% { 
-    border-color: var(--status-connected);
-    box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.6);
-  }
-  50% { 
-    border-color: var(--status-connected);
-    box-shadow: 0 0 0 8px rgba(39, 174, 96, 0.2);
-  }
-  100% { 
-    border-color: var(--status-connected);
-    box-shadow: 0 0 0 0 rgba(39, 174, 96, 0);
-  }
-}
-
-/* Trick Collection Animation */
-.trick-collecting {
-  animation: collectTrick 1s ease-in-out forwards;
-}
-
-@keyframes collectTrick {
+@keyframes trickCompleteSmooth {
   0% {
-    transform: scale(1);
-    opacity: 1;
+      transform: scale(1);
+      opacity: 1;
   }
   50% {
-    transform: scale(1.1);
-    opacity: 0.8;
+      transform: scale(1.05); /* Reduced scale */
+      opacity: 0.7;
   }
   100% {
-    transform: scale(0.8);
-    opacity: 0;
+      transform: scale(0.9); /* Reduced scale */
+      opacity: 0;
+  }
+}
+
+/* Winner card highlight - Subtle animation */
+.played-card.winner,
+.winning-card {
+  animation: winnerHighlightSubtle 0.8s ease-in-out; /* Faster animation */
+  border: 2px solid #ffd700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.4); /* Smaller glow */
+}
+
+@keyframes winnerHighlightSubtle {
+  0%, 100% {
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+  }
+  50% {
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.6); /* Smaller glow */
+  }
+}
+
+.winner-pulse {
+  animation: winnerPulse 0.4s ease-in-out infinite alternate; /* Faster animation */
+}
+
+@keyframes winnerPulse {
+  from {
+      transform: scale(1);
+  }
+  to {
+      transform: scale(1.03); /* Reduced scale */
+  }
+}
+
+.losing-card {
+  opacity: 0.6;
+  filter: grayscale(30%);
+}
+
+/* Turn indicator enhancements - Compact */
+.turn-indicator.active {
+  animation: turnPulse 1.5s infinite; /* Faster animation */
+}
+
+.turn-indicator.trick-winner {
+  animation: trickWinnerCelebration 1.5s ease-in-out; /* Faster animation */
+  background: linear-gradient(45deg, #ffd700, #ffed4e);
+  color: #333;
+}
+
+@keyframes turnPulse {
+  0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+  }
+  50% {
+      opacity: 0.7;
+      transform: scale(1.05); /* Reduced scale */
+  }
+}
+
+@keyframes trickWinnerCelebration {
+  0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 0 6px rgba(255, 215, 0, 0.4); /* Smaller glow */
+  }
+  50% {
+      transform: scale(1.05); /* Reduced scale */
+      box-shadow: 0 0 12px rgba(255, 215, 0, 0.8); /* Smaller glow */
+  }
+}
+
+/* Enhanced played card slots */
+.played-card-slot.active {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive adjustments for target resolution */
+@media (max-width: 932px) {
+  .trick-cards {
+      width: 120px;
+      height: 120px;
+      gap: 2px;
+  }
+  
+  .played-card-slot {
+      min-width: 30px;
+      min-height: 45px;
+  }
+  
+  .lead-suit-indicator {
+      top: 3px;
+      left: 3px;
+      padding: 2px 4px;
+      font-size: 9px;
+      border-radius: 6px;
+  }
+  
+  .lead-suit-symbol {
+      font-size: 10px;
+  }
+}
+
+@media (max-height: 430px) {
+  .trick-cards {
+      width: 100px;
+      height: 100px;
+      gap: 1px;
+  }
+  
+  .played-card-slot {
+      min-width: 25px;
+      min-height: 38px;
+      border-width: 1px;
+  }
+  
+  .trick-info {
+      font-size: 9px;
+      margin-top: 2px;
+  }
+  
+  .lead-suit-indicator {
+      top: 2px;
+      left: 2px;
+      padding: 1px 3px;
+      font-size: 8px;
+      border-radius: 4px;
+      gap: 2px;
+  }
+  
+  .lead-suit-symbol {
+      font-size: 9px;
+  }
+  
+  .trick-area {
+      gap: var(--spacing-xs);
+  }
+}
+
+/* Performance optimizations */
+.played-card-slot,
+.played-card {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .played-card.trick-complete,
+  .played-card.winner,
+  .winning-card,
+  .winner-pulse,
+  .turn-indicator.active,
+  .turn-indicator.trick-winner {
+      animation: none;
+  }
+  
+  .played-card.winner,
+  .winning-card {
+      border: 2px solid #ffd700;
+      box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
   }
 }

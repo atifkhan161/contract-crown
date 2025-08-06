@@ -1,73 +1,161 @@
-/* Game Main - Central coordinator with root variables and global optimizations */
+/* Game Main Styles - Modular CSS for Contract Crown PWA */
+/* Optimized for 932x430 resolution and responsive design */
 
-/* 932x430 Resolution Optimizations */
+/* Import all modular CSS files */
+@import './base.css';
+@import './header.css';
+@import './game-table.css';
+@import './cards.css';
+@import './trick-area.css';
+@import './modals.css';
+@import './toast.css';
+@import './animations.css';
+@import './responsive.css';
+
+/* Root variables for 932x430 optimization */
 :root {
-  /* Compact spacing for target resolution */
-  --game-spacing-xs: 0.125rem;  /* 2px */
-  --game-spacing-sm: 0.25rem;   /* 4px */
-  --game-spacing-md: 0.5rem;    /* 8px */
-  --game-spacing-lg: 0.75rem;   /* 12px */
-  --game-spacing-xl: 1rem;      /* 16px */
-  
-  /* Optimized card sizes for 932x430 */
-  --card-width-mobile: 38px;
-  --card-height-mobile: 57px;
-  --card-width-desktop: 60px;
-  --card-height-desktop: 90px;
-  
-  /* Compact header height */
-  --header-height: 50px;
-  --header-height-mobile: 0px; /* Hidden on mobile */
-  
-  /* Game table dimensions */
-  --game-table-max-height: 350px;
-  --game-table-padding: var(--game-spacing-md);
-  
-  /* Performance optimizations */
-  --transition-fast: 0.1s ease;
-  --transition-normal: 0.2s ease;
-  
-  /* Typography optimizations */
-  --font-size-compact: 0.625rem;  /* 10px */
-  --font-size-xs-compact: 0.6875rem; /* 11px */
-  --font-size-sm-compact: 0.75rem;   /* 12px */
+    /* Compact spacing for target resolution */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 20px;
+    
+    /* Compact font sizes */
+    --font-size-xs: 10px;
+    --font-size-sm: 12px;
+    --font-size-base: 14px;
+    --font-size-lg: 16px;
+    --font-size-xl: 18px;
+    
+    /* Compact border radius */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    
+    /* Z-index layers */
+    --z-modal: 1000;
+    --z-toast: 1100;
+    --z-mobile-controls: 1200;
+    
+    /* Transition speeds - faster for compact layout */
+    --transition-fast: 0.15s;
+    --transition-normal: 0.25s;
+    --transition-slow: 0.35s;
+    
+    /* Shadows - smaller for compact layout */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* Global game layout */
-.game-main {
-  flex: 1;
-  padding: var(--game-spacing-md);
-  overflow: hidden;
-  min-height: calc(100vh - var(--header-height));
+/* Global optimizations for target resolution */
+* {
+    box-sizing: border-box;
 }
 
-.game-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.4; /* Improved line height for compact layout */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+    height: 100vh;
+    overflow: hidden; /* Prevent scrolling on target resolution */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure proper text rendering on small screens */
+@media (max-width: 932px) {
+    :root {
+        --font-size-xs: 9px;
+        --font-size-sm: 11px;
+        --font-size-base: 13px;
+        --font-size-lg: 15px;
+        --font-size-xl: 17px;
+    }
+}
+
+@media (max-height: 430px) {
+    :root {
+        --spacing-xs: 3px;
+        --spacing-sm: 6px;
+        --spacing-md: 9px;
+        --spacing-lg: 12px;
+        --spacing-xl: 15px;
+        
+        --font-size-xs: 8px;
+        --font-size-sm: 10px;
+        --font-size-base: 12px;
+        --font-size-lg: 14px;
+        --font-size-xl: 16px;
+    }
 }
 
 /* Performance optimizations */
-.game-main *,
-.game-main *::before,
-.game-main *::after {
-  box-sizing: border-box;
-}
-
-/* Reduce repaints and reflows */
 .game-table,
 .card,
-.played-card {
-  will-change: transform;
-  backface-visibility: hidden;
-  transform-style: preserve-3d;
+.card-back,
+.played-card,
+.modal-content,
+.toast-message {
+    transform: translateZ(0); /* Force hardware acceleration */
 }
 
-/* GPU acceleration for animations */
-.card:hover,
-.card.selected,
-.card.touching {
-  transform: translateZ(0);
+/* Smooth scrolling for modals */
+.modal-content {
+    scroll-behavior: smooth;
+}
+
+/* Improve touch targets on small screens */
+@media (max-width: 932px) {
+    .card,
+    .trump-option,
+    .btn {
+        min-height: 32px; /* Minimum touch target size */
+        min-width: 32px;
+    }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Focus management for keyboard navigation */
+.card:focus-visible,
+.trump-option:focus-visible,
+.btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Prevent text selection on game elements */
+.game-table,
+.card,
+.trump-option,
+.player-info {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Allow text selection in modals and messages */
+.modal-content,
+.game-message,
+.toast-message {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
 }

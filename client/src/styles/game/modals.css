@@ -1,6 +1,6 @@
-/* All modal dialogs (trump selection, game completion, etc.) */
+/* Modal Styles - Optimized for 932x430 */
 
-/* Modal Base Styles */
+/* Base Modal Styles */
 .modal {
   position: fixed;
   top: 0;
@@ -27,36 +27,35 @@
   position: relative;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  max-width: 90vw;
-  max-height: 90vh;
+  border-radius: var(--radius-md); /* Smaller radius for compact layout */
+  padding: var(--spacing-md); /* Reduced padding */
+  max-width: 85vw; /* Smaller max width */
+  max-height: 85vh; /* Smaller max height */
   overflow-y: auto;
-  box-shadow: var(--shadow-lg);
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
 }
 
 .modal-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-base); /* Smaller header */
 }
 
 .modal-close {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg); /* Smaller close button */
   cursor: pointer;
   padding: 0;
-  width: 30px;
-  height: 30px;
+  width: 24px; /* Smaller button */
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -70,62 +69,109 @@
 }
 
 .modal-footer {
-  margin-top: var(--spacing-lg);
+  margin-top: var(--spacing-md);
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm); /* Reduced gap */
 }
 
-/* Trump Declaration Modal */
+/* Trump Declaration Modal - Optimized for 932x430 */
 .trump-modal-content {
-  max-width: 500px;
-  width: 95vw;
-  max-height: 90vh;
+  max-width: 420px; /* Smaller for compact layout */
+  width: 90vw;
+  max-height: 80vh; /* Reduced height */
   overflow-y: auto;
 }
 
 .trump-instruction {
   text-align: center;
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
   color: var(--text-secondary);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm); /* Smaller font */
 }
 
+/* Initial cards display in trump modal */
 .trump-cards-display {
-  margin-bottom: var(--spacing-lg);
-  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm); /* Reduced padding */
   background: rgba(0, 0, 0, 0.1);
-  border-radius: var(--radius-md);
+  border-radius: var(--border-radius);
   border: 1px solid var(--border-color);
 }
 
 .initial-cards-container {
   display: flex;
   justify-content: center;
-  gap: var(--game-spacing-sm);
+  gap: var(--spacing-xs); /* Reduced gap */
   flex-wrap: wrap;
-  padding: var(--game-spacing-sm) 0;
+  padding: var(--spacing-xs) 0; /* Reduced padding */
+}
+
+.trump-modal-card {
+  width: 40px; /* Smaller cards */
+  height: 56px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px; /* Smaller radius */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px; /* Reduced padding */
+  font-size: 9px; /* Smaller font */
+  font-weight: bold;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Smaller shadow */
+  transition: transform 0.2s ease;
+}
+
+.trump-modal-card:hover {
+  transform: translateY(-1px); /* Reduced hover effect */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.trump-modal-card .card-rank {
+  font-size: 10px; /* Smaller rank */
+  line-height: 1;
+}
+
+.trump-modal-card .card-suit {
+  font-size: 12px; /* Smaller suit */
+  line-height: 1;
+}
+
+.trump-modal-card.hearts .card-rank,
+.trump-modal-card.hearts .card-suit,
+.trump-modal-card.diamonds .card-rank,
+.trump-modal-card.diamonds .card-suit {
+  color: #dc3545;
+}
+
+.trump-modal-card.clubs .card-rank,
+.trump-modal-card.clubs .card-suit,
+.trump-modal-card.spades .card-rank,
+.trump-modal-card.spades .card-suit {
+  color: #000;
 }
 
 .trump-selection {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm); /* Reduced gap */
 }
 
 .trump-option {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--game-spacing-sm);
-  padding: var(--spacing-lg);
+  gap: var(--spacing-xs); /* Reduced gap */
+  padding: var(--spacing-md); /* Reduced padding */
   background: var(--bg-input);
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
   color: var(--text-primary);
-  min-height: 80px;
+  min-height: 60px; /* Reduced height */
   justify-content: center;
 }
 
@@ -137,7 +183,7 @@
 .trump-option.selected {
   border-color: var(--primary-color);
   background: rgba(74, 144, 226, 0.2);
-  box-shadow: 0 0 10px rgba(74, 144, 226, 0.3);
+  box-shadow: 0 0 8px rgba(74, 144, 226, 0.3); /* Smaller glow */
 }
 
 .trump-option.recommended {
@@ -149,21 +195,21 @@
 .trump-option.recommended::before {
   content: '★';
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 2px; /* Adjusted position */
+  right: 2px;
   color: var(--text-success);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs); /* Smaller star */
 }
 
 .suit-recommendation {
-  font-size: var(--font-size-xs-compact);
+  font-size: var(--font-size-xs);
   color: var(--text-success);
   font-weight: 600;
-  margin-top: var(--game-spacing-xs);
+  margin-top: var(--spacing-xs);
 }
 
 .suit-symbol {
-  font-size: 1.8rem;
+  font-size: 1.5rem; /* Smaller symbol */
   line-height: 1;
 }
 
@@ -178,113 +224,233 @@
 }
 
 .suit-name {
-  font-size: var(--font-size-sm-compact);
+  font-size: var(--font-size-xs); /* Smaller name */
   font-weight: 600;
 }
 
-/* Game Completion Modal */
-.game-completion-modal .modal-content {
-  max-width: 600px;
-  text-align: center;
+/* Game Messages */
+.game-messages-section {
+  margin-top: var(--spacing-sm); /* Reduced margin */
 }
 
-.game-result {
-  margin-bottom: var(--spacing-xl);
-}
-
-.game-result h2 {
-  color: var(--text-primary);
-  font-size: var(--font-size-title);
-  margin-bottom: var(--spacing-md);
-}
-
-.winning-team {
-  color: var(--status-connected);
-  font-weight: 700;
-}
-
-.final-scores {
-  display: flex;
-  justify-content: center;
-  gap: var(--spacing-xl);
-  margin: var(--spacing-lg) 0;
-}
-
-.final-score {
-  text-align: center;
-}
-
-.final-score-label {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  margin-bottom: var(--game-spacing-xs);
-}
-
-.final-score-value {
-  font-size: var(--font-size-xxl);
-  font-weight: bold;
-  color: var(--text-primary);
-}
-
-/* Error Modal */
-.error-modal .modal-content {
-  max-width: 400px;
-  border-color: var(--text-error);
-}
-
-.error-modal .modal-header h3 {
-  color: var(--text-error);
-}
-
-.error-message {
-  color: var(--text-error);
-  text-align: center;
-  margin: var(--spacing-lg) 0;
-}
-
-/* Confirmation Modal */
-.confirmation-modal .modal-content {
-  max-width: 400px;
-}
-
-.confirmation-message {
-  text-align: center;
-  margin: var(--spacing-lg) 0;
-  color: var(--text-secondary);
-}
-
-.confirmation-actions {
-  display: flex;
-  gap: var(--spacing-sm);
-  justify-content: center;
-}
-
-.btn-danger {
-  background: var(--text-error);
-  color: var(--text-primary);
-  border: none;
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.btn-danger:hover {
-  background: #c0392b;
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
+.game-messages {
+  max-height: 60px; /* Reduced height */
+  overflow-y: auto;
   background: var(--bg-input);
-  color: var(--text-secondary);
   border: 1px solid var(--border-color);
-  padding: var(--spacing-sm) var(--spacing-lg);
   border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all var(--transition-fast);
+  padding: var(--spacing-xs); /* Reduced padding */
 }
 
-.btn-secondary:hover {
-  background: var(--bg-card);
-  color: var(--text-primary);
+.game-message {
+  font-size: var(--font-size-xs); /* Smaller font */
+  color: var(--text-secondary);
+  margin-bottom: 2px; /* Reduced margin */
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+}
+
+.game-message:last-child {
+  margin-bottom: 0;
+}
+
+.game-message.info {
+  background: rgba(74, 144, 226, 0.1);
+  color: var(--primary-color);
+}
+
+.game-message.success {
+  background: rgba(39, 174, 96, 0.1);
+  color: var(--text-success);
+}
+
+.game-message.warning {
+  background: rgba(243, 156, 18, 0.1);
+  color: #f39c12;
+}
+
+.game-message.error {
+  background: rgba(231, 76, 60, 0.1);
+  color: var(--text-error);
+}
+
+/* Round completion overlay - Compact */
+.round-completion-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease-in; /* Faster animation */
+}
+
+.round-completion-content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1.5rem; /* Reduced padding */
+  border-radius: 12px; /* Smaller radius */
+  text-align: center;
+  max-width: 400px; /* Smaller width */
+  width: 85%; /* Reduced width */
+  animation: slideIn 0.3s ease-out; /* Faster animation */
+}
+
+.round-completion-content h2 {
+  margin: 0 0 1rem 0; /* Reduced margin */
+  font-size: 1.5rem; /* Smaller font */
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.round-stats {
+  display: flex;
+  justify-content: space-around;
+  gap: 1rem; /* Reduced gap */
+  margin-top: 1rem; /* Reduced margin */
+}
+
+.team-result {
+  flex: 1;
+  padding: 0.75rem; /* Reduced padding */
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px; /* Smaller radius */
+  backdrop-filter: blur(10px);
+}
+
+.team-result h3 {
+  margin: 0 0 0.25rem 0; /* Reduced margin */
+  font-size: 1rem; /* Smaller font */
+}
+
+.team-result p {
+  margin: 0.125rem 0; /* Reduced margin */
+  font-size: 0.875rem; /* Smaller font */
+}
+
+/* Responsive adjustments for target resolution */
+@media (max-width: 932px) {
+  .modal-content {
+      max-width: 90vw;
+      padding: var(--spacing-sm);
+  }
+  
+  .trump-modal-content {
+      max-width: 380px;
+      width: 95vw;
+  }
+  
+  .trump-selection {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-xs);
+  }
+  
+  .trump-option {
+      padding: var(--spacing-sm);
+      min-height: 50px;
+  }
+  
+  .trump-modal-card {
+      width: 35px;
+      height: 49px;
+      font-size: 8px;
+  }
+  
+  .round-completion-content {
+      max-width: 350px;
+      padding: 1rem;
+  }
+}
+
+@media (max-height: 430px) {
+  .modal-content {
+      max-height: 90vh;
+      padding: var(--spacing-xs);
+  }
+  
+  .trump-modal-content {
+      max-height: 85vh;
+      padding: var(--spacing-sm);
+  }
+  
+  .modal-header h3 {
+      font-size: var(--font-size-sm);
+  }
+  
+  .trump-instruction {
+      font-size: var(--font-size-xs);
+      margin-bottom: var(--spacing-sm);
+  }
+  
+  .trump-cards-display {
+      padding: var(--spacing-xs);
+      margin-bottom: var(--spacing-sm);
+  }
+  
+  .trump-modal-card {
+      width: 32px;
+      height: 45px;
+      font-size: 7px;
+  }
+  
+  .trump-option {
+      padding: var(--spacing-xs);
+      min-height: 40px;
+      flex-direction: row;
+      gap: var(--spacing-xs);
+  }
+  
+  .suit-symbol {
+      font-size: 1.2rem;
+  }
+  
+  .round-completion-content {
+      padding: 1rem;
+      max-width: 320px;
+  }
+  
+  .round-completion-content h2 {
+      font-size: 1.25rem;
+  }
+  
+  .round-stats {
+      flex-direction: column;
+      gap: 0.5rem;
+  }
+  
+  .game-messages {
+      max-height: 40px;
+  }
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from {
+      transform: translateY(-30px); /* Reduced effect */
+      opacity: 0;
+  }
+  to {
+      transform: translateY(0);
+      opacity: 1;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .round-completion-overlay,
+  .round-completion-content {
+      animation: none;
+  }
+  
+  .trump-modal-card:hover {
+      transform: none;
+  }
 }

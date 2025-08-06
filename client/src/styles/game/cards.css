@@ -1,21 +1,21 @@
-/* All card-related styles (player cards, card backs, played cards) */
+/* Card Styles - Optimized for 932x430 */
 
-/* Player Hand */
+/* Player Hand Cards */
 .player-hand {
   display: flex;
   justify-content: center;
-  gap: var(--game-spacing-xs);
+  gap: 3px; /* Reduced gap for compact layout */
   flex-wrap: wrap;
   max-width: 100%;
+  padding: 0 var(--spacing-xs);
 }
 
-/* Card Styles */
 .card {
-  width: var(--card-width-desktop);
-  height: var(--card-height-desktop);
+  width: 45px; /* Smaller cards for compact layout */
+  height: 67px;
   background: var(--text-primary);
   border: 2px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm); /* Smaller radius */
   cursor: pointer;
   transition: all var(--transition-fast);
   position: relative;
@@ -23,26 +23,24 @@
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
-  will-change: transform;
-  backface-visibility: hidden;
 }
 
 .card:hover:not(.disabled),
 .card.hover:not(.disabled) {
-  transform: translateY(-10px) translateZ(0);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-6px); /* Reduced hover effect */
+  box-shadow: var(--shadow-md);
   border-color: var(--primary-light);
 }
 
 .card.touching {
-  transform: scale(1.05) translateZ(0);
-  box-shadow: var(--shadow-md);
+  transform: scale(1.03); /* Reduced scale */
+  box-shadow: var(--shadow-sm);
 }
 
 .card.selected {
-  transform: translateY(-15px) translateZ(0);
+  transform: translateY(-8px); /* Reduced selection effect */
   border-color: var(--primary-color);
-  box-shadow: 0 0 15px var(--primary-color);
+  box-shadow: 0 0 10px var(--primary-color);
   background: #f8f9fa;
 }
 
@@ -58,25 +56,25 @@
   border-color: var(--border-color);
 }
 
-/* Card Layout */
+/* Card Layout - Compact */
 .card-corner {
   position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: var(--font-size-xs-compact);
+  font-size: 9px; /* Smaller font for compact cards */
   font-weight: bold;
   line-height: 1;
 }
 
 .card-corner-top {
-  top: 3px;
-  left: 3px;
+  top: 2px; /* Reduced spacing */
+  left: 2px;
 }
 
 .card-corner-bottom {
-  bottom: 3px;
-  right: 3px;
+  bottom: 2px;
+  right: 2px;
   transform: rotate(180deg);
 }
 
@@ -91,19 +89,19 @@
 }
 
 .card-rank {
-  font-size: var(--font-size-xs-compact);
+  font-size: 9px; /* Smaller rank */
   font-weight: bold;
   line-height: 1;
   margin-bottom: 1px;
 }
 
 .card-suit {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base); /* Smaller suit symbol */
   line-height: 1;
 }
 
 .card-suit-small {
-  font-size: var(--font-size-xs-compact);
+  font-size: 9px;
   line-height: 1;
 }
 
@@ -119,98 +117,315 @@
   color: #000;
 }
 
-/* Played Cards */
+/* Card content structure */
+.card-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px; /* Reduced padding */
+  position: relative;
+}
+
+.card-content .card-rank {
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.card-content .card-suit {
+  font-size: var(--font-size-base);
+  line-height: 1;
+}
+
+/* Opponent Card Backs - Compact */
+.opponent-hand {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-xs);
+}
+
+.card-back-stack {
+  display: flex;
+  gap: -6px; /* Reduced overlap */
+}
+
+.card-back {
+  width: 30px; /* Smaller card backs */
+  height: 45px;
+  background: linear-gradient(135deg, var(--bg-secondary), var(--primary-color));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  position: relative;
+  margin-left: -5px; /* Reduced overlap */
+  transition: all 0.2s ease;
+  opacity: 0;
+  transform: translateY(-5px) scale(0.9);
+  animation: cardBackFadeIn 0.3s ease-out forwards;
+}
+
+.card-back:first-child {
+  margin-left: 0;
+}
+
+.card-back::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px; /* Smaller decoration */
+  height: 12px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  opacity: 0.8;
+}
+
+.card-back::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background: var(--primary-color);
+  border-radius: 50%;
+}
+
+/* Played Cards in Trick Area */
 .played-card {
-  width: 42px;
-  height: 63px;
+  width: 35px; /* Smaller played cards */
+  height: 53px;
   background: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 3px;
+  padding: 2px; /* Reduced padding */
   color: #000;
-  font-size: var(--font-size-xs-compact);
+  font-size: 8px; /* Smaller font */
+  transition: all 0.3s ease;
 }
 
-/* Trump Modal Cards */
-.trump-modal-card {
-  width: 50px;
-  height: 70px;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 3px;
-  font-size: var(--font-size-compact);
-  font-weight: bold;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: transform var(--transition-fast);
+.played-card:hover {
+  transform: scale(1.03); /* Reduced hover effect */
 }
 
-.trump-modal-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+.played-card-player {
+  position: absolute;
+  bottom: -15px; /* Adjusted for smaller cards */
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px; /* Smaller font */
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  padding: 1px 4px; /* Reduced padding */
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
 }
 
-.trump-modal-card .card-rank {
-  font-size: 12px;
-  line-height: 1;
+/* Card Playability States */
+.card.playable {
+  border-color: var(--success-color, #28a745);
+  cursor: pointer;
 }
 
-.trump-modal-card .card-suit {
-  font-size: 14px;
-  line-height: 1;
+.card.playable:hover {
+  border-color: var(--success-color, #28a745);
+  box-shadow: 0 0 6px rgba(40, 167, 69, 0.3); /* Smaller glow */
 }
 
-.trump-modal-card.hearts .card-rank,
-.trump-modal-card.hearts .card-suit,
-.trump-modal-card.diamonds .card-rank,
-.trump-modal-card.diamonds .card-suit {
-  color: #dc3545;
+.card.unplayable {
+  opacity: 0.5;
+  filter: grayscale(50%);
+  cursor: not-allowed;
 }
 
-.trump-modal-card.clubs .card-rank,
-.trump-modal-card.clubs .card-suit,
-.trump-modal-card.spades .card-rank,
-.trump-modal-card.spades .card-suit {
-  color: #000;
+.card.unplayable:hover {
+  transform: none;
+  box-shadow: none;
 }
 
-/* Card Animation Classes */
+/* Card Animations - Optimized for performance */
 .card-dealing {
-  animation: dealCard 0.4s ease-out forwards;
+  animation: dealCard 0.3s ease-out; /* Faster animation */
 }
 
 .card-playing {
-  animation: playCard 0.25s ease-out forwards;
+  animation: playCard 0.2s ease-out forwards; /* Faster animation */
 }
 
-@keyframes cardDeal {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.card.animate-play {
+  animation: cardPlay 0.4s ease-out forwards; /* Faster animation */
+}
+
+.card.playing {
+  animation: cardPlaySmooth 0.3s ease-out forwards; /* Faster animation */
 }
 
 @keyframes dealCard {
   from {
-    opacity: 0;
-    transform: translateY(-40px) rotate(8deg);
+      opacity: 0;
+      transform: translateY(-30px) rotate(5deg); /* Reduced effect */
   }
   to {
-    opacity: 1;
-    transform: translateY(0) rotate(0deg);
+      opacity: 1;
+      transform: translateY(0) rotate(0deg);
   }
 }
 
 @keyframes playCard {
   to {
-    transform: translateY(-80px) scale(0.8);
-    opacity: 0;
+      transform: translateY(-60px) scale(0.9); /* Reduced effect */
+      opacity: 0;
+  }
+}
+
+@keyframes cardPlay {
+  0% {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+  }
+  50% {
+      transform: translateY(-15px) scale(1.05); /* Reduced effect */
+      opacity: 0.8;
+  }
+  100% {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+  }
+}
+
+@keyframes cardPlaySmooth {
+  0% {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+  }
+  50% {
+      transform: translateY(-15px) scale(1.03); /* Reduced effect */
+      opacity: 0.8;
+  }
+  100% {
+      transform: translateY(-30px) scale(0.9);
+      opacity: 0;
+  }
+}
+
+@keyframes cardBackFadeIn {
+  from {
+      opacity: 0;
+      transform: translateY(-5px) scale(0.9);
+  }
+  to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+  }
+}
+
+/* Card removal animation */
+.card-back.removing {
+  animation: cardBackFadeOut 0.2s ease-in forwards;
+}
+
+@keyframes cardBackFadeOut {
+  from {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+  }
+  to {
+      opacity: 0;
+      transform: translateY(-3px) scale(0.95);
+  }
+}
+
+/* Highlighted cards */
+.card.highlighted {
+  border-color: var(--warning-color, #ffc107);
+  box-shadow: 0 0 8px rgba(255, 193, 7, 0.4); /* Smaller glow */
+  animation: cardHighlight 0.3s ease-in-out; /* Faster animation */
+}
+
+@keyframes cardHighlight {
+  0%, 100% {
+      transform: scale(1);
+  }
+  50% {
+      transform: scale(1.03); /* Reduced scale */
+  }
+}
+
+/* Performance optimizations */
+.card-back,
+.card {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Responsive adjustments for target resolution */
+@media (max-width: 932px) {
+  .card {
+      width: 40px;
+      height: 60px;
+  }
+  
+  .card-back {
+      width: 25px;
+      height: 38px;
+      margin-left: -4px;
+  }
+  
+  .played-card {
+      width: 30px;
+      height: 45px;
+  }
+  
+  .player-hand {
+      gap: 2px;
+  }
+}
+
+@media (max-height: 430px) {
+  .card {
+      width: 38px;
+      height: 57px;
+  }
+  
+  .card-back {
+      width: 22px;
+      height: 33px;
+      margin-left: -3px;
+  }
+  
+  .card-back::before {
+      width: 8px;
+      height: 8px;
+  }
+  
+  .card-back::after {
+      width: 4px;
+      height: 4px;
+  }
+  
+  .played-card {
+      width: 28px;
+      height: 42px;
+      font-size: 7px;
+  }
+  
+  .player-hand {
+      gap: 1px;
+  }
+  
+  .card:hover:not(.disabled) {
+      transform: translateY(-4px);
+  }
+  
+  .card.selected {
+      transform: translateY(-6px);
   }
 }

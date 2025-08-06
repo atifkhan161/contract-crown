@@ -1,468 +1,557 @@
-/* Responsive design for all screen sizes with 932x430 optimization */
+/* Responsive Styles - Optimized for 932x430 and mobile devices */
 
-/* 932x430 Resolution Optimizations */
-@media screen and (max-width: 932px) and (max-height: 430px) {
-  :root {
-    --game-spacing-xs: 0.125rem;
-    --game-spacing-sm: 0.25rem;
-    --game-spacing-md: 0.375rem;
-    --game-spacing-lg: 0.5rem;
-    --card-width-mobile: 38px;
-    --card-height-mobile: 57px;
-    --header-height-mobile: 0px;
-  }
-  
+/* Target Resolution: 932x430 - Primary optimization */
+@media (max-width: 932px) and (max-height: 430px) {
+  /* Hide header to maximize game area */
   .game-header {
-    display: none !important;
+      display: none !important;
+      visibility: hidden !important;
   }
-  
+
+  /* Show mobile controls */
   .mobile-leave-btn,
   .mobile-connection-status {
-    display: block !important;
-    visibility: visible !important;
-    padding: 6px 10px !important;
-    font-size: 10px !important;
-    top: 8px !important;
+      display: block !important;
+      visibility: visible !important;
   }
-  
-  .mobile-leave-btn {
-    left: 8px !important;
-  }
-  
-  .mobile-connection-status {
-    right: 8px !important;
-  }
-  
+
+  /* Optimize main game area */
   .game-main {
-    padding: 0;
-    height: 100vh;
-  }
-  
-  .game-table {
-    margin: 0 6px;
-    padding: 4px;
-    min-height: calc(100vh - 12px);
-    gap: 2px;
-  }
-  
-  .card {
-    width: var(--card-width-mobile);
-    height: var(--card-height-mobile);
-  }
-  
-  .played-card {
-    width: 32px;
-    height: 48px;
-  }
-  
-  .trick-cards {
-    width: 140px;
-    height: 140px;
-  }
-  
-  .trump-display-corner,
-  .score-display-corner,
-  .round-score-display {
-    padding: 4px 6px;
-    font-size: 9px;
-  }
-}
-
-/* Mobile Portrait (Standard mobile phones) */
-@media screen and (max-width: 1023px) {
-  .game-header {
-    display: none !important;
-    visibility: hidden !important;
-  }
-
-  .mobile-leave-btn {
-    all: unset !important;
-    display: block !important;
-    visibility: visible !important;
-    position: fixed !important;
-    top: 15px !important;
-    left: 15px !important;
-    z-index: 1000 !important;
-    background: rgba(44, 62, 80, 0.95) !important;
-    color: white !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    padding: 10px 14px !important;
-    border-radius: 12px !important;
-    font-size: 12px !important;
-    font-weight: 500 !important;
-    cursor: pointer !important;
-    backdrop-filter: blur(15px) !important;
-    transition: all 0.15s ease !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-    font-family: var(--font-family) !important;
-  }
-
-  .mobile-connection-status {
-    all: unset !important;
-    display: flex !important;
-    visibility: visible !important;
-    align-items: center !important;
-    gap: 4px !important;
-    position: fixed !important;
-    top: 15px !important;
-    right: 15px !important;
-    z-index: 1000 !important;
-    background: rgba(44, 62, 80, 0.95) !important;
-    color: white !important;
-    padding: 10px 14px !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    border-radius: 12px !important;
-    font-size: 12px !important;
-    font-weight: 500 !important;
-    backdrop-filter: blur(15px) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-    font-family: var(--font-family) !important;
-  }
-
-  .game-main {
-    padding: 0;
-    height: 100vh;
-    overflow: hidden;
+      padding: 0;
+      height: 430px;
+      overflow: hidden;
   }
 
   .game-container {
-    height: 100vh;
-    margin: 0;
-    max-width: none;
+      height: 430px;
+      margin: 0;
+      max-width: 932px;
   }
 
   .game-table {
-    margin: 0 10px;
-    grid-template-areas:
-      "trump-corner top score-corner"
-      "left center right"
-      ". center ."
-      "round-score-area bottom .";
-    grid-template-columns: auto 1fr auto;
-    grid-template-rows: auto 1fr auto auto;
-    gap: var(--game-spacing-xs);
-    padding: var(--game-spacing-xs);
-    min-height: calc(100vh - 20px);
-    border-radius: var(--radius-md);
+      margin: 0 8px;
+      height: calc(430px - 16px);
+      padding: 4px;
+      gap: 4px;
+      border-radius: var(--radius-sm);
   }
 
+  /* Compact UI elements */
   .trump-display-corner,
-  .score-display-corner {
-    padding: 6px 10px;
-    font-size: var(--font-size-xs-compact);
-    border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, 0.05);
-  }
-
+  .score-display-corner,
   .round-score-display {
-    grid-area: round-score-area;
-    align-self: start;
-    justify-self: start;
-    margin-bottom: var(--game-spacing-xs);
-    padding: 6px 10px;
-    font-size: var(--font-size-xs-compact);
-    border-radius: var(--radius-sm);
-    background: rgba(255, 255, 255, 0.05);
+      padding: 3px 6px;
+      font-size: 9px;
+      border-radius: var(--radius-sm);
   }
 
+  .trump-symbol,
+  .score-value {
+      font-size: var(--font-size-xs);
+  }
+
+  /* Optimize cards for space */
   .card {
-    width: 55px;
-    height: 82px;
-    padding: 3px;
+      width: 38px;
+      height: 57px;
   }
 
-  .card:hover:not(.disabled),
-  .card.hover:not(.disabled) {
-    transform: translateY(-8px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  }
-
-  .card.selected {
-    transform: translateY(-12px);
-    box-shadow: 0 8px 25px rgba(74, 144, 226, 0.4);
+  .card-back {
+      width: 22px;
+      height: 33px;
+      margin-left: -3px;
   }
 
   .played-card {
-    width: 45px;
-    height: 68px;
-    padding: 3px;
+      width: 28px;
+      height: 42px;
   }
 
   .trick-cards {
-    width: 180px;
-    height: 180px;
+      width: 100px;
+      height: 100px;
   }
 
-  .player-left,
-  .player-right {
-    transform: none;
-    writing-mode: horizontal-tb;
+  .player-hand {
+      gap: 1px;
   }
 
-  .player-left {
-    justify-self: start;
-    align-self: center;
+  /* Compact player info */
+  .player-name {
+      font-size: 9px;
+      margin-bottom: 1px;
   }
 
-  .player-right {
-    justify-self: end;
-    align-self: center;
+  .card-count {
+      font-size: 9px;
+      padding: 1px 3px;
+  }
+
+  .turn-indicator {
+      width: 6px;
+      height: 6px;
+  }
+}
+
+/* Mobile Portrait - Standard mobile devices */
+@media screen and (max-width: 768px) and (orientation: portrait) {
+  .game-header {
+      display: none !important;
+  }
+
+  .mobile-leave-btn,
+  .mobile-connection-status {
+      display: block !important;
+      visibility: visible !important;
+  }
+
+  .game-main {
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+  }
+
+  .game-container {
+      height: 100vh;
+      margin: 0;
+      max-width: none;
+  }
+
+  .game-table {
+      margin: 0 10px;
+      grid-template-areas:
+          "trump-corner top score-corner"
+          "left center right"
+          ". center ."
+          "round-score-area bottom .";
+      grid-template-rows: auto 1fr auto auto;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-xs);
+      min-height: calc(100vh - 20px);
+  }
+
+  .card {
+      width: 50px;
+      height: 75px;
+  }
+
+  .card-back {
+      width: 30px;
+      height: 45px;
+      margin-left: -5px;
+  }
+
+  .played-card {
+      width: 35px;
+      height: 53px;
+  }
+
+  .trick-cards {
+      width: 140px;
+      height: 140px;
+  }
+
+  .player-hand {
+      gap: 3px;
+  }
+}
+
+/* Mobile Landscape - Optimized for landscape mobile */
+@media screen and (max-width: 932px) and (orientation: landscape) and (max-height: 500px) {
+  .game-header {
+      display: none !important;
+  }
+
+  .mobile-leave-btn,
+  .mobile-connection-status {
+      display: block !important;
+      top: 6px !important;
+      padding: 4px 8px !important;
+      font-size: 10px !important;
+  }
+
+  .mobile-leave-btn {
+      left: 6px !important;
+  }
+
+  .mobile-connection-status {
+      right: 6px !important;
+  }
+
+  .game-main {
+      padding: 0;
+      height: 100vh;
+  }
+
+  .game-container {
+      height: 100vh;
+      margin: 0;
+      max-width: none;
+  }
+
+  .game-table {
+      margin: 0 15px;
+      grid-template-areas:
+          "trump-corner top score-corner"
+          "left center right"
+          ". center ."
+          "round-score-area bottom .";
+      grid-template-rows: auto 1fr auto auto;
+      min-height: calc(100vh - 30px);
+      padding: var(--spacing-xs);
+      gap: var(--spacing-xs);
+  }
+
+  .card {
+      width: 35px;
+      height: 53px;
+  }
+
+  .card-back {
+      width: 20px;
+      height: 30px;
+      margin-left: -4px;
+  }
+
+  .played-card {
+      width: 25px;
+      height: 38px;
+  }
+
+  .trick-cards {
+      width: 100px;
+      height: 100px;
+  }
+
+  .player-hand {
+      gap: 1px;
+      max-height: 55px;
+  }
+
+  .trump-display-corner,
+  .score-display-corner,
+  .round-score-display {
+      padding: 3px 6px;
+      font-size: 9px;
+  }
+
+  .player-name {
+      font-size: var(--font-size-xs);
+  }
+
+  .card-count {
+      font-size: var(--font-size-xs);
+      padding: 1px 3px;
+  }
+
+  .turn-indicator {
+      width: 6px;
+      height: 6px;
+  }
+}
+
+/* Very Small Screens - Phones in portrait */
+@media (max-width: 480px) {
+  .game-main {
+      padding: 0;
+  }
+
+  .game-table {
+      margin: 0 8px;
+      min-height: calc(100vh - 16px);
+      padding: 4px;
+  }
+
+  .mobile-leave-btn,
+  .mobile-connection-status {
+      top: 8px;
+      padding: 6px 8px;
+      font-size: var(--font-size-xs);
+  }
+
+  .mobile-leave-btn {
+      left: 8px;
+  }
+
+  .mobile-connection-status {
+      right: 8px;
+  }
+
+  .card {
+      width: 45px;
+      height: 68px;
+  }
+
+  .player-hand {
+      gap: 2px;
+      padding: 0 var(--spacing-xs);
+  }
+
+  .trump-display-corner,
+  .score-display-corner,
+  .round-score-display {
+      padding: 4px 6px;
+      font-size: var(--font-size-xs);
+  }
+
+  .trump-name,
+  .team-label {
+      display: none; /* Hide text labels on very small screens */
+  }
+
+  .card-back {
+      width: 25px;
+      height: 38px;
+      margin-left: -4px;
+  }
+
+  .played-card {
+      width: 30px;
+      height: 45px;
+  }
+
+  .trick-cards {
+      width: 120px;
+      height: 120px;
   }
 
   .player-left .player-info,
   .player-right .player-info {
-    min-width: 70px;
-    font-size: var(--font-size-xs-compact);
-    text-align: center;
-  }
-
-  .player-hand {
-    gap: 4px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-top: var(--game-spacing-sm);
-    padding: 0 var(--game-spacing-xs);
-  }
-
-  .card-back {
-    width: 30px;
-    height: 45px;
-    margin-left: -6px;
-  }
-
-  .trump-selection {
-    grid-template-columns: 1fr;
-    gap: var(--game-spacing-sm);
-  }
-
-  .trump-modal-content {
-    width: 98vw;
-    max-width: none;
-    margin: 10px;
-  }
-}
-
-/* Mobile Landscape */
-@media screen and (max-width: 1023px) and (orientation: landscape) {
-  .game-table {
-    grid-template-areas:
-      "trump-corner top score-corner"
-      "left center right"
-      "round-score-area bottom .";
-    grid-template-rows: auto 1fr auto;
-  }
-  
-  .table-center {
-    padding: var(--game-spacing-xs) 0;
-  }
-  
-  .trick-cards {
-    width: 160px;
-    height: 160px;
-  }
-}
-
-/* Small Mobile Screens */
-@media (max-width: 480px) {
-  .game-main {
-    padding: 0;
-  }
-
-  .game-table {
-    margin: 0 8px;
-    min-height: calc(100vh - 16px);
-    padding: 4px;
-  }
-
-  .mobile-leave-btn,
-  .mobile-connection-status {
-    top: 10px;
-    padding: 8px 10px;
-    font-size: var(--font-size-xs-compact);
-  }
-
-  .mobile-leave-btn {
-    left: 10px;
-  }
-
-  .mobile-connection-status {
-    right: 10px;
-  }
-
-  .card {
-    width: 50px;
-    height: 75px;
-  }
-
-  .played-card {
-    width: 40px;
-    height: 60px;
-  }
-
-  .trick-cards {
-    width: 150px;
-    height: 150px;
-  }
-
-  .trump-display-corner,
-  .score-display-corner,
-  .round-score-display {
-    padding: 4px 8px;
-    font-size: var(--font-size-compact);
+      min-width: 50px;
   }
 }
 
 /* Tablet Portrait */
-@media screen and (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
-  .game-table {
-    margin: 0 var(--spacing-md);
-    padding: var(--spacing-sm);
-    gap: var(--spacing-sm);
-  }
-  
-  .card {
-    width: 58px;
-    height: 87px;
-  }
-  
-  .played-card {
-    width: 48px;
-    height: 72px;
-  }
-  
-  .trick-cards {
-    width: 200px;
-    height: 200px;
-  }
-}
-
-/* Desktop and Large Screens */
-@media (min-width: 1024px) {
+@media screen and (min-width: 769px) and (max-width: 1023px) and (orientation: portrait) {
   .game-header {
-    display: block !important;
+      display: block;
+      height: 60px;
   }
 
   .game-main {
-    padding: var(--spacing-md);
-    height: auto;
+      padding: var(--spacing-sm);
+      height: calc(100vh - 60px);
+  }
+
+  .game-table {
+      margin: 0 var(--spacing-md);
+      height: calc(100vh - 120px);
+  }
+
+  .card {
+      width: 55px;
+      height: 83px;
+  }
+
+  .card-back {
+      width: 35px;
+      height: 53px;
+  }
+
+  .played-card {
+      width: 40px;
+      height: 60px;
+  }
+
+  .trick-cards {
+      width: 160px;
+      height: 160px;
+  }
+}
+
+/* Desktop - Standard desktop layout */
+@media (min-width: 1024px) {
+  .game-header {
+      display: block !important;
+      height: 70px;
+  }
+
+  .game-main {
+      padding: var(--spacing-md);
+      height: auto;
   }
 
   .game-container {
-    height: auto;
+      height: auto;
+      max-width: 1200px;
   }
 
   .game-table {
-    margin: 0;
-    min-height: 500px;
-    max-height: none;
+      margin: 0;
+      min-height: 500px;
+      height: auto;
   }
 
   .mobile-leave-btn,
   .mobile-connection-status {
-    display: none !important;
+      display: none !important;
   }
 
   .card {
-    width: var(--card-width-desktop);
-    height: var(--card-height-desktop);
+      width: 60px;
+      height: 90px;
+  }
+
+  .card-back {
+      width: 40px;
+      height: 60px;
   }
 
   .played-card {
-    width: 50px;
-    height: 75px;
+      width: 50px;
+      height: 75px;
   }
 
   .trick-cards {
-    width: 200px;
-    height: 200px;
+      width: 200px;
+      height: 200px;
   }
 }
 
-/* Large Desktop */
-@media (min-width: 1440px) {
+/* Ultra-wide screens */
+@media (min-width: 1400px) {
+  .game-container {
+      max-width: 1400px;
+  }
+
   .game-table {
-    min-height: 600px;
-    padding: var(--spacing-lg);
-  }
-  
-  .card {
-    width: 65px;
-    height: 98px;
-  }
-  
-  .played-card {
-    width: 55px;
-    height: 83px;
-  }
-  
-  .trick-cards {
-    width: 220px;
-    height: 220px;
+      max-width: 1200px;
+      margin: 0 auto;
   }
 }
 
-/* High DPI Displays */
+/* High DPI displays */
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
   .card,
-  .played-card,
-  .card-back {
-    border-width: 0.5px;
+  .card-back,
+  .played-card {
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
   }
 }
 
-/* Touch-friendly enhancements */
+/* Orientation-specific optimizations */
+@media (orientation: landscape) {
+  .player-left,
+  .player-right {
+      transform: none;
+      writing-mode: horizontal-tb;
+  }
+
+  .player-left {
+      justify-self: start;
+      align-self: center;
+  }
+
+  .player-right {
+      justify-self: end;
+      align-self: center;
+  }
+
+  .player-left .player-info,
+  .player-right .player-info {
+      writing-mode: horizontal-tb;
+      text-orientation: initial;
+      text-align: center;
+  }
+}
+
+/* Safe area handling for devices with notches */
+@supports (padding: max(0px)) {
+  @media (max-width: 932px) {
+      .game-main {
+          padding-left: max(var(--spacing-xs), env(safe-area-inset-left));
+          padding-right: max(var(--spacing-xs), env(safe-area-inset-right));
+          padding-bottom: max(var(--spacing-xs), env(safe-area-inset-bottom));
+      }
+
+      .mobile-leave-btn {
+          left: max(8px, env(safe-area-inset-left)) !important;
+      }
+
+      .mobile-connection-status {
+          right: max(8px, env(safe-area-inset-right)) !important;
+      }
+  }
+
+  @media (orientation: landscape) {
+      .trump-display-corner {
+          margin-left: max(0px, env(safe-area-inset-left));
+      }
+
+      .score-display-corner {
+          margin-right: max(0px, env(safe-area-inset-right));
+      }
+  }
+}
+
+/* Hover support detection */
 @media (hover: none) and (pointer: coarse) {
   .card {
-    min-width: 44px;
-    min-height: 66px;
+      min-width: 40px;
+      min-height: 60px;
   }
-  
-  .trump-option {
-    min-height: 60px;
-    padding: var(--spacing-md);
-  }
-  
-  .modal-close {
-    min-width: 44px;
-    min-height: 44px;
-  }
-  
-  .mobile-leave-btn,
-  .mobile-connection-status {
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
 
-/* Accessibility - High Contrast */
-@media (prefers-contrast: high) {
-  .card,
-  .played-card {
-    border-width: 3px;
+  .card:active {
+      transform: scale(0.95);
   }
-  
+
   .trump-display-corner,
   .score-display-corner {
-    border-width: 2px;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
   }
 }
 
-/* Print Styles */
+/* Print styles */
 @media print {
   .game-header,
   .mobile-leave-btn,
   .mobile-connection-status,
   .toast-container {
-    display: none !important;
+      display: none !important;
   }
-  
+
+  .game-main {
+      height: auto;
+      padding: 0;
+  }
+
   .game-table {
-    border: 2px solid #000;
-    background: white;
+      border: 2px solid #000;
+      margin: 0;
   }
-  
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .card:hover:not(.disabled) {
+      transform: translateY(-4px);
+  }
+
+  .card.selected {
+      transform: translateY(-6px);
+  }
+
+  .card.touching {
+      transform: scale(1.02);
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .game-table {
+      border: 2px solid;
+  }
+
   .card {
-    border: 1px solid #000;
-    background: white;
+      border: 2px solid;
+  }
+
+  .trump-display-corner,
+  .score-display-corner,
+  .round-score-display {
+      border: 2px solid;
   }
 }

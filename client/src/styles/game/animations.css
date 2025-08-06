@@ -1,329 +1,387 @@
-/* All animations and transitions */
+/* Animation Styles - Optimized for 932x430 */
 
-/* Base Animation Settings */
-:root {
-  --animation-duration-fast: 0.15s;
-  --animation-duration-normal: 0.3s;
-  --animation-duration-slow: 0.5s;
-  --animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
+/* Card Animations - Performance Optimized */
+.card-dealing {
+  animation: dealCard 0.3s ease-out forwards; /* Faster for compact layout */
 }
 
-/* Pulse Animation */
-@keyframes pulse {
-  0%, 100% { 
-    opacity: 1; 
-  }
-  50% { 
-    opacity: 0.5; 
-  }
+.card-play-animation {
+  animation: playCard 0.3s ease-out forwards; /* Faster animation */
+  z-index: 1000;
 }
 
-/* Card Dealing Animation */
+.card-played {
+  transform: scale(1.02); /* Reduced scale */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); /* Smaller shadow */
+}
+
+.card.playing {
+  opacity: 0.7;
+  transform: scale(0.98); /* Reduced scale */
+  pointer-events: none;
+}
+
+.card.valid-play {
+  animation: highlightValid 0.3s ease-in-out; /* Faster animation */
+  border: 2px solid var(--success-color);
+}
+
+/* Core Animation Keyframes - Optimized */
 @keyframes dealCard {
   from {
-    opacity: 0;
-    transform: translateY(-40px) rotate(8deg) scale(0.8);
+      opacity: 0;
+      transform: translateY(-30px) rotate(5deg); /* Reduced effect */
   }
   to {
-    opacity: 1;
-    transform: translateY(0) rotate(0deg) scale(1);
+      opacity: 1;
+      transform: translateY(0) rotate(0deg);
   }
 }
 
-/* Card Playing Animation */
 @keyframes playCard {
   0% {
-    transform: translateY(0) scale(1);
-    opacity: 1;
+      transform: scale(1);
   }
   50% {
-    transform: translateY(-30px) scale(1.1);
-    opacity: 0.8;
+      transform: scale(1.05); /* Reduced scale */
   }
   100% {
-    transform: translateY(-80px) scale(0.8);
-    opacity: 0;
+      transform: scale(1.02); /* Reduced scale */
   }
 }
 
-/* Card Hover Effects */
-.card {
-  transition: transform var(--animation-duration-fast) var(--animation-easing),
-              box-shadow var(--animation-duration-fast) var(--animation-easing),
-              border-color var(--animation-duration-fast) var(--animation-easing);
-}
-
-.card:hover:not(.disabled) {
-  transform: translateY(-8px) translateZ(0);
-}
-
-.card.selected {
-  transform: translateY(-12px) translateZ(0);
-}
-
-.card.touching {
-  transform: scale(1.02) translateY(-2px) translateZ(0);
-}
-
-/* Turn Indicator Animation */
-.turn-indicator {
-  transition: all var(--animation-duration-normal) var(--animation-easing);
-}
-
-.turn-indicator.active {
-  animation: turnPulse 2s infinite;
-}
-
-@keyframes turnPulse {
+@keyframes highlightValid {
   0%, 100% {
-    box-shadow: 0 0 8px var(--primary-color);
+      border-color: transparent;
+      box-shadow: none;
   }
   50% {
-    box-shadow: 0 0 16px var(--primary-color);
+      border-color: var(--success-color);
+      box-shadow: 0 0 6px rgba(76, 175, 80, 0.5); /* Smaller glow */
   }
 }
 
-/* Trick Area Animations */
-.played-card-slot {
-  transition: all var(--animation-duration-fast) var(--animation-easing);
+/* Error state styling with animation */
+.game-message.error {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  animation: errorShake 0.3s ease-in-out; /* Faster animation */
 }
 
-.played-card-slot.active {
-  animation: slotPulse 2s infinite;
-}
-
-@keyframes slotPulse {
-  0%, 100% { 
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0 rgba(74, 144, 226, 0.4);
+@keyframes errorShake {
+  0%, 100% {
+      transform: translateX(0);
   }
-  50% { 
-    border-color: var(--primary-light);
-    box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.1);
+  25% {
+      transform: translateX(-3px); /* Reduced shake */
+  }
+  75% {
+      transform: translateX(3px); /* Reduced shake */
   }
 }
 
-/* Winner Animation */
-.played-card-slot.winner {
-  animation: winnerGlow 1s ease-in-out;
+/* Success state styling */
+.game-message.success {
+  background: linear-gradient(135deg, #51cf66, #40c057);
 }
 
-@keyframes winnerGlow {
-  0% { 
-    border-color: var(--status-connected);
-    box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.6);
-  }
-  50% { 
-    border-color: var(--status-connected);
-    box-shadow: 0 0 0 8px rgba(39, 174, 96, 0.2);
-  }
-  100% { 
-    border-color: var(--status-connected);
-    box-shadow: 0 0 0 0 rgba(39, 174, 96, 0);
-  }
+/* Warning state styling */
+.game-message.warning {
+  background: linear-gradient(135deg, #ffd43b, #fab005);
+  color: #333;
 }
 
-/* Trick Collection Animation */
-.trick-collecting {
-  animation: collectTrick 1s ease-in-out forwards;
-}
-
-@keyframes collectTrick {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-}
-
-/* Modal Animations */
-.modal {
-  animation: modalFadeIn var(--animation-duration-normal) var(--animation-easing);
-}
-
-.modal-content {
-  animation: modalSlideIn var(--animation-duration-normal) var(--animation-easing);
-}
-
-@keyframes modalFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes modalSlideIn {
-  from {
-    transform: translateY(-20px) scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0) scale(1);
-    opacity: 1;
-  }
-}
-
-/* Trump Option Hover Animation */
-.trump-option {
-  transition: all var(--animation-duration-fast) var(--animation-easing);
-}
-
-.trump-option:hover {
-  transform: translateY(-2px);
-}
-
-.trump-option.selected {
-  animation: trumpSelected 0.3s ease-out;
-}
-
-@keyframes trumpSelected {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-/* Score Update Animation */
-.score-value {
-  transition: all var(--animation-duration-normal) var(--animation-easing);
-}
-
+/* Score update animation */
 .score-value.updating {
-  animation: scoreUpdate 0.5s ease-out;
+  animation: scoreUpdate 0.5s ease-out; /* Faster animation */
 }
 
 @keyframes scoreUpdate {
   0% {
-    transform: scale(1);
-    color: var(--text-primary);
+      transform: scale(1);
+      color: inherit;
   }
   50% {
-    transform: scale(1.2);
-    color: var(--primary-color);
+      transform: scale(1.1); /* Reduced scale */
+      color: #4ade80;
   }
   100% {
-    transform: scale(1);
-    color: var(--text-primary);
+      transform: scale(1);
+      color: inherit;
   }
 }
 
-/* Loading Spinner */
-.spinner {
-  animation: spin 1s linear infinite;
+/* Fade animations */
+.fade-out {
+  animation: fadeOut 0.3s ease-out forwards; /* Faster animation */
 }
 
-@keyframes spin {
-  0% { 
-    transform: rotate(0deg); 
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Game completion modal animations */
+.game-completion-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  animation: fadeIn 0.3s ease-in; /* Faster animation */
+}
+
+.game-completion-modal .modal-content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem; /* Reduced padding */
+  border-radius: 15px; /* Smaller radius */
+  text-align: center;
+  max-width: 500px; /* Smaller width */
+  width: 85%; /* Reduced width */
+  animation: celebrationBounce 0.6s ease-out; /* Faster animation */
+}
+
+.game-complete-header h1 {
+  margin: 0 0 0.75rem 0; /* Reduced margin */
+  font-size: 2rem; /* Smaller font */
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  animation: rainbow 2s ease-in-out infinite; /* Faster animation */
+}
+
+.winner-announcement h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem; /* Smaller font */
+  color: #ffd700;
+}
+
+.final-score {
+  font-size: 1rem; /* Smaller font */
+  margin: 0 0 1.5rem 0; /* Reduced margin */
+  opacity: 0.9;
+}
+
+.final-scores {
+  margin: 1.5rem 0; /* Reduced margin */
+  padding: 1rem; /* Reduced padding */
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px; /* Smaller radius */
+  backdrop-filter: blur(10px);
+}
+
+.final-scores h3 {
+  margin: 0 0 0.75rem 0; /* Reduced margin */
+  font-size: 1.1rem; /* Smaller font */
+}
+
+.team-final-score {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0.75rem; /* Reduced padding */
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px; /* Smaller radius */
+  font-size: 1rem; /* Smaller font */
+}
+
+.team-final-score.winner {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #333;
+  font-weight: bold;
+  animation: winnerHighlight 1.5s ease-in-out infinite alternate; /* Faster animation */
+}
+
+/* Animation keyframes for game completion */
+@keyframes celebrationBounce {
+  0% {
+      transform: scale(0.85) translateY(-30px); /* Reduced effect */
+      opacity: 0;
   }
-  100% { 
-    transform: rotate(360deg); 
+  50% {
+      transform: scale(1.02) translateY(0); /* Reduced effect */
+      opacity: 1;
+  }
+  100% {
+      transform: scale(1) translateY(0);
+      opacity: 1;
   }
 }
 
-/* Button Press Animation */
-.btn {
-  transition: all var(--animation-duration-fast) var(--animation-easing);
+@keyframes rainbow {
+  0% { color: #ff6b6b; }
+  16% { color: #feca57; }
+  33% { color: #48dbfb; }
+  50% { color: #ff9ff3; }
+  66% { color: #54a0ff; }
+  83% { color: #5f27cd; }
+  100% { color: #ff6b6b; }
 }
 
-.btn:active {
-  transform: scale(0.98);
-}
-
-.btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-}
-
-/* Card Back Animation */
-.card-back {
-  animation: cardDeal 0.3s ease-out forwards;
-  opacity: 0;
-  transform: translateY(-20px);
-}
-
-@keyframes cardDeal {
+@keyframes winnerHighlight {
+  from {
+      box-shadow: 0 0 6px rgba(255, 215, 0, 0.4); /* Smaller glow */
+  }
   to {
-    opacity: 1;
-    transform: translateY(0);
+      box-shadow: 0 0 12px rgba(255, 215, 0, 0.8); /* Smaller glow */
   }
 }
 
-/* Stagger Animation for Multiple Cards */
-.card-back:nth-child(1) { animation-delay: 0.1s; }
-.card-back:nth-child(2) { animation-delay: 0.2s; }
-.card-back:nth-child(3) { animation-delay: 0.3s; }
-.card-back:nth-child(4) { animation-delay: 0.4s; }
-.card-back:nth-child(5) { animation-delay: 0.5s; }
-.card-back:nth-child(6) { animation-delay: 0.6s; }
-.card-back:nth-child(7) { animation-delay: 0.7s; }
-.card-back:nth-child(8) { animation-delay: 0.8s; }
-
-/* Game State Transition */
-.game-table {
-  transition: opacity var(--animation-duration-normal) var(--animation-easing);
+/* Statistics modal animations */
+.statistics-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  animation: fadeIn 0.2s ease-in; /* Faster animation */
 }
 
-.game-table.transitioning {
-  opacity: 0.7;
+.statistics-modal .modal-content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px; /* Smaller radius */
+  max-width: 700px; /* Smaller width */
+  width: 90%; /* Reduced width */
+  max-height: 85vh; /* Reduced height */
+  overflow-y: auto;
+  animation: slideIn 0.2s ease-out; /* Faster animation */
 }
 
-/* Connection Status Animation */
-.status-indicator.connecting {
-  animation: pulse 1.5s infinite;
+@keyframes slideIn {
+  from {
+      transform: translateY(-20px); /* Reduced effect */
+      opacity: 0;
+  }
+  to {
+      transform: translateY(0);
+      opacity: 1;
+  }
 }
 
-.status-indicator.reconnecting {
-  animation: pulse 1s infinite;
+/* Performance optimizations for animations */
+.card,
+.card-back,
+.played-card,
+.toast-message,
+.modal-content,
+.game-message {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
-/* Mobile Touch Feedback */
-@media (hover: none) and (pointer: coarse) {
-  .card:active {
-    transform: scale(0.98) translateY(-4px);
+/* Responsive animation adjustments for target resolution */
+@media (max-width: 932px) {
+  .game-completion-modal .modal-content {
+      max-width: 450px;
+      padding: 1.5rem;
   }
   
-  .trump-option:active {
-    transform: scale(0.98);
+  .game-complete-header h1 {
+      font-size: 1.75rem;
   }
   
-  .btn:active {
-    transform: scale(0.95);
+  .winner-announcement h2 {
+      font-size: 1.25rem;
+  }
+  
+  .statistics-modal .modal-content {
+      max-width: 600px;
+      width: 95%;
   }
 }
 
-/* Reduced Motion Support */
+@media (max-height: 430px) {
+  .game-completion-modal .modal-content {
+      padding: 1rem;
+      max-width: 400px;
+      max-height: 85vh;
+      overflow-y: auto;
+  }
+  
+  .game-complete-header h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+  }
+  
+  .winner-announcement h2 {
+      font-size: 1.1rem;
+  }
+  
+  .final-score {
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+  }
+  
+  .final-scores {
+      margin: 1rem 0;
+      padding: 0.75rem;
+  }
+  
+  .statistics-modal .modal-content {
+      max-height: 90vh;
+      max-width: 550px;
+  }
+  
+  /* Faster animations for compact layout */
+  .card-dealing {
+      animation-duration: 0.2s;
+  }
+  
+  .card-play-animation {
+      animation-duration: 0.2s;
+  }
+  
+  .card.valid-play {
+      animation-duration: 0.2s;
+  }
+  
+  .game-message.error {
+      animation-duration: 0.2s;
+  }
+  
+  .score-value.updating {
+      animation-duration: 0.3s;
+  }
+}
+
+/* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  .card-dealing,
+  .card-play-animation,
+  .card.valid-play,
+  .game-message.error,
+  .score-value.updating,
+  .fade-out,
+  .game-completion-modal,
+  .game-completion-modal .modal-content,
+  .game-complete-header h1,
+  .team-final-score.winner,
+  .statistics-modal,
+  .statistics-modal .modal-content {
+      animation: none;
+      transition: opacity 0.2s ease;
   }
   
-  .card:hover:not(.disabled),
-  .card.selected,
-  .card.touching {
-    transform: none !important;
+  .card-played {
+      transform: scale(1);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   }
   
-  .turn-indicator.active {
-    animation: none !important;
-  }
-  
-  .played-card-slot.active {
-    animation: none !important;
+  .card.playing {
+      transform: scale(1);
   }
 }
