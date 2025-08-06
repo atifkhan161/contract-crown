@@ -277,12 +277,20 @@ export class CardManager {
             spades: '♠'
         };
 
-        const suitColor = (card.suit === 'hearts' || card.suit === 'diamonds') ? 'red' : 'black';
+        // Add suit class for styling
+        cardElement.classList.add(card.suit);
         
         cardElement.innerHTML = `
-            <div class="card-content">
-                <div class="card-rank ${suitColor}">${card.rank}</div>
-                <div class="card-suit ${suitColor}">${suitSymbols[card.suit]}</div>
+            <div class="card-corner card-corner-top">
+                <div class="card-rank">${card.rank}</div>
+                <div class="card-suit-small">${suitSymbols[card.suit]}</div>
+            </div>
+            <div class="card-center">
+                <div class="card-suit">${suitSymbols[card.suit]}</div>
+            </div>
+            <div class="card-corner card-corner-bottom">
+                <div class="card-rank">${card.rank}</div>
+                <div class="card-suit-small">${suitSymbols[card.suit]}</div>
             </div>
         `;
 

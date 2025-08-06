@@ -3,11 +3,17 @@
 .game-table {
   flex: 1;
   position: relative;
-  background: var(--bg-card);
-  border-radius: var(--radius-md); /* Smaller radius for compact layout */
-  border: 1px solid var(--border-color);
-  padding: var(--spacing-xs); /* Reduced padding */
-  margin: var(--spacing-md) var(--spacing-sm); /* Added top/bottom margins */
+  
+  /* Casino table outer styling */
+  background: linear-gradient(135deg, #8b4513, #a0522d, #8b4513);
+  border-radius: 20px;
+  border: 4px solid #654321;
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    inset 0 2px 4px rgba(255, 255, 255, 0.1);
+  
+  padding: var(--spacing-md);
+  margin: var(--spacing-md) var(--spacing-sm);
   display: grid;
   grid-template-areas:
       "trump-corner top score-corner"
@@ -15,50 +21,78 @@
       "round-score-area bottom .";
   grid-template-columns: auto 1fr auto;
   grid-template-rows: auto 1fr auto;
-  gap: var(--spacing-xs); /* Reduced gap */
-  height: calc(430px - 80px); /* Optimized for target resolution minus header/margins */
+  gap: var(--spacing-sm);
+  height: calc(430px - 80px);
   max-height: 350px;
+  
+  /* Wood grain texture effect */
+  background-image: 
+    linear-gradient(90deg, transparent 50%, rgba(0, 0, 0, 0.1) 50%),
+    linear-gradient(0deg, transparent 50%, rgba(0, 0, 0, 0.05) 50%);
+  background-size: 4px 4px, 8px 8px;
 }
 
-/* Player Areas - Compact layout */
+/* Player Areas - Casino seating layout */
 .player-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-xs); /* Reduced gap */
+  gap: var(--spacing-xs);
+  
+  /* Casino player seat styling */
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xs);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(2px);
 }
 
 .player-top {
   grid-area: top;
+  /* Top player sits across the table */
+  transform: translateY(-5px);
 }
 
 .player-left {
   grid-area: left;
   transform: rotate(90deg);
   transform-origin: center;
+  /* Left player sits to the left */
+  margin-right: var(--spacing-sm);
 }
 
 .player-right {
   grid-area: right;
   transform: rotate(-90deg);
   transform-origin: center;
+  /* Right player sits to the right */
+  margin-left: var(--spacing-sm);
 }
 
 .player-bottom {
   grid-area: bottom;
+  /* Bottom player (user) sits closest */
+  transform: translateY(5px);
+  background: rgba(74, 144, 226, 0.1);
+  border-color: rgba(74, 144, 226, 0.3);
 }
 
 .player-info {
   text-align: center;
-  min-width: 80px; /* Reduced for compact layout */
+  min-width: 80px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .player-name {
-  font-size: var(--font-size-sm); /* Increased font size */
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 3px; /* Slightly increased margin */
+  margin-bottom: 3px;
   line-height: 1.2;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .player-display {
@@ -67,50 +101,107 @@
   color: var(--text-primary);
   line-height: 1.2;
   text-align: center;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .player-status {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px; /* Reduced gap */
+  gap: 2px;
   font-size: var(--font-size-xs);
   color: var(--text-secondary);
 }
 
 .card-count {
-  background: var(--bg-input);
-  padding: 2px var(--spacing-xs); /* Reduced padding */
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  padding: 2px var(--spacing-xs);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  border: 1px solid #f39c12;
   font-size: var(--font-size-xs);
+  color: #f39c12;
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .turn-indicator {
-  width: 8px; /* Smaller for compact layout */
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: transparent;
-  border: 2px solid var(--border-color);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   transition: all var(--transition-fast);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
 }
 
 .turn-indicator.active {
-  background: var(--primary-color);
-  border-color: var(--primary-color);
-  box-shadow: 0 0 6px var(--primary-color); /* Smaller glow */
+  background: radial-gradient(circle, #f39c12, #e67e22);
+  border-color: #f39c12;
+  box-shadow: 
+    0 0 8px #f39c12,
+    0 0 16px rgba(243, 156, 18, 0.5),
+    inset 0 1px 2px rgba(255, 255, 255, 0.3);
 }
 
-/* Center Table Area - Optimized for 932x430 */
+/* Center Table Area - Casino Style */
+.game-table .table-center,
 .table-center {
   grid-area: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-sm); /* Reduced gap */
+  gap: var(--spacing-sm);
   position: relative;
-  min-height: 150px; /* Reduced minimum height */
+  min-height: 150px;
+  
+  /* Casino table styling - Green felt */
+  background-color: #1a7c3a !important;
+  background: linear-gradient(135deg, #0d5f2a, #1a7c3a, #0d5f2a) !important;
+  border: 3px solid #8b4513 !important;
+  border-radius: 50px !important;
+  box-shadow: 
+    inset 0 2px 8px rgba(0, 0, 0, 0.3),
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 0 0 2px #654321 !important;
+}
+
+/* Felt texture overlay */
+.game-table .table-center::after,
+.table-center::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 47px;
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.game-table .table-center::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 47px;
+  background-image: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 1px,
+      rgba(255, 255, 255, 0.02) 1px,
+      rgba(255, 255, 255, 0.02) 2px
+    ) !important;
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* Trump Display - Corner Position */
@@ -119,19 +210,23 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
-  background: var(--bg-input);
-  padding: var(--spacing-xs) var(--spacing-sm); /* Reduced padding */
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  border: 2px solid #f39c12;
   align-self: start;
   justify-self: start;
-  font-size: var(--font-size-xs); /* Smaller font */
+  font-size: var(--font-size-xs);
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.1);
 }
 
 .trump-label {
   font-size: var(--font-size-xs);
-  color: var(--text-secondary);
+  color: #f39c12;
   font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 .trump-suit {
@@ -141,36 +236,41 @@
 }
 
 .trump-symbol {
-  font-size: var(--font-size-base); /* Smaller symbol */
+  font-size: var(--font-size-base);
   line-height: 1;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 .trump-symbol.hearts,
 .trump-symbol.diamonds {
-  color: #dc3545;
+  color: #e74c3c;
 }
 
 .trump-symbol.clubs,
 .trump-symbol.spades {
-  color: #000;
+  color: #2c3e50;
 }
 
 .trump-name {
   font-size: var(--font-size-xs);
   font-weight: 600;
   color: var(--text-primary);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 /* Score Display - Corner Position */
 .score-display-corner {
   grid-area: score-corner;
-  background: var(--bg-input);
-  padding: var(--spacing-xs) var(--spacing-sm); /* Reduced padding */
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  border: 2px solid #27ae60;
   align-self: start;
   justify-self: end;
-  font-size: var(--font-size-xs); /* Smaller font */
+  font-size: var(--font-size-xs);
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.1);
 }
 
 .team-scores {
@@ -185,31 +285,39 @@
 
 .team-label {
   font-size: var(--font-size-xs);
-  color: var(--text-secondary);
-  margin-bottom: 2px; /* Reduced margin */
+  color: #27ae60;
+  margin-bottom: 2px;
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 .score-value {
-  font-size: var(--font-size-base); /* Smaller score */
+  font-size: var(--font-size-base);
   font-weight: bold;
   color: var(--text-primary);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 .score-separator {
   font-size: var(--font-size-base);
-  color: var(--text-muted);
+  color: #f39c12;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 /* Round Score Display */
 .round-score-display {
   grid-area: round-score-area;
-  background: var(--bg-input);
-  padding: var(--spacing-xs) var(--spacing-sm); /* Reduced padding */
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  border: 2px solid #e74c3c;
   align-self: start;
   justify-self: start;
-  font-size: var(--font-size-md); /* Smaller font */
+  font-size: var(--font-size-md);
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.1);
 }
 
 .score-section {
@@ -222,10 +330,11 @@
 
 .score-title {
   font-size: var(--font-size-xs);
-  color: var(--text-secondary);
+  color: #e74c3c;
   text-align: center;
-  margin-bottom: 2px; /* Reduced margin */
-  font-weight: 500;
+  margin-bottom: 2px;
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
 }
 
 /* Responsive adjustments for target resolution */

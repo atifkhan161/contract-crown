@@ -2,17 +2,18 @@
 
 .toast-container {
   position: fixed !important;
-  top: 60px !important; /* Adjusted for compact header */
+  bottom: 15px !important;
   right: 15px !important;
+  top: auto !important;
   left: auto !important;
   transform: none !important;
   z-index: 1000;
   pointer-events: none;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   align-items: flex-end;
-  gap: var(--spacing-xs); /* Reduced gap */
-  max-width: 280px; /* Smaller max width */
+  gap: var(--spacing-xs);
+  max-width: 280px;
 }
 
 .toast-message {
@@ -228,8 +229,9 @@
 /* Responsive adjustments for target resolution */
 @media (max-width: 932px) {
   .toast-container {
-      top: 50px;
+      bottom: 10px;
       right: 10px;
+      top: auto;
       max-width: 250px;
   }
 
@@ -252,8 +254,9 @@
 
 @media (max-height: 430px) {
   .toast-container {
-      top: 35px; /* Adjusted for no header */
+      bottom: 8px;
       right: 8px;
+      top: auto;
       max-width: 220px;
   }
 
@@ -295,7 +298,8 @@
 
 /* Accessibility improvements */
 .toast-message[role="alert"] {
-  /* Screen reader announcements */
+  /* Screen reader announcements - ensure proper ARIA attributes */
+  position: relative;
 }
 
 /* High contrast mode support */

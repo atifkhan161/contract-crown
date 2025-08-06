@@ -56,25 +56,25 @@
   border-color: var(--border-color);
 }
 
-/* Card Layout - Compact */
+/* Card Layout - Proper playing card structure */
 .card-corner {
   position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 9px; /* Smaller font for compact cards */
+  font-size: 10px;
   font-weight: bold;
   line-height: 1;
 }
 
 .card-corner-top {
-  top: 2px; /* Reduced spacing */
-  left: 2px;
+  top: 3px;
+  left: 3px;
 }
 
 .card-corner-bottom {
-  bottom: 2px;
-  right: 2px;
+  bottom: 3px;
+  right: 3px;
   transform: rotate(180deg);
 }
 
@@ -89,22 +89,43 @@
 }
 
 .card-rank {
-  font-size: 9px; /* Smaller rank */
+  font-size: 10px;
   font-weight: bold;
   line-height: 1;
   margin-bottom: 1px;
 }
 
 .card-suit {
-  font-size: var(--font-size-base); /* Smaller suit symbol */
+  font-size: 18px;
   line-height: 1;
 }
 
 .card-suit-small {
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1;
 }
 
+/* Red suits (Hearts & Diamonds) */
+.card.hearts .card-rank,
+.card.hearts .card-suit,
+.card.hearts .card-suit-small,
+.card.diamonds .card-rank,
+.card.diamonds .card-suit,
+.card.diamonds .card-suit-small {
+  color: #dc3545;
+}
+
+/* Black suits (Clubs & Spades) */
+.card.clubs .card-rank,
+.card.clubs .card-suit,
+.card.clubs .card-suit-small,
+.card.spades .card-rank,
+.card.spades .card-suit,
+.card.spades .card-suit-small {
+  color: #000;
+}
+
+/* Legacy color classes for backward compatibility */
 .card-rank.red,
 .card-suit.red,
 .card-suit-small.red {
@@ -373,6 +394,18 @@
       height: 60px;
   }
   
+  .card .card-rank {
+      font-size: 9px;
+  }
+  
+  .card .card-suit {
+      font-size: 16px;
+  }
+  
+  .card .card-suit-small {
+      font-size: 9px;
+  }
+  
   .card-back {
       width: 25px;
       height: 38px;
@@ -393,6 +426,28 @@
   .card {
       width: 38px;
       height: 57px;
+  }
+  
+  .card .card-corner-top {
+      top: 2px;
+      left: 2px;
+  }
+  
+  .card .card-corner-bottom {
+      bottom: 2px;
+      right: 2px;
+  }
+  
+  .card .card-rank {
+      font-size: 8px;
+  }
+  
+  .card .card-suit {
+      font-size: 14px;
+  }
+  
+  .card .card-suit-small {
+      font-size: 8px;
   }
   
   .card-back {
