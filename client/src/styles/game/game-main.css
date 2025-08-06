@@ -21,12 +21,12 @@
     --spacing-lg: 16px;
     --spacing-xl: 20px;
     
-    /* Compact font sizes */
-    --font-size-xs: 10px;
-    --font-size-sm: 12px;
-    --font-size-base: 14px;
-    --font-size-lg: 16px;
-    --font-size-xl: 18px;
+    /* Compact font sizes - increased for better readability */
+    --font-size-xs: 12px;
+    --font-size-sm: 14px;
+    --font-size-base: 16px;
+    --font-size-lg: 18px;
+    --font-size-xl: 20px;
     
     /* Compact border radius */
     --radius-sm: 4px;
@@ -73,27 +73,27 @@ body {
 /* Ensure proper text rendering on small screens */
 @media (max-width: 932px) {
     :root {
-        --font-size-xs: 9px;
-        --font-size-sm: 11px;
-        --font-size-base: 13px;
-        --font-size-lg: 15px;
-        --font-size-xl: 17px;
+        --font-size-xs: 11px;
+        --font-size-sm: 13px;
+        --font-size-base: 15px;
+        --font-size-lg: 17px;
+        --font-size-xl: 19px;
     }
 }
 
 @media (max-height: 430px) {
     :root {
-        --spacing-xs: 3px;
-        --spacing-sm: 6px;
-        --spacing-md: 9px;
-        --spacing-lg: 12px;
-        --spacing-xl: 15px;
+        --spacing-xs: 4px;
+        --spacing-sm: 8px;
+        --spacing-md: 12px;
+        --spacing-lg: 16px;
+        --spacing-xl: 20px;
         
-        --font-size-xs: 8px;
-        --font-size-sm: 10px;
-        --font-size-base: 12px;
-        --font-size-lg: 14px;
-        --font-size-xl: 16px;
+        --font-size-xs: 10px;
+        --font-size-sm: 12px;
+        --font-size-base: 14px;
+        --font-size-lg: 16px;
+        --font-size-xl: 18px;
     }
 }
 

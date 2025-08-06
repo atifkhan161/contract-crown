@@ -111,6 +111,11 @@ export class GameState {
             this.state.playerHand.splice(index, 1);
             // Keep hand sorted after removal
             this.state.playerHand = this.sortCardsBySuit(this.state.playerHand);
+            
+            // Update human player's handSize in the players object
+            if (this.state.players && this.state.players['human_player']) {
+                this.state.players['human_player'].handSize = this.state.playerHand.length;
+            }
         }
     }
 

@@ -7,7 +7,7 @@
   border-radius: var(--radius-md); /* Smaller radius for compact layout */
   border: 1px solid var(--border-color);
   padding: var(--spacing-xs); /* Reduced padding */
-  margin: 0 var(--spacing-sm); /* Reduced margins */
+  margin: var(--spacing-md) var(--spacing-sm); /* Added top/bottom margins */
   display: grid;
   grid-template-areas:
       "trump-corner top score-corner"
@@ -54,11 +54,19 @@
 }
 
 .player-name {
-  font-size: var(--font-size-xs); /* Smaller font */
+  font-size: var(--font-size-sm); /* Increased font size */
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 2px; /* Reduced margin */
-  line-height: 1.1;
+  margin-bottom: 3px; /* Slightly increased margin */
+  line-height: 1.2;
+}
+
+.player-display {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+  text-align: center;
 }
 
 .player-status {
@@ -201,7 +209,7 @@
   border: 1px solid var(--border-color);
   align-self: start;
   justify-self: start;
-  font-size: var(--font-size-xs); /* Smaller font */
+  font-size: var(--font-size-md); /* Smaller font */
 }
 
 .score-section {
@@ -223,7 +231,7 @@
 /* Responsive adjustments for target resolution */
 @media (max-width: 932px) {
   .game-table {
-      margin: 0 var(--spacing-xs);
+      margin: var(--spacing-xs) var(--spacing-xs);
       padding: 4px;
       gap: 4px;
   }
@@ -261,6 +269,6 @@
   
   .trump-symbol,
   .score-value {
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-md);
   }
 }

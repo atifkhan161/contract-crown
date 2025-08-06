@@ -118,7 +118,9 @@ export class UIManager {
             const cardsElement = this.elements[`player${position}Cards`];
 
             if (nameElement) {
-                nameElement.textContent = player.username || `Player ${player.seatPosition}`;
+                const teamNumber = this.getPlayerTeam(playerId);
+                const playerName = player.username || `Player ${player.seatPosition}`;
+                nameElement.innerHTML = `<div class="player-display">Team ${teamNumber} - ${playerName}</div>`;
             }
 
             if (cardsElement) {
@@ -463,6 +465,28 @@ export class UIManager {
         const positionIndex = positions.indexOf(position);
         const playerIds = Object.keys(state.players);
         return playerIds[positionIndex] || null;
+    }
+
+    /**
+     * Get player team number based on player ID
+     * @param {string} playerId - Player ID
+     * @returns {number} Team number (1 or 2)
+     */
+    getPlayerTeam(playerId) {
+        // Team 1: human_player and bot_2 (bottom and top)
+        // Team 2: bot_1 and bot_3 (left and right)
+        const team1Players = ['human_player', 'bot_2', 'player1', 'player3'];
+        const team2Players = ['bot_1', 'bot_3', 'player2', 'player4'];
+        
+        if (team1Players.includes(playerId)) {
+            return 1;
+        } else if (team2Players.includes(playerId)) {
+            return 2;
+        }
+        
+        // Fallback: determine by position
+        const position = this.getPlayerPosition(playerId);
+        return (position === 'Bottom' || position === 'Top') ? 1 : 2;
     }
 
     /**
