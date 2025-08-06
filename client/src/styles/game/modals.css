@@ -484,6 +484,241 @@
   }
 }
 
+/* Congratulations Modal - Casino Style */
+.congratulations-modal-content {
+  max-width: 500px;
+  width: 90vw;
+  max-height: 85vh;
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  border: 3px solid #f39c12;
+  border-radius: var(--radius-lg);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    inset 0 2px 4px rgba(255, 255, 255, 0.1);
+}
+
+.congratulations-modal-content .modal-header {
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  margin: calc(-1 * var(--spacing-md));
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  text-align: center;
+}
+
+.congratulations-modal-content .modal-header h3 {
+  color: #2c3e50;
+  font-size: var(--font-size-xl);
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+  margin: 0;
+}
+
+.congratulations-content {
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.winner-announcement {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: rgba(39, 174, 96, 0.2);
+  border-radius: var(--radius-md);
+  border: 2px solid #27ae60;
+}
+
+.winner-announcement h2 {
+  font-size: var(--font-size-xxl);
+  color: #27ae60;
+  margin: 0 0 var(--spacing-sm) 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  animation: winnerGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes winnerGlow {
+  from {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+  to {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 10px rgba(39, 174, 96, 0.5);
+  }
+}
+
+.winner-announcement p {
+  font-size: var(--font-size-lg);
+  color: var(--text-primary);
+  margin: 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.round-summary {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.round-summary h4 {
+  color: #f39c12;
+  font-size: var(--font-size-lg);
+  margin: 0 0 var(--spacing-md) 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.score-breakdown {
+  display: flex;
+  justify-content: center;
+}
+
+.team-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  width: 100%;
+  max-width: 300px;
+}
+
+.team-info {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--spacing-md);
+  align-items: center;
+  padding: var(--spacing-sm);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.team-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.team-tricks {
+  font-size: var(--font-size-sm);
+  color: #3498db;
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.team-points {
+  font-size: var(--font-size-sm);
+  color: #27ae60;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.game-score {
+  padding: var(--spacing-md);
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.game-score h4 {
+  color: #e74c3c;
+  font-size: var(--font-size-lg);
+  margin: 0 0 var(--spacing-md) 0;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.total-scores {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.score-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.score-team {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.score-value {
+  font-size: var(--font-size-xxl);
+  font-weight: bold;
+  color: var(--text-primary);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  border-radius: var(--radius-sm);
+  border: 2px solid #f39c12;
+  min-width: 60px;
+}
+
+.congratulations-modal-content .score-separator {
+  font-size: var(--font-size-xxl);
+  color: #f39c12;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+.congratulations-modal-content .modal-footer {
+  display: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 932px) {
+  .congratulations-modal-content {
+    max-width: 450px;
+    width: 95vw;
+  }
+  
+  .team-breakdown {
+    max-width: 280px;
+  }
+  
+  .total-scores {
+    gap: var(--spacing-md);
+  }
+}
+
+@media (max-height: 430px) {
+  .congratulations-modal-content {
+    max-height: 90vh;
+    padding: var(--spacing-sm);
+  }
+  
+  .congratulations-modal-content .modal-header {
+    margin: calc(-1 * var(--spacing-sm));
+    margin-bottom: var(--spacing-sm);
+    padding: var(--spacing-sm);
+  }
+  
+  .congratulations-modal-content .modal-header h3 {
+    font-size: var(--font-size-lg);
+  }
+  
+  .winner-announcement h2 {
+    font-size: var(--font-size-xl);
+  }
+  
+  .round-summary,
+  .game-score {
+    padding: var(--spacing-sm);
+  }
+  
+  .team-breakdown {
+    gap: var(--spacing-xs);
+  }
+  
+  .score-value {
+    font-size: var(--font-size-xl);
+    min-width: 50px;
+  }
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .round-completion-overlay,
@@ -492,6 +727,14 @@
   }
   
   .trump-modal-card:hover {
+      transform: none;
+  }
+  
+  .winner-announcement h2 {
+      animation: none;
+  }
+  
+  .congratulations-modal-content .btn:hover {
       transform: none;
   }
 }

@@ -245,6 +245,62 @@
             </div>
         </div>
 
+        <!-- Congratulations Modal -->
+        <div id="congratulations-modal" class="modal hidden">
+            <div class="modal-overlay"></div>
+            <div class="modal-content congratulations-modal-content">
+                <div class="modal-header">
+                    <h3 id="congratulations-title">🎉 Congratulations! 🎉</h3>
+                </div>
+                <div class="modal-body">
+                    <div class="congratulations-content">
+                        <div class="winner-announcement">
+                            <h2 id="winner-team">Team 1 Wins!</h2>
+                            <p id="winner-reason">Won the round with 5 tricks</p>
+                        </div>
+                        
+                        <div class="round-summary">
+                            <h4>Round Summary</h4>
+                            <div class="score-breakdown">
+                                <div class="team-breakdown">
+                                    <div class="team-info">
+                                        <span class="team-name">Team 1</span>
+                                        <span class="team-tricks" id="team1-tricks">5 tricks</span>
+                                        <span class="team-points" id="team1-points">+5 points</span>
+                                    </div>
+                                    <div class="team-info">
+                                        <span class="team-name">Team 2</span>
+                                        <span class="team-tricks" id="team2-tricks">3 tricks</span>
+                                        <span class="team-points" id="team2-points">+0 points</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="game-score">
+                            <h4>Game Score</h4>
+                            <div class="total-scores">
+                                <div class="score-display">
+                                    <span class="score-team">Team 1</span>
+                                    <span class="score-value" id="total-team1-score">15</span>
+                                </div>
+                                <div class="score-separator">-</div>
+                                <div class="score-display">
+                                    <span class="score-team">Team 2</span>
+                                    <span class="score-value" id="total-team2-score">8</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="continue-game-btn" class="btn btn-primary">
+                        Continue to Next Round
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Loading Overlay -->
         <div id="loading-overlay" class="loading-overlay hidden">
             <div class="loading-content">

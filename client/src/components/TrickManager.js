@@ -9,6 +9,9 @@ export class TrickManager {
         this.uiManager = uiManager;
         this.onTrickComplete = null; // Callback for trick completion
         this.onNewRoundStart = null; // Callback for new round start
+        
+        // Set up UI callback for next round
+        this.uiManager.setNextRoundCallback((roundWinner) => this.startNextRound(roundWinner));
     }
 
     /**
@@ -250,15 +253,27 @@ export class TrickManager {
             // Update round scores
             this.updateRoundScores(roundWinner.teamKey);
             
+            // Get updated round scores for the modal
+            const updatedState = this.gameState.getState();
+            const updatedRoundScores = updatedState.roundScores || { team1: 0, team2: 0 };
+            
+            // Show congratulations modal
+            setTimeout(() => {
+                this.uiManager.showCongratulationsModal(roundWinner, scores, updatedRoundScores);
+            }, 2000);
+            
             // Check for game winner (first to win required number of rounds)
             if (this.checkGameWinner()) {
-                this.handleGameComplete();
+                // Don't start next round if game is complete
+                setTimeout(() => {
+                    this.uiManager.hideCongratulationsModal();
+                    this.handleGameComplete();
+                }, 5000);
                 return;
             }
         }
 
-        // Start next round
-        setTimeout(() => this.startNextRound(roundWinner), 3000);
+        // Note: Next round will start when user clicks "Continue" button in the modal
     }
 
     /**

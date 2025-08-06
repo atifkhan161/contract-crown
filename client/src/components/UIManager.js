@@ -7,6 +7,7 @@ export class UIManager {
     constructor(gameState) {
         this.gameState = gameState;
         this.elements = {};
+        this.onNextRoundCallback = null;
         this.initializeElements();
     }
 
@@ -61,6 +62,12 @@ export class UIManager {
         this.elements.trumpInitialCards = document.getElementById('trump-initial-cards');
         this.elements.trumpOptions = document.querySelectorAll('.trump-option');
         this.elements.confirmTrumpBtn = document.getElementById('confirm-trump-btn');
+        
+        // Congratulations modal elements
+        this.elements.congratulationsModal = document.getElementById('congratulations-modal');
+        this.elements.winnerTeam = document.getElementById('winner-team');
+        this.elements.winnerReason = document.getElementById('winner-reason');
+        this.elements.continueGameBtn = document.getElementById('continue-game-btn');
 
         // Messages and overlays
         this.elements.toastContainer = document.getElementById('toast-container');
@@ -805,6 +812,110 @@ export class UIManager {
         setTimeout(() => {
             if (callback) callback();
         }, 400); // Match animation duration
+    }
+
+    /**
+     * Show congratulations modal for round winner
+     * @param {Object} roundWinner - Round winner information
+     * @param {Object} scores - Current trick scores
+     * @param {Object} roundScores - Total game scores
+     */
+    showCongratulationsModal(roundWinner, scores, roundScores) {
+        const modal = document.getElementById('congratulations-modal');
+        const winnerTeam = document.getElementById('winner-team');
+        const winnerReason = document.getElementById('winner-reason');
+        const team1Tricks = document.getElementById('team1-tricks');
+        const team2Tricks = document.getElementById('team2-tricks');
+        const team1Points = document.getElementById('team1-points');
+        const team2Points = document.getElementById('team2-points');
+        const totalTeam1Score = document.getElementById('total-team1-score');
+        const totalTeam2Score = document.getElementById('total-team2-score');
+        const continueBtn = document.getElementById('continue-game-btn');
+
+        if (!modal) {
+            console.error('[UIManager] Congratulations modal not found');
+            return;
+        }
+
+        // Update winner information
+        if (winnerTeam) {
+            winnerTeam.textContent = `${roundWinner.teamName} Wins!`;
+        }
+        if (winnerReason) {
+            winnerReason.textContent = roundWinner.reason;
+        }
+
+        // Update trick counts
+        if (team1Tricks) {
+            team1Tricks.textContent = `${scores.team1} tricks`;
+        }
+        if (team2Tricks) {
+            team2Tricks.textContent = `${scores.team2} tricks`;
+        }
+
+        // Calculate points awarded (winning team gets their trick count as points)
+        const team1PointsAwarded = roundWinner.teamKey === 'team1' ? scores.team1 : 0;
+        const team2PointsAwarded = roundWinner.teamKey === 'team2' ? scores.team2 : 0;
+
+        if (team1Points) {
+            team1Points.textContent = team1PointsAwarded > 0 ? `+${team1PointsAwarded} points` : '+0 points';
+        }
+        if (team2Points) {
+            team2Points.textContent = team2PointsAwarded > 0 ? `+${team2PointsAwarded} points` : '+0 points';
+        }
+
+        // Update total game scores
+        if (totalTeam1Score) {
+            totalTeam1Score.textContent = roundScores.team1.toString();
+        }
+        if (totalTeam2Score) {
+            totalTeam2Score.textContent = roundScores.team2.toString();
+        }
+
+        // Hide continue button
+        if (continueBtn) {
+            continueBtn.style.display = 'none';
+        }
+
+        // Show modal
+        modal.classList.remove('hidden');
+
+        // Auto-hide modal after 10 seconds
+        setTimeout(() => {
+            this.hideCongratulationsModal();
+            // Trigger next round start after modal closes
+            setTimeout(() => {
+                this.triggerNextRound(roundWinner);
+            }, 500);
+        }, 10000);
+    }
+
+    /**
+     * Hide congratulations modal
+     */
+    hideCongratulationsModal() {
+        const modal = document.getElementById('congratulations-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    /**
+     * Set callback for next round trigger
+     * @param {Function} callback - Function to call when next round should start
+     */
+    setNextRoundCallback(callback) {
+        this.onNextRoundCallback = callback;
+    }
+
+    /**
+     * Trigger next round start
+     * @param {Object} roundWinner - Round winner information
+     */
+    triggerNextRound(roundWinner) {
+        if (this.onNextRoundCallback) {
+            this.onNextRoundCallback(roundWinner);
+        }
     }
 
     /**
