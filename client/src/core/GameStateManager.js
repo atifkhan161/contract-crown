@@ -385,7 +385,7 @@ export class GameStateManager {
      * @returns {string} Current game phase
      */
     getPhase() {
-        return this.gameState ? this.gameState.phase : 'lobby';
+        return this.gameState ? this.gameState.phase : 'waiting-room';
     }
 
     /**

@@ -1,0 +1,96 @@
+/* Ready section and host controls */
+
+/* Ready Section */
+.ready-section {
+  margin-bottom: var(--waiting-spacing-xxl);
+  text-align: center;
+}
+
+.ready-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--waiting-spacing-md);
+}
+
+.ready-status {
+  color: var(--text-secondary);
+  font-size: var(--waiting-font-size-base);
+  transition: color 0.3s ease;
+}
+
+.ready-status.all-ready {
+  color: var(--success-color);
+  font-weight: 600;
+}
+
+.ready-status.some-ready {
+  color: var(--warning-color);
+}
+
+.ready-status.none-ready {
+  color: var(--text-muted);
+}
+
+/* Host Controls Section */
+.host-controls-section {
+  margin-bottom: var(--waiting-spacing-xxl);
+  text-align: center;
+}
+
+.host-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--waiting-spacing-md);
+}
+
+.host-info {
+  color: var(--text-secondary);
+  font-size: var(--waiting-font-size-sm);
+  text-align: center;
+  max-width: 300px;
+}
+
+.host-info .host-text {
+  transition: color 0.3s ease;
+}
+
+.host-info .host-text.ready {
+  color: var(--success-color);
+  font-weight: 600;
+}
+
+.host-info .host-text.waiting {
+  color: var(--text-secondary);
+}
+
+/* Button Styles */
+.btn-lg {
+  padding: var(--waiting-spacing-lg) var(--waiting-spacing-xxl);
+  font-size: var(--waiting-font-size-lg);
+  min-width: 200px;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+  color: var(--text-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--waiting-transition-fast);
+  font-weight: 600;
+  min-height: 48px;
+}
+
+.btn-lg:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-lg:active {
+  transform: translateY(0);
+}
+
+.btn-lg:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}

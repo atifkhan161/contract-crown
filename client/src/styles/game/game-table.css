@@ -1,0 +1,287 @@
+/* Game table layout, player areas, and score displays */
+
+/* Game Table */
+.game-table {
+  flex: 1;
+  position: relative;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  padding: var(--game-table-padding);
+  margin: 0 20px;
+  display: grid;
+  grid-template-areas:
+    "trump-corner top score-corner"
+    "round-score-area center right"
+    "left center right"
+    ". bottom .";
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
+  gap: var(--game-spacing-md);
+  min-height: 500px;
+  max-height: var(--game-table-max-height);
+}
+
+/* Player Areas */
+.player-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--game-spacing-sm);
+}
+
+.player-top {
+  grid-area: top;
+}
+
+.player-left {
+  grid-area: left;
+  transform: rotate(90deg);
+}
+
+.player-right {
+  grid-area: right;
+  transform: rotate(-90deg);
+}
+
+.player-bottom {
+  grid-area: bottom;
+}
+
+.player-info {
+  text-align: center;
+  min-width: 120px;
+}
+
+.player-name {
+  font-size: var(--font-size-sm-compact);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--game-spacing-xs);
+}
+
+.player-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--game-spacing-xs);
+  font-size: var(--font-size-xs-compact);
+  color: var(--text-secondary);
+}
+
+.card-count {
+  background: var(--bg-input);
+  padding: var(--game-spacing-xs) var(--game-spacing-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  font-size: var(--font-size-xs-compact);
+}
+
+.turn-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: transparent;
+  border: 2px solid var(--border-color);
+  transition: all var(--transition-fast);
+}
+
+.turn-indicator.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 8px var(--primary-color);
+}
+
+/* Opponent Hands */
+.opponent-hand {
+  display: flex;
+  justify-content: center;
+}
+
+.card-back-stack {
+  display: flex;
+  gap: -8px;
+}
+
+.card-back {
+  width: 32px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--bg-secondary), var(--primary-color));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  position: relative;
+  margin-left: -6px;
+  transition: all var(--transition-fast);
+  animation: cardDeal 0.3s ease-out forwards;
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.card-back:first-child {
+  margin-left: 0;
+}
+
+.card-back::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  opacity: 0.8;
+}
+
+.card-back::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  background: var(--primary-color);
+  border-radius: 50%;
+}
+
+/* Trump Display - Corner Position */
+.trump-display-corner {
+  grid-area: trump-corner;
+  display: flex;
+  align-items: center;
+  gap: var(--game-spacing-sm);
+  background: var(--bg-input);
+  padding: var(--game-spacing-sm) var(--game-spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  align-self: start;
+  justify-self: start;
+}
+
+.trump-display {
+  display: flex;
+  align-items: center;
+  gap: var(--game-spacing-sm);
+  background: var(--bg-input);
+  padding: var(--game-spacing-sm) var(--game-spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.trump-label {
+  font-size: var(--font-size-sm-compact);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.trump-suit {
+  display: flex;
+  align-items: center;
+  gap: var(--game-spacing-xs);
+}
+
+.trump-symbol {
+  font-size: var(--font-size-lg);
+  line-height: 1;
+}
+
+.trump-symbol.hearts,
+.trump-symbol.diamonds {
+  color: #dc3545;
+}
+
+.trump-symbol.clubs,
+.trump-symbol.spades {
+  color: #000;
+}
+
+.trump-name {
+  font-size: var(--font-size-sm-compact);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Score Display - Corner Position */
+.score-display-corner {
+  grid-area: score-corner;
+  background: var(--bg-input);
+  padding: var(--game-spacing-sm) var(--game-spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  align-self: start;
+  justify-self: end;
+}
+
+.score-display {
+  background: var(--bg-input);
+  padding: var(--game-spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.team-scores {
+  display: flex;
+  align-items: center;
+  gap: var(--game-spacing-md);
+}
+
+.team-score {
+  text-align: center;
+}
+
+.team-label {
+  font-size: var(--font-size-xs-compact);
+  color: var(--text-secondary);
+  margin-bottom: var(--game-spacing-xs);
+}
+
+.score-value {
+  font-size: var(--font-size-lg);
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.score-separator {
+  font-size: var(--font-size-lg);
+  color: var(--text-muted);
+}
+
+.score-section {
+  margin-bottom: var(--game-spacing-sm);
+}
+
+.score-section:last-child {
+  margin-bottom: 0;
+}
+
+.score-title {
+  font-size: var(--font-size-xs-compact);
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: var(--game-spacing-xs);
+  font-weight: 500;
+}
+
+/* Round Score Display */
+.round-score-display {
+  grid-area: round-score-area;
+  background: var(--bg-input);
+  padding: var(--game-spacing-sm) var(--game-spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  align-self: start;
+  justify-self: start;
+}
+
+/* Center Table Area */
+.table-center {
+  grid-area: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--game-spacing-lg);
+  position: relative;
+}

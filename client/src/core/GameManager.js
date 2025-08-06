@@ -175,7 +175,7 @@ export class GameManager {
             if (this.isDemoMode) {
                 window.location.href = '/dashboard.html';
             } else {
-                window.location.href = '/lobby.html';
+                window.location.href = '/waiting-room.html';
             }
         } catch (error) {
             console.error('[GameManager] Error leaving game:', error);

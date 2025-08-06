@@ -1,0 +1,238 @@
+/* Toast notification system */
+
+/* Toast Container */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: calc(var(--z-modal) + 10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--game-spacing-sm);
+  pointer-events: none;
+}
+
+/* Toast Base Styles */
+.toast {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(10px);
+  min-width: 250px;
+  max-width: 350px;
+  pointer-events: auto;
+  animation: toastSlideIn 0.3s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.toast.removing {
+  animation: toastSlideOut 0.3s ease-in forwards;
+}
+
+/* Toast Types */
+.toast.success {
+  border-left: 4px solid var(--status-connected);
+  background: rgba(39, 174, 96, 0.1);
+}
+
+.toast.error {
+  border-left: 4px solid var(--text-error);
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.toast.warning {
+  border-left: 4px solid #f39c12;
+  background: rgba(243, 156, 18, 0.1);
+}
+
+.toast.info {
+  border-left: 4px solid var(--primary-color);
+  background: rgba(74, 144, 226, 0.1);
+}
+
+/* Toast Content */
+.toast-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--game-spacing-sm);
+}
+
+.toast-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  margin-top: 2px;
+}
+
+.toast.success .toast-icon {
+  color: var(--status-connected);
+}
+
+.toast.error .toast-icon {
+  color: var(--text-error);
+}
+
+.toast.warning .toast-icon {
+  color: #f39c12;
+}
+
+.toast.info .toast-icon {
+  color: var(--primary-color);
+}
+
+.toast-message {
+  flex: 1;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm-compact);
+  line-height: 1.4;
+}
+
+.toast-title {
+  font-weight: 600;
+  margin-bottom: var(--game-spacing-xs);
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.toast-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+/* Progress Bar */
+.toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  animation: toastProgress 5s linear forwards;
+}
+
+.toast.success .toast-progress {
+  background: var(--status-connected);
+}
+
+.toast.error .toast-progress {
+  background: var(--text-error);
+}
+
+.toast.warning .toast-progress {
+  background: #f39c12;
+}
+
+.toast.info .toast-progress {
+  background: var(--primary-color);
+}
+
+/* Toast Animations */
+@keyframes toastSlideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toastSlideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+    max-height: 100px;
+    margin-bottom: var(--game-spacing-sm);
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+}
+
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Game-specific Toast Messages */
+.toast.game-event {
+  border-left: 4px solid var(--primary-color);
+}
+
+.toast.player-action {
+  border-left: 4px solid #9b59b6;
+}
+
+.toast.trump-declared {
+  border-left: 4px solid #e67e22;
+}
+
+.toast.trick-won {
+  border-left: 4px solid var(--status-connected);
+}
+
+.toast.round-complete {
+  border-left: 4px solid #3498db;
+}
+
+/* Compact Toast for Mobile */
+@media (max-width: 768px) {
+  .toast-container {
+    top: 70px;
+    right: 10px;
+    left: 10px;
+    align-items: stretch;
+  }
+  
+  .toast {
+    min-width: auto;
+    max-width: none;
+    padding: var(--game-spacing-sm);
+  }
+  
+  .toast-message {
+    font-size: var(--font-size-xs-compact);
+  }
+  
+  .toast-icon {
+    width: 16px;
+    height: 16px;
+    font-size: var(--font-size-xs);
+  }
+  
+  .toast-close {
+    width: 16px;
+    height: 16px;
+  }
+}

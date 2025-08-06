@@ -1,0 +1,56 @@
+/* Waiting Room Main - Central coordinator with root variables and global optimizations */
+
+/* 932x430 Resolution Optimizations */
+:root {
+  /* Compact spacing for target resolution */
+  --waiting-spacing-xs: 0.25rem;  /* 4px */
+  --waiting-spacing-sm: 0.5rem;   /* 8px */
+  --waiting-spacing-md: 0.75rem;  /* 12px */
+  --waiting-spacing-lg: 1rem;     /* 16px */
+  --waiting-spacing-xl: 1.5rem;   /* 24px */
+  --waiting-spacing-xxl: 2rem;    /* 32px */
+  
+  /* Compact header height */
+  --waiting-header-height: 60px;
+  
+  /* Player slot dimensions */
+  --waiting-player-slot-height: 70px;
+  --waiting-player-avatar-size: 40px;
+  
+  /* Performance optimizations */
+  --waiting-transition-fast: 0.15s ease;
+  --waiting-transition-normal: 0.3s ease;
+  
+  /* Typography optimizations */
+  --waiting-font-size-xs: 0.75rem;   /* 12px */
+  --waiting-font-size-sm: 0.875rem;  /* 14px */
+  --waiting-font-size-base: 1rem;    /* 16px */
+  --waiting-font-size-lg: 1.125rem;  /* 18px */
+  --waiting-font-size-xl: 1.25rem;   /* 20px */
+  --waiting-font-size-xxl: 1.5rem;   /* 24px */
+}
+
+/* Main Content */
+.waiting-room-main {
+  min-height: calc(100vh - var(--waiting-header-height));
+  padding: var(--waiting-spacing-xl) 0;
+}
+
+.waiting-room-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 var(--waiting-spacing-md);
+}
+
+/* Performance optimizations */
+.waiting-room-main *,
+.waiting-room-main *::before,
+.waiting-room-main *::after {
+  box-sizing: border-box;
+}
+
+/* GPU acceleration for animations */
+.player-slot {
+  will-change: transform;
+  backface-visibility: hidden;
+}

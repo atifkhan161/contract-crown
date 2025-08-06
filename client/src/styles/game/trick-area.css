@@ -1,0 +1,154 @@
+/* Trick area, lead suit indicators, and winner animations */
+
+/* Trick Area */
+.trick-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--game-spacing-md);
+}
+
+.trick-cards {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  display: grid;
+  grid-template-areas:
+    ". top ."
+    "left center right"
+    ". bottom .";
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  gap: var(--game-spacing-sm);
+}
+
+.played-card-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  min-width: 42px;
+  min-height: 63px;
+  transition: all var(--transition-fast);
+}
+
+.played-card-slot[data-position="top"] {
+  grid-area: top;
+}
+
+.played-card-slot[data-position="left"] {
+  grid-area: left;
+}
+
+.played-card-slot[data-position="right"] {
+  grid-area: right;
+}
+
+.played-card-slot[data-position="bottom"] {
+  grid-area: bottom;
+}
+
+.played-card-slot.active {
+  border-color: var(--primary-color);
+  background: rgba(74, 144, 226, 0.1);
+  animation: slotPulse 2s infinite;
+}
+
+.played-card-slot.winner {
+  border-color: var(--status-connected);
+  background: rgba(39, 174, 96, 0.2);
+  animation: winnerGlow 1s ease-in-out;
+}
+
+.played-card-slot.lead-suit {
+  border-color: #f39c12;
+  background: rgba(243, 156, 18, 0.1);
+}
+
+.trick-info {
+  text-align: center;
+  font-size: var(--font-size-sm-compact);
+  color: var(--text-secondary);
+  margin-top: var(--game-spacing-xs);
+}
+
+.trick-winner {
+  color: var(--status-connected);
+  font-weight: 600;
+}
+
+.lead-suit-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--game-spacing-xs);
+  padding: var(--game-spacing-xs) var(--game-spacing-sm);
+  background: rgba(243, 156, 18, 0.1);
+  border: 1px solid #f39c12;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs-compact);
+  color: #f39c12;
+  margin-bottom: var(--game-spacing-sm);
+}
+
+.lead-suit-symbol {
+  font-size: var(--font-size-sm);
+  line-height: 1;
+}
+
+.lead-suit-symbol.hearts,
+.lead-suit-symbol.diamonds {
+  color: #dc3545;
+}
+
+.lead-suit-symbol.clubs,
+.lead-suit-symbol.spades {
+  color: #000;
+}
+
+/* Winner Animations */
+@keyframes slotPulse {
+  0%, 100% { 
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0 rgba(74, 144, 226, 0.4);
+  }
+  50% { 
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.1);
+  }
+}
+
+@keyframes winnerGlow {
+  0% { 
+    border-color: var(--status-connected);
+    box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.6);
+  }
+  50% { 
+    border-color: var(--status-connected);
+    box-shadow: 0 0 0 8px rgba(39, 174, 96, 0.2);
+  }
+  100% { 
+    border-color: var(--status-connected);
+    box-shadow: 0 0 0 0 rgba(39, 174, 96, 0);
+  }
+}
+
+/* Trick Collection Animation */
+.trick-collecting {
+  animation: collectTrick 1s ease-in-out forwards;
+}
+
+@keyframes collectTrick {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}

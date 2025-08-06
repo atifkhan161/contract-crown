@@ -1,0 +1,86 @@
+/* Base styles, connection status, and utilities */
+
+/* Connection Status Widget */
+.connection-status {
+  position: fixed;
+  top: var(--login-spacing-md);
+  right: var(--login-spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--login-spacing-sm);
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  padding: var(--login-spacing-sm) var(--login-spacing-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  z-index: var(--z-tooltip);
+  font-size: var(--login-font-size-sm);
+  transition: all var(--login-transition-normal);
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-connecting);
+  transition: background-color var(--login-transition-fast);
+}
+
+.status-indicator.connected {
+  background: var(--status-connected);
+}
+
+.status-indicator.disconnected {
+  background: var(--status-disconnected);
+}
+
+.status-indicator.connecting {
+  background: var(--status-connecting);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.status-text {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Utility Classes */
+.hidden {
+  display: none !important;
+}
+
+/* Error Messages */
+.error-message {
+  font-size: var(--login-font-size-xs);
+  color: var(--text-error);
+  margin-top: var(--login-spacing-xs);
+  min-height: 1rem;
+  opacity: 0;
+  transition: opacity var(--login-transition-fast);
+}
+
+.error-message.show {
+  opacity: 1;
+}
+
+.form-error {
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid var(--text-error);
+  border-radius: var(--radius-md);
+  padding: var(--login-spacing-md);
+  color: var(--text-error);
+  font-size: var(--login-font-size-sm);
+  text-align: center;
+  margin-top: var(--login-spacing-md);
+  opacity: 0;
+  transition: opacity var(--login-transition-fast);
+}
+
+.form-error.show {
+  opacity: 1;
+}

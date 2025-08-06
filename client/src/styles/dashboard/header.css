@@ -1,0 +1,78 @@
+/* Header and connection status */
+
+.dashboard-header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: var(--dashboard-spacing-md) 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--dashboard-header-height);
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--dashboard-spacing-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.app-title {
+  color: var(--text-primary);
+  font-size: var(--dashboard-font-size-xl);
+  font-weight: 600;
+  margin: 0;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: var(--dashboard-spacing-md);
+}
+
+.username {
+  color: var(--text-secondary);
+  font-size: var(--dashboard-font-size-base);
+}
+
+/* Connection Status */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: var(--dashboard-spacing-sm);
+  margin-bottom: var(--dashboard-spacing-xl);
+  padding: var(--dashboard-spacing-sm) var(--dashboard-spacing-md);
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--status-connecting);
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.connected {
+  background: var(--status-connected);
+  animation: none;
+}
+
+.status-indicator.disconnected {
+  background: var(--status-disconnected);
+  animation: none;
+}
+
+.status-text {
+  color: var(--text-secondary);
+  font-size: var(--dashboard-font-size-sm);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

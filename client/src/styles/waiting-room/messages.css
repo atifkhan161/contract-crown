@@ -1,0 +1,49 @@
+/* Messages section */
+
+/* Messages Section */
+.messages-section {
+  margin-bottom: var(--waiting-spacing-xl);
+}
+
+.game-messages {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--waiting-spacing-lg);
+  min-height: 100px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.game-messages:empty::before {
+  content: "Waiting for updates...";
+  color: var(--text-muted);
+  font-style: italic;
+  display: block;
+  text-align: center;
+  padding: var(--waiting-spacing-lg) 0;
+}
+
+.message {
+  padding: var(--waiting-spacing-sm) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-size: var(--waiting-font-size-sm);
+}
+
+.message:last-child {
+  border-bottom: none;
+}
+
+.message.system {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.message.error {
+  color: var(--text-error);
+}
+
+.message.success {
+  color: var(--text-success);
+}

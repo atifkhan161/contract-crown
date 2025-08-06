@@ -1,0 +1,117 @@
+/* Modal dialogs for waiting room */
+
+/* Connection Recovery Modal */
+.connection-recovery-modal .modal-content {
+  max-width: 400px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--waiting-spacing-xl);
+  box-shadow: var(--shadow-lg);
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  position: relative;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--waiting-spacing-xl);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--waiting-spacing-lg);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--waiting-font-size-xl);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--waiting-font-size-xl);
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all var(--waiting-transition-fast);
+}
+
+.modal-close:hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.modal-footer {
+  margin-top: var(--waiting-spacing-lg);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--waiting-spacing-md);
+}
+
+.recovery-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--waiting-spacing-sm);
+  margin: var(--waiting-spacing-lg) 0;
+}
+
+.recovery-options .btn {
+  justify-self: stretch;
+  padding: var(--waiting-spacing-sm) var(--waiting-spacing-lg);
+  background: var(--primary-color);
+  color: var(--text-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--waiting-transition-fast);
+}
+
+.recovery-options .btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.recovery-note {
+  font-size: var(--waiting-font-size-sm);
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: var(--waiting-spacing-md);
+  font-style: italic;
+}

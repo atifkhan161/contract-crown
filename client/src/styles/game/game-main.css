@@ -1,0 +1,73 @@
+/* Game Main - Central coordinator with root variables and global optimizations */
+
+/* 932x430 Resolution Optimizations */
+:root {
+  /* Compact spacing for target resolution */
+  --game-spacing-xs: 0.125rem;  /* 2px */
+  --game-spacing-sm: 0.25rem;   /* 4px */
+  --game-spacing-md: 0.5rem;    /* 8px */
+  --game-spacing-lg: 0.75rem;   /* 12px */
+  --game-spacing-xl: 1rem;      /* 16px */
+  
+  /* Optimized card sizes for 932x430 */
+  --card-width-mobile: 38px;
+  --card-height-mobile: 57px;
+  --card-width-desktop: 60px;
+  --card-height-desktop: 90px;
+  
+  /* Compact header height */
+  --header-height: 50px;
+  --header-height-mobile: 0px; /* Hidden on mobile */
+  
+  /* Game table dimensions */
+  --game-table-max-height: 350px;
+  --game-table-padding: var(--game-spacing-md);
+  
+  /* Performance optimizations */
+  --transition-fast: 0.1s ease;
+  --transition-normal: 0.2s ease;
+  
+  /* Typography optimizations */
+  --font-size-compact: 0.625rem;  /* 10px */
+  --font-size-xs-compact: 0.6875rem; /* 11px */
+  --font-size-sm-compact: 0.75rem;   /* 12px */
+}
+
+/* Global game layout */
+.game-main {
+  flex: 1;
+  padding: var(--game-spacing-md);
+  overflow: hidden;
+  min-height: calc(100vh - var(--header-height));
+}
+
+.game-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Performance optimizations */
+.game-main *,
+.game-main *::before,
+.game-main *::after {
+  box-sizing: border-box;
+}
+
+/* Reduce repaints and reflows */
+.game-table,
+.card,
+.played-card {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* GPU acceleration for animations */
+.card:hover,
+.card.selected,
+.card.touching {
+  transform: translateZ(0);
+}

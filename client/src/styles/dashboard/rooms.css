@@ -1,0 +1,113 @@
+/* Rooms container and room items */
+
+.rooms-container {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.rooms-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.room-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--room-item-padding);
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color var(--dashboard-transition-fast);
+}
+
+.room-item:last-child {
+  border-bottom: none;
+}
+
+.room-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.room-info {
+  flex: 1;
+}
+
+.room-name {
+  color: var(--text-primary);
+  font-size: var(--dashboard-font-size-lg);
+  font-weight: 500;
+  margin: 0 0 var(--dashboard-spacing-xs) 0;
+}
+
+.room-details {
+  display: flex;
+  gap: var(--dashboard-spacing-md);
+  color: var(--text-secondary);
+  font-size: var(--dashboard-font-size-sm);
+}
+
+.room-status {
+  display: flex;
+  align-items: center;
+  gap: var(--dashboard-spacing-xs);
+}
+
+.room-status.waiting {
+  color: var(--status-connecting);
+}
+
+.room-status.playing {
+  color: var(--text-error);
+}
+
+.room-actions {
+  display: flex;
+  gap: var(--dashboard-spacing-sm);
+}
+
+/* Demo button specific styles */
+.btn-demo {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 1px solid #667eea;
+  color: white;
+  position: relative;
+  overflow: hidden;
+  padding: var(--dashboard-spacing-sm) var(--dashboard-spacing-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--dashboard-transition-fast);
+  font-weight: 600;
+}
+
+.btn-demo:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+  border-color: #5a6fd8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-demo:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
+}
+
+.btn-demo .btn-icon {
+  font-size: 1.1em;
+  margin-right: var(--dashboard-spacing-xs);
+}
+
+.no-rooms {
+  padding: var(--dashboard-spacing-xxl);
+  text-align: center;
+}
+
+.no-rooms-content h3 {
+  color: var(--text-primary);
+  margin: 0 0 var(--dashboard-spacing-sm) 0;
+}
+
+.no-rooms-content p {
+  color: var(--text-secondary);
+  margin: 0;
+}

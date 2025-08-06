@@ -657,8 +657,8 @@ export class FrontendStateSynchronizer {
                         this.localState.players = data.players;
                     }
                     // Mark room as joined for WebSocket operations
-                    if (window.lobbyManager) {
-                        window.lobbyManager.isWebSocketRoomJoined = true;
+                    if (window.waitingRoomManager) {
+                        window.waitingRoomManager.isWebSocketRoomJoined = true;
                     }
                     break;
                 case 'playerJoined':
@@ -936,9 +936,9 @@ export class FrontendStateSynchronizer {
      * Check if websocket room is joined
      */
     isWebSocketRoomJoined() {
-        // Check if we have a reference to the lobby manager
-        if (window.lobbyManager && typeof window.lobbyManager.isWebSocketRoomJoined === 'boolean') {
-            return window.lobbyManager.isWebSocketRoomJoined;
+        // Check if we have a reference to the waiting room manager
+        if (window.waitingRoomManager && typeof window.waitingRoomManager.isWebSocketRoomJoined === 'boolean') {
+            return window.waitingRoomManager.isWebSocketRoomJoined;
         }
         
         // Fallback: assume joined if we have players in state and socket is connected

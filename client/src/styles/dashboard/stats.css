@@ -1,0 +1,41 @@
+/* Stats section and stat cards */
+
+/* Stats Section */
+.stats-section h2 {
+  color: var(--text-primary);
+  font-size: var(--dashboard-font-size-xxl);
+  margin: 0 0 var(--dashboard-spacing-lg) 0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--dashboard-spacing-lg);
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--dashboard-spacing-lg);
+  text-align: center;
+  transition: transform var(--dashboard-transition-fast);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-value {
+  color: var(--primary-color);
+  font-size: var(--dashboard-font-size-title);
+  font-weight: 600;
+  margin-bottom: var(--dashboard-spacing-xs);
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: var(--dashboard-font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}

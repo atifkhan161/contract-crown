@@ -1,0 +1,182 @@
+/* Form styles, inputs, and validation */
+
+/* Form Styles */
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--register-spacing-lg);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--register-spacing-sm);
+}
+
+.form-label {
+  font-size: var(--register-font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--register-spacing-xs);
+}
+
+.form-input {
+  width: 100%;
+  height: var(--register-input-height);
+  padding: var(--register-spacing-md);
+  background: var(--bg-input);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--register-font-size-base);
+  transition: all var(--register-transition-fast);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.form-input:focus {
+  border-color: var(--border-focus);
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+}
+
+.form-input.error {
+  border-color: var(--border-error);
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.form-input.error:focus {
+  border-color: var(--border-error);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);
+}
+
+.form-input.success {
+  border-color: var(--text-success);
+  background: rgba(39, 174, 96, 0.1);
+}
+
+/* Password Strength Indicator */
+.password-strength {
+  margin-top: var(--register-spacing-sm);
+}
+
+.strength-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: var(--register-spacing-xs);
+}
+
+.strength-fill {
+  height: 100%;
+  width: 0%;
+  transition: all var(--register-transition-normal);
+  border-radius: var(--radius-sm);
+}
+
+.strength-fill.weak {
+  width: 25%;
+  background: var(--text-error);
+}
+
+.strength-fill.fair {
+  width: 50%;
+  background: #f39c12;
+}
+
+.strength-fill.good {
+  width: 75%;
+  background: #3498db;
+}
+
+.strength-fill.strong {
+  width: 100%;
+  background: var(--text-success);
+}
+
+.strength-text {
+  font-size: var(--register-font-size-xs);
+  color: var(--text-muted);
+}
+
+.strength-text.weak {
+  color: var(--text-error);
+}
+
+.strength-text.fair {
+  color: #f39c12;
+}
+
+.strength-text.good {
+  color: #3498db;
+}
+
+.strength-text.strong {
+  color: var(--text-success);
+}
+
+/* Checkbox Styles */
+.checkbox-group {
+  margin-top: var(--register-spacing-sm);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--register-spacing-sm);
+  cursor: pointer;
+  font-size: var(--register-font-size-sm);
+  line-height: 1.5;
+}
+
+.checkbox-input {
+  display: none;
+}
+
+.checkbox-custom {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--register-transition-fast);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.checkbox-custom::after {
+  content: '✓';
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity var(--register-transition-fast);
+}
+
+.checkbox-input:checked + .checkbox-custom {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.checkbox-input:checked + .checkbox-custom::after {
+  opacity: 1;
+}
+
+.checkbox-input:focus + .checkbox-custom {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.checkbox-text {
+  color: var(--text-secondary);
+}

@@ -1,0 +1,290 @@
+/* All modal dialogs (trump selection, game completion, etc.) */
+
+/* Modal Base Styles */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  position: relative;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-xl);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--font-size-xl);
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.modal-close:hover {
+  background: var(--bg-input);
+  color: var(--text-primary);
+}
+
+.modal-footer {
+  margin-top: var(--spacing-lg);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+}
+
+/* Trump Declaration Modal */
+.trump-modal-content {
+  max-width: 500px;
+  width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.trump-instruction {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+  color: var(--text-secondary);
+  font-size: var(--font-size-base);
+}
+
+.trump-cards-display {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.initial-cards-container {
+  display: flex;
+  justify-content: center;
+  gap: var(--game-spacing-sm);
+  flex-wrap: wrap;
+  padding: var(--game-spacing-sm) 0;
+}
+
+.trump-selection {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+.trump-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--game-spacing-sm);
+  padding: var(--spacing-lg);
+  background: var(--bg-input);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  color: var(--text-primary);
+  min-height: 80px;
+  justify-content: center;
+}
+
+.trump-option:hover {
+  border-color: var(--primary-color);
+  background: rgba(74, 144, 226, 0.1);
+}
+
+.trump-option.selected {
+  border-color: var(--primary-color);
+  background: rgba(74, 144, 226, 0.2);
+  box-shadow: 0 0 10px rgba(74, 144, 226, 0.3);
+}
+
+.trump-option.recommended {
+  position: relative;
+  border-color: var(--text-success);
+  background: rgba(39, 174, 96, 0.1);
+}
+
+.trump-option.recommended::before {
+  content: '★';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  color: var(--text-success);
+  font-size: var(--font-size-sm);
+}
+
+.suit-recommendation {
+  font-size: var(--font-size-xs-compact);
+  color: var(--text-success);
+  font-weight: 600;
+  margin-top: var(--game-spacing-xs);
+}
+
+.suit-symbol {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.suit-symbol.hearts,
+.suit-symbol.diamonds {
+  color: #dc3545;
+}
+
+.suit-symbol.clubs,
+.suit-symbol.spades {
+  color: var(--text-primary);
+}
+
+.suit-name {
+  font-size: var(--font-size-sm-compact);
+  font-weight: 600;
+}
+
+/* Game Completion Modal */
+.game-completion-modal .modal-content {
+  max-width: 600px;
+  text-align: center;
+}
+
+.game-result {
+  margin-bottom: var(--spacing-xl);
+}
+
+.game-result h2 {
+  color: var(--text-primary);
+  font-size: var(--font-size-title);
+  margin-bottom: var(--spacing-md);
+}
+
+.winning-team {
+  color: var(--status-connected);
+  font-weight: 700;
+}
+
+.final-scores {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-xl);
+  margin: var(--spacing-lg) 0;
+}
+
+.final-score {
+  text-align: center;
+}
+
+.final-score-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--game-spacing-xs);
+}
+
+.final-score-value {
+  font-size: var(--font-size-xxl);
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+/* Error Modal */
+.error-modal .modal-content {
+  max-width: 400px;
+  border-color: var(--text-error);
+}
+
+.error-modal .modal-header h3 {
+  color: var(--text-error);
+}
+
+.error-message {
+  color: var(--text-error);
+  text-align: center;
+  margin: var(--spacing-lg) 0;
+}
+
+/* Confirmation Modal */
+.confirmation-modal .modal-content {
+  max-width: 400px;
+}
+
+.confirmation-message {
+  text-align: center;
+  margin: var(--spacing-lg) 0;
+  color: var(--text-secondary);
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: center;
+}
+
+.btn-danger {
+  background: var(--text-error);
+  color: var(--text-primary);
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-danger:hover {
+  background: #c0392b;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}

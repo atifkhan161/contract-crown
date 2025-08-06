@@ -152,7 +152,7 @@ export class SocketManager {
         });
         this.socket.on('roomError', (data) => this.emit('roomError', data));
         
-        // Player events - Real-time lobby updates
+        // Player events - Real-time waiting room updates
         this.socket.on('player-joined', (data) => this.emit('playerJoined', data));
         this.socket.on('player-left', (data) => this.emit('playerLeft', data));
         this.socket.on('player-ready-changed', (data) => this.emit('playerReadyStatusChanged', data));

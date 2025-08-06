@@ -1,0 +1,143 @@
+/* Players section and player slots */
+
+/* Players Section */
+.players-section {
+  margin-bottom: var(--waiting-spacing-xxl);
+}
+
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--waiting-spacing-lg);
+}
+
+.player-slot {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--waiting-spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--waiting-spacing-md);
+  transition: all var(--waiting-transition-fast);
+  min-height: var(--waiting-player-slot-height);
+}
+
+.player-slot.occupied {
+  border-color: var(--primary-color);
+  background: rgba(74, 144, 226, 0.1);
+}
+
+.player-slot.ready {
+  border-color: var(--status-connected);
+  background: rgba(39, 174, 96, 0.1);
+}
+
+.player-avatar {
+  flex-shrink: 0;
+  width: var(--waiting-player-avatar-size);
+  height: var(--waiting-player-avatar-size);
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-placeholder {
+  color: var(--text-secondary);
+  font-size: var(--waiting-font-size-lg);
+  font-weight: 600;
+}
+
+.player-slot.occupied .avatar-placeholder {
+  color: var(--primary-color);
+}
+
+.player-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-name {
+  color: var(--text-primary);
+  font-size: var(--waiting-font-size-base);
+  font-weight: 500;
+  margin-bottom: var(--waiting-spacing-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-slot:not(.occupied) .player-name {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.player-status {
+  display: flex;
+  align-items: center;
+  gap: var(--waiting-spacing-xs);
+}
+
+.ready-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.player-slot.ready .ready-indicator {
+  background: var(--status-connected);
+}
+
+.ready-text {
+  color: var(--text-secondary);
+  font-size: var(--waiting-font-size-sm);
+}
+
+.player-slot.ready .ready-text {
+  color: var(--status-connected);
+}
+
+.player-badges {
+  display: flex;
+  flex-direction: column;
+  gap: var(--waiting-spacing-xs);
+  align-items: flex-end;
+}
+
+.host-badge {
+  background: var(--primary-color);
+  color: var(--text-primary);
+  padding: var(--waiting-spacing-xs) var(--waiting-spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--waiting-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Bot Player Styles */
+.player-slot.bot-player {
+  border-color: #9b59b6;
+  background: rgba(155, 89, 182, 0.1);
+}
+
+.player-slot.bot-player.ready {
+  border-color: #8e44ad;
+  background: rgba(142, 68, 173, 0.15);
+}
+
+.player-slot.bot-player .player-name {
+  color: #9b59b6;
+  font-weight: 500;
+}
+
+.player-slot.bot-player .avatar-placeholder {
+  background: rgba(155, 89, 182, 0.2);
+  color: #9b59b6;
+  border: 1px solid #9b59b6;
+}

@@ -1,0 +1,329 @@
+/* All animations and transitions */
+
+/* Base Animation Settings */
+:root {
+  --animation-duration-fast: 0.15s;
+  --animation-duration-normal: 0.3s;
+  --animation-duration-slow: 0.5s;
+  --animation-easing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Pulse Animation */
+@keyframes pulse {
+  0%, 100% { 
+    opacity: 1; 
+  }
+  50% { 
+    opacity: 0.5; 
+  }
+}
+
+/* Card Dealing Animation */
+@keyframes dealCard {
+  from {
+    opacity: 0;
+    transform: translateY(-40px) rotate(8deg) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+/* Card Playing Animation */
+@keyframes playCard {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-30px) scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-80px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* Card Hover Effects */
+.card {
+  transition: transform var(--animation-duration-fast) var(--animation-easing),
+              box-shadow var(--animation-duration-fast) var(--animation-easing),
+              border-color var(--animation-duration-fast) var(--animation-easing);
+}
+
+.card:hover:not(.disabled) {
+  transform: translateY(-8px) translateZ(0);
+}
+
+.card.selected {
+  transform: translateY(-12px) translateZ(0);
+}
+
+.card.touching {
+  transform: scale(1.02) translateY(-2px) translateZ(0);
+}
+
+/* Turn Indicator Animation */
+.turn-indicator {
+  transition: all var(--animation-duration-normal) var(--animation-easing);
+}
+
+.turn-indicator.active {
+  animation: turnPulse 2s infinite;
+}
+
+@keyframes turnPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--primary-color);
+  }
+  50% {
+    box-shadow: 0 0 16px var(--primary-color);
+  }
+}
+
+/* Trick Area Animations */
+.played-card-slot {
+  transition: all var(--animation-duration-fast) var(--animation-easing);
+}
+
+.played-card-slot.active {
+  animation: slotPulse 2s infinite;
+}
+
+@keyframes slotPulse {
+  0%, 100% { 
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0 rgba(74, 144, 226, 0.4);
+  }
+  50% { 
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.1);
+  }
+}
+
+/* Winner Animation */
+.played-card-slot.winner {
+  animation: winnerGlow 1s ease-in-out;
+}
+
+@keyframes winnerGlow {
+  0% { 
+    border-color: var(--status-connected);
+    box-shadow: 0 0 0 0 rgba(39, 174, 96, 0.6);
+  }
+  50% { 
+    border-color: var(--status-connected);
+    box-shadow: 0 0 0 8px rgba(39, 174, 96, 0.2);
+  }
+  100% { 
+    border-color: var(--status-connected);
+    box-shadow: 0 0 0 0 rgba(39, 174, 96, 0);
+  }
+}
+
+/* Trick Collection Animation */
+.trick-collecting {
+  animation: collectTrick 1s ease-in-out forwards;
+}
+
+@keyframes collectTrick {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* Modal Animations */
+.modal {
+  animation: modalFadeIn var(--animation-duration-normal) var(--animation-easing);
+}
+
+.modal-content {
+  animation: modalSlideIn var(--animation-duration-normal) var(--animation-easing);
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(-20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Trump Option Hover Animation */
+.trump-option {
+  transition: all var(--animation-duration-fast) var(--animation-easing);
+}
+
+.trump-option:hover {
+  transform: translateY(-2px);
+}
+
+.trump-option.selected {
+  animation: trumpSelected 0.3s ease-out;
+}
+
+@keyframes trumpSelected {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Score Update Animation */
+.score-value {
+  transition: all var(--animation-duration-normal) var(--animation-easing);
+}
+
+.score-value.updating {
+  animation: scoreUpdate 0.5s ease-out;
+}
+
+@keyframes scoreUpdate {
+  0% {
+    transform: scale(1);
+    color: var(--text-primary);
+  }
+  50% {
+    transform: scale(1.2);
+    color: var(--primary-color);
+  }
+  100% {
+    transform: scale(1);
+    color: var(--text-primary);
+  }
+}
+
+/* Loading Spinner */
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { 
+    transform: rotate(0deg); 
+  }
+  100% { 
+    transform: rotate(360deg); 
+  }
+}
+
+/* Button Press Animation */
+.btn {
+  transition: all var(--animation-duration-fast) var(--animation-easing);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+/* Card Back Animation */
+.card-back {
+  animation: cardDeal 0.3s ease-out forwards;
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+@keyframes cardDeal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Stagger Animation for Multiple Cards */
+.card-back:nth-child(1) { animation-delay: 0.1s; }
+.card-back:nth-child(2) { animation-delay: 0.2s; }
+.card-back:nth-child(3) { animation-delay: 0.3s; }
+.card-back:nth-child(4) { animation-delay: 0.4s; }
+.card-back:nth-child(5) { animation-delay: 0.5s; }
+.card-back:nth-child(6) { animation-delay: 0.6s; }
+.card-back:nth-child(7) { animation-delay: 0.7s; }
+.card-back:nth-child(8) { animation-delay: 0.8s; }
+
+/* Game State Transition */
+.game-table {
+  transition: opacity var(--animation-duration-normal) var(--animation-easing);
+}
+
+.game-table.transitioning {
+  opacity: 0.7;
+}
+
+/* Connection Status Animation */
+.status-indicator.connecting {
+  animation: pulse 1.5s infinite;
+}
+
+.status-indicator.reconnecting {
+  animation: pulse 1s infinite;
+}
+
+/* Mobile Touch Feedback */
+@media (hover: none) and (pointer: coarse) {
+  .card:active {
+    transform: scale(0.98) translateY(-4px);
+  }
+  
+  .trump-option:active {
+    transform: scale(0.98);
+  }
+  
+  .btn:active {
+    transform: scale(0.95);
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .card:hover:not(.disabled),
+  .card.selected,
+  .card.touching {
+    transform: none !important;
+  }
+  
+  .turn-indicator.active {
+    animation: none !important;
+  }
+  
+  .played-card-slot.active {
+    animation: none !important;
+  }
+}

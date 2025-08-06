@@ -434,8 +434,8 @@ export class TrickManager {
         
         // Show game over modal or redirect
         setTimeout(() => {
-            if (confirm(`Game Over! ${winner} wins with ${finalScore} points\n\nReturn to lobby?`)) {
-                window.location.href = '/lobby.html';
+            if (confirm(`Game Over! ${winner} wins with ${finalScore} points\n\nReturn to waiting room?`)) {
+                window.location.href = '/waiting-room.html';
             }
         }, 2000);
     }

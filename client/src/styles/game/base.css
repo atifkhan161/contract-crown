@@ -1,0 +1,98 @@
+/* Base styles, loading overlays, and core layout */
+
+/* Loading Overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+}
+
+.loading-content {
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.loading-content .spinner {
+  width: 40px;
+  height: 40px;
+  margin-bottom: var(--spacing-md);
+  border: 2px solid var(--border-color);
+  border-top: 2px solid var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Utility Classes */
+.hidden {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Game Messages */
+.game-messages-section {
+  margin-top: var(--game-spacing-md);
+}
+
+.game-messages {
+  max-height: 100px;
+  overflow-y: auto;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--game-spacing-sm);
+}
+
+.game-message {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--game-spacing-xs);
+  padding: var(--game-spacing-xs);
+  border-radius: var(--radius-sm);
+}
+
+.game-message:last-child {
+  margin-bottom: 0;
+}
+
+.game-message.info {
+  background: rgba(74, 144, 226, 0.1);
+  color: var(--primary-color);
+}
+
+.game-message.success {
+  background: rgba(39, 174, 96, 0.1);
+  color: var(--text-success);
+}
+
+.game-message.warning {
+  background: rgba(243, 156, 18, 0.1);
+  color: #f39c12;
+}
+
+.game-message.error {
+  background: rgba(231, 76, 60, 0.1);
+  color: var(--text-error);
+}

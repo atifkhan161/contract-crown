@@ -1,0 +1,104 @@
+/* Form styles, inputs, and validation */
+
+/* Form Styles */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--login-spacing-lg);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--login-spacing-sm);
+}
+
+.form-label {
+  font-size: var(--login-font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--login-spacing-xs);
+}
+
+.form-input {
+  width: 100%;
+  height: var(--login-input-height);
+  padding: var(--login-spacing-md);
+  background: var(--bg-input);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--login-font-size-base);
+  transition: all var(--login-transition-fast);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.form-input:focus {
+  border-color: var(--border-focus);
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+}
+
+.form-input.error {
+  border-color: var(--border-error);
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.form-input.error:focus {
+  border-color: var(--border-error);
+  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);
+}
+
+/* Checkbox Styles */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--login-spacing-sm);
+  cursor: pointer;
+  font-size: var(--login-font-size-sm);
+  line-height: 1.5;
+}
+
+.checkbox-input {
+  display: none;
+}
+
+.checkbox-label::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--login-transition-fast);
+  flex-shrink: 0;
+}
+
+.checkbox-input:checked + .checkbox-label::before,
+.checkbox-label:has(.checkbox-input:checked)::before {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  content: '✓';
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.checkbox-input:focus + .checkbox-label::before,
+.checkbox-label:has(.checkbox-input:focus)::before {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.checkbox-text {
+  color: var(--text-secondary);
+}

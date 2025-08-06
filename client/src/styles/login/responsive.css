@@ -1,0 +1,137 @@
+/* Responsive design for all screen sizes with 932x430 optimization */
+
+/* 932x430 Resolution Optimizations */
+@media screen and (max-width: 932px) and (max-height: 430px) {
+  :root {
+    --login-spacing-xs: 0.125rem;
+    --login-spacing-sm: 0.25rem;
+    --login-spacing-md: 0.5rem;
+    --login-spacing-lg: 0.75rem;
+    --login-spacing-xl: 1rem;
+    --login-spacing-xxl: 1.25rem;
+    --login-card-max-width: 320px;
+    --login-input-height: 40px;
+    --login-font-size-xs: 0.625rem;
+    --login-font-size-sm: 0.75rem;
+    --login-font-size-base: 0.875rem;
+    --login-font-size-lg: 1rem;
+    --login-font-size-xl: 1.125rem;
+    --login-font-size-title: 1.5rem;
+  }
+  
+  .login-container {
+    padding: var(--login-spacing-sm);
+  }
+  
+  .login-card {
+    padding: var(--login-spacing-lg);
+  }
+  
+  .connection-status {
+    top: var(--login-spacing-sm);
+    right: var(--login-spacing-sm);
+    padding: var(--login-spacing-xs) var(--login-spacing-sm);
+    font-size: var(--login-font-size-xs);
+  }
+  
+  .btn {
+    min-height: 40px;
+    padding: var(--login-spacing-sm) var(--login-spacing-md);
+  }
+}
+
+/* Mobile Portrait */
+@media (max-width: 768px) {
+  .login-card {
+    padding: var(--login-spacing-xxl);
+  }
+  
+  .connection-status {
+    top: var(--login-spacing-lg);
+    right: var(--login-spacing-lg);
+  }
+  
+  .form-input {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 480px) {
+  .login-container {
+    padding: var(--login-spacing-sm);
+  }
+  
+  .login-card {
+    padding: var(--login-spacing-lg);
+  }
+  
+  .connection-status {
+    position: relative;
+    top: auto;
+    right: auto;
+    margin-bottom: var(--login-spacing-md);
+    justify-content: center;
+  }
+  
+  .app-title {
+    font-size: var(--login-font-size-xl);
+  }
+  
+  .checkbox-label {
+    font-size: var(--login-font-size-xs);
+  }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+  .login-container {
+    padding: var(--login-spacing-xxl);
+  }
+  
+  .login-card {
+    max-width: 450px;
+  }
+}
+
+/* Touch-friendly enhancements */
+@media (hover: none) and (pointer: coarse) {
+  .btn {
+    min-height: 48px;
+    padding: var(--login-spacing-md) var(--login-spacing-lg);
+  }
+  
+  .form-input {
+    min-height: 48px;
+    font-size: 16px;
+  }
+  
+  .checkbox-label::before {
+    min-width: 24px;
+    min-height: 24px;
+  }
+}
+
+/* High DPI Displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .login-card {
+    border-width: 0.5px;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus styles for accessibility */
+.form-input:focus-visible,
+.checkbox-label:focus-within,
+.link:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}

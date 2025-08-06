@@ -1,0 +1,126 @@
+/* Register Main - Central coordinator with root variables and global optimizations */
+
+/* 932x430 Resolution Optimizations */
+:root {
+  /* Compact spacing for target resolution */
+  --register-spacing-xs: 0.25rem;  /* 4px */
+  --register-spacing-sm: 0.5rem;   /* 8px */
+  --register-spacing-md: 0.75rem;  /* 12px */
+  --register-spacing-lg: 1rem;     /* 16px */
+  --register-spacing-xl: 1.5rem;   /* 24px */
+  --register-spacing-xxl: 2rem;    /* 32px */
+  
+  /* Form dimensions */
+  --register-card-max-width: 450px;
+  --register-input-height: 48px;
+  
+  /* Performance optimizations */
+  --register-transition-fast: 0.15s ease;
+  --register-transition-normal: 0.3s ease;
+  
+  /* Typography optimizations */
+  --register-font-size-xs: 0.75rem;   /* 12px */
+  --register-font-size-sm: 0.875rem;  /* 14px */
+  --register-font-size-base: 1rem;    /* 16px */
+  --register-font-size-lg: 1.125rem;  /* 18px */
+  --register-font-size-xl: 1.25rem;   /* 20px */
+  --register-font-size-title: 2rem;   /* 32px */
+}
+
+/* Base styles */
+body {
+  font-family: var(--font-family);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Main Registration Container */
+.register-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--register-spacing-lg);
+  min-height: 100vh;
+}
+
+.register-card {
+  width: 100%;
+  max-width: var(--register-card-max-width);
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: var(--register-spacing-xl) var(--register-spacing-lg);
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.register-header {
+  text-align: center;
+  margin-bottom: var(--register-spacing-xl);
+}
+
+.app-title {
+  font-size: var(--register-font-size-title);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--register-spacing-sm);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.app-subtitle {
+  font-size: var(--register-font-size-lg);
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+/* Footer */
+.register-footer {
+  text-align: center;
+  margin-top: var(--register-spacing-xl);
+  padding-top: var(--register-spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.login-link {
+  font-size: var(--register-font-size-sm);
+  color: var(--text-secondary);
+}
+
+.link {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color var(--register-transition-fast);
+}
+
+.link:hover {
+  color: var(--primary-light);
+  text-decoration: underline;
+}
