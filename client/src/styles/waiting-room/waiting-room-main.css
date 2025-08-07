@@ -1,8 +1,8 @@
 /* Waiting Room Main - Central coordinator with root variables and global optimizations */
 
-/* 932x430 Resolution Optimizations */
+/* Default variables - optimized for desktop and larger screens */
 :root {
-  /* Compact spacing for target resolution */
+  /* Standard spacing */
   --waiting-spacing-xs: 0.25rem;  /* 4px */
   --waiting-spacing-sm: 0.5rem;   /* 8px */
   --waiting-spacing-md: 0.75rem;  /* 12px */
@@ -10,7 +10,7 @@
   --waiting-spacing-xl: 1.5rem;   /* 24px */
   --waiting-spacing-xxl: 2rem;    /* 32px */
   
-  /* Compact header height */
+  /* Standard header height */
   --waiting-header-height: 60px;
   
   /* Player slot dimensions */
@@ -21,13 +21,69 @@
   --waiting-transition-fast: 0.15s ease;
   --waiting-transition-normal: 0.3s ease;
   
-  /* Typography optimizations */
+  /* Typography */
   --waiting-font-size-xs: 0.75rem;   /* 12px */
   --waiting-font-size-sm: 0.875rem;  /* 14px */
   --waiting-font-size-base: 1rem;    /* 16px */
   --waiting-font-size-lg: 1.125rem;  /* 18px */
   --waiting-font-size-xl: 1.25rem;   /* 20px */
   --waiting-font-size-xxl: 1.5rem;   /* 24px */
+}
+
+/* 430x932 Portrait Mode Optimizations */
+@media screen and (max-width: 430px) and (min-height: 932px) {
+  :root {
+    /* Portrait spacing optimizations */
+    --waiting-spacing-xs: 0.25rem;     /* 4px */
+    --waiting-spacing-sm: 0.375rem;    /* 6px */
+    --waiting-spacing-md: 0.5rem;      /* 8px */
+    --waiting-spacing-lg: 0.75rem;     /* 12px */
+    --waiting-spacing-xl: 1rem;        /* 16px */
+    --waiting-spacing-xxl: 1.25rem;    /* 20px */
+    
+    /* Portrait header */
+    --waiting-header-height: 50px;
+    
+    /* Portrait player slots */
+    --waiting-player-slot-height: 65px;
+    --waiting-player-avatar-size: 36px;
+    
+    /* Portrait typography */
+    --waiting-font-size-xs: 0.6875rem; /* 11px */
+    --waiting-font-size-sm: 0.75rem;   /* 12px */
+    --waiting-font-size-base: 0.875rem; /* 14px */
+    --waiting-font-size-lg: 1rem;      /* 16px */
+    --waiting-font-size-xl: 1.125rem;  /* 18px */
+    --waiting-font-size-xxl: 1.25rem;  /* 20px */
+  }
+}
+
+/* 932x430 Landscape specific optimizations */
+@media screen and (max-width: 932px) and (max-height: 430px) {
+  :root {
+    /* Ultra-compact spacing for landscape layout */
+    --waiting-spacing-xs: 0.125rem;    /* 2px */
+    --waiting-spacing-sm: 0.25rem;     /* 4px */
+    --waiting-spacing-md: 0.375rem;    /* 6px */
+    --waiting-spacing-lg: 0.5rem;      /* 8px */
+    --waiting-spacing-xl: 0.75rem;     /* 12px */
+    --waiting-spacing-xxl: 1rem;       /* 16px */
+    
+    /* Minimal header */
+    --waiting-header-height: 35px;
+    
+    /* Compact player slots */
+    --waiting-player-slot-height: 40px;
+    --waiting-player-avatar-size: 28px;
+    
+    /* Smaller typography */
+    --waiting-font-size-xs: 0.625rem;  /* 10px */
+    --waiting-font-size-sm: 0.6875rem; /* 11px */
+    --waiting-font-size-base: 0.75rem; /* 12px */
+    --waiting-font-size-lg: 0.875rem;  /* 14px */
+    --waiting-font-size-xl: 1rem;      /* 16px */
+    --waiting-font-size-xxl: 1.125rem; /* 18px */
+  }
 }
 
 /* Main Content */
