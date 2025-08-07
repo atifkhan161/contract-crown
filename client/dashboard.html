@@ -1,24 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Contract Crown</title>
     <meta name="description" content="Contract Crown game dashboard - manage rooms and join games">
-    
+
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/webp" href="/favicon.webp">
-    
+
     <!-- Apple PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Contract Crown">
-    
+
     <link rel="stylesheet" href="src/styles/main.css">
     <link rel="stylesheet" href="src/styles/dashboard.css">
 </head>
+
 <body>
     <div id="app">
         <!-- Header -->
@@ -27,6 +29,7 @@
                 <h1 class="app-title">Contract Crown</h1>
                 <div class="user-info">
                     <span id="username-display" class="username"></span>
+                    <span class="status-indicator" id="status-indicator"></span>
                     <button id="logout-btn" class="btn btn-secondary btn-sm">Logout</button>
                 </div>
             </div>
@@ -35,26 +38,65 @@
         <!-- Main Dashboard Content -->
         <main class="dashboard-main">
             <div class="dashboard-container">
-                <!-- Connection Status -->
-                <div id="connection-status" class="connection-status">
-                    <span class="status-indicator" id="status-indicator"></span>
-                    <span class="status-text" id="status-text">Connecting...</span>
+
+                <!-- Single Player Section -->
+                <section class="single-player-section">
+                    <button id="single-player-btn" class="btn btn-single-player">
+                        <span class="btn-icon">+</span>
+                        <div class="btn-content">
+                            <div class="btn-title">Single Player</div>
+                            <div class="btn-subtitle">Start a new session and play with AI</div>
+                        </div>
+                        <span class="btn-decoration">✨</span>
+                    </button>
+                </section>
+
+                <!-- Divider -->
+                <div class="section-divider">
+                    <span class="divider-text">or</span>
                 </div>
 
-                <!-- Room Management Section -->
-                <section class="room-section">
-                    <div class="section-header">
-                        <h2>Game Rooms</h2>
-                        <div class="room-actions">
-                            <button id="demo-room-btn" class="btn btn-demo" title="Start a demo game with AI bots for testing">
-                                <span class="btn-icon">🤖</span>
-                                Demo Room
-                            </button>
-                            <button id="create-room-btn" class="btn btn-primary">
-                                <span class="btn-icon">+</span>
-                                Create Room
-                            </button>
+                <!-- Join via Room Code Section -->
+                <section class="join-code-section">
+                    <div class="join-code-header">
+                        <h2>Join via Room Code</h2>
+                        <p class="join-code-subtitle">Enter the code shared by your host</p>
+                    </div>
+                    <div class="join-code-form">
+                        <div class="code-input-container">
+                            <span class="code-prefix">#</span>
+                            <input type="text" id="room-code-input" placeholder="ROOM123" maxlength="10">
                         </div>
+                        <button id="join-room-btn" class="btn btn-join-room" disabled>
+                            <span class="btn-text">Join Room</span>
+                            <span class="btn-arrow">→</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Divider -->
+                <div class="section-divider">
+                    <div class="divider-text">or</div>
+                </div>
+
+                <!-- Multiplayer Rooms Section -->
+                <section class="multiplayer-section">
+                    <button id="create-room-btn" class="btn btn-create-room">
+                        <span class="btn-icon">+</span>
+                        <div class="btn-content">
+                            <div class="btn-title">Create Room</div>
+                            <div class="btn-subtitle">Start a new session and invite others</div>
+                        </div>
+                        <span class="btn-decoration">✨</span>
+                    </button>
+
+                    <!-- Divider -->
+                    <div class="section-divider">
+                        <div class="divider-text">or</div>
+                    </div>
+
+                    <div class="section-header">
+                        <h2>Available Rooms</h2>
                     </div>
 
                     <!-- Available Rooms List -->
@@ -62,31 +104,12 @@
                         <div id="rooms-list" class="rooms-list">
                             <!-- Rooms will be populated dynamically -->
                         </div>
-                        
+
                         <div id="no-rooms" class="no-rooms hidden">
                             <div class="no-rooms-content">
                                 <h3>No active rooms</h3>
                                 <p>Create a new room to start playing with friends!</p>
                             </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- User Stats Section -->
-                <section class="stats-section">
-                    <h2>Your Stats</h2>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-value" id="games-played">0</div>
-                            <div class="stat-label">Games Played</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="games-won">0</div>
-                            <div class="stat-label">Games Won</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-value" id="win-rate">0%</div>
-                            <div class="stat-label">Win Rate</div>
                         </div>
                     </div>
                 </section>
@@ -104,8 +127,8 @@
                 <form id="create-room-form" class="modal-body">
                     <div class="form-group">
                         <label for="room-name">Room Name</label>
-                        <input type="text" id="room-name" name="roomName" required 
-                               placeholder="Enter room name" maxlength="50">
+                        <input type="text" id="room-name" name="roomName" required placeholder="Enter room name"
+                            maxlength="50">
                     </div>
                     <div class="form-group">
                         <label for="max-players">Max Players</label>
@@ -148,4 +171,5 @@
     <script type="module" src="src/core/auth.js"></script>
     <script type="module" src="src/pages/dashboard.js"></script>
 </body>
+
 </html>

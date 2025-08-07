@@ -1,14 +1,14 @@
 /* Rooms container and room items */
 
 .rooms-container {
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   overflow: hidden;
 }
 
 .rooms-list {
-  max-height: 400px;
+  max-height: 300px; /* Optimized for 932x430 */
   overflow-y: auto;
 }
 
@@ -16,9 +16,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--room-item-padding);
-  border-bottom: 1px solid var(--border-color);
-  transition: background-color var(--dashboard-transition-fast);
+  padding: var(--dashboard-spacing-md) var(--dashboard-spacing-lg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all var(--dashboard-transition-fast);
 }
 
 .room-item:last-child {
@@ -26,7 +26,7 @@
 }
 
 .room-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .room-info {
@@ -35,8 +35,8 @@
 
 .room-name {
   color: var(--text-primary);
-  font-size: var(--dashboard-font-size-lg);
-  font-weight: 500;
+  font-size: var(--dashboard-font-size-base);
+  font-weight: 600;
   margin: 0 0 var(--dashboard-spacing-xs) 0;
 }
 
@@ -44,7 +44,7 @@
   display: flex;
   gap: var(--dashboard-spacing-md);
   color: var(--text-secondary);
-  font-size: var(--dashboard-font-size-sm);
+  font-size: var(--dashboard-font-size-xs);
 }
 
 .room-status {
@@ -98,16 +98,18 @@
 }
 
 .no-rooms {
-  padding: var(--dashboard-spacing-xxl);
+  padding: var(--dashboard-spacing-xl);
   text-align: center;
 }
 
 .no-rooms-content h3 {
   color: var(--text-primary);
-  margin: 0 0 var(--dashboard-spacing-sm) 0;
+  font-size: var(--dashboard-font-size-base);
+  margin: 0 0 var(--dashboard-spacing-xs) 0;
 }
 
 .no-rooms-content p {
   color: var(--text-secondary);
+  font-size: var(--dashboard-font-size-sm);
   margin: 0;
 }

@@ -39,12 +39,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--dashboard-spacing-lg);
+  margin-bottom: var(--dashboard-spacing-md);
 }
 
 .section-header h2 {
   color: var(--text-primary);
-  font-size: var(--dashboard-font-size-xxl);
+  font-size: var(--dashboard-font-size-xl);
+  font-weight: 600;
   margin: 0;
 }
 

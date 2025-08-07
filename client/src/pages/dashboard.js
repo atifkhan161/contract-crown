@@ -16,11 +16,6 @@ class DashboardManager {
         this.elements = {};
         this.currentUser = null;
         this.rooms = [];
-        this.userStats = {
-            gamesPlayed: 0,
-            gamesWon: 0,
-            winRate: 0
-        };
         
         this.initializeElements();
         this.setupEventListeners();
@@ -33,20 +28,17 @@ class DashboardManager {
         this.elements.logoutBtn = document.getElementById('logout-btn');
         
         // Connection status
-        this.elements.connectionStatus = document.getElementById('connection-status');
         this.elements.statusIndicator = document.getElementById('status-indicator');
-        this.elements.statusText = document.getElementById('status-text');
         
         // Room management
         this.elements.createRoomBtn = document.getElementById('create-room-btn');
-        this.elements.demoRoomBtn = document.getElementById('demo-room-btn');
+        this.elements.singlePlayerBtn = document.getElementById('single-player-btn');
+        this.elements.roomCodeInput = document.getElementById('room-code-input');
+        this.elements.joinRoomBtn = document.getElementById('join-room-btn');
         this.elements.roomsList = document.getElementById('rooms-list');
         this.elements.noRooms = document.getElementById('no-rooms');
         
-        // Stats
-        this.elements.gamesPlayed = document.getElementById('games-played');
-        this.elements.gamesWon = document.getElementById('games-won');
-        this.elements.winRate = document.getElementById('win-rate');
+
         
         // Modal elements
         this.elements.createRoomModal = document.getElementById('create-room-modal');
@@ -75,8 +67,12 @@ class DashboardManager {
         this.elements.closeModalBtn.addEventListener('click', () => this.hideCreateRoomModal());
         this.elements.cancelCreateBtn.addEventListener('click', () => this.hideCreateRoomModal());
         
-        // Demo room
-        this.elements.demoRoomBtn.addEventListener('click', () => this.handleCreateDemoRoom());
+        // Single player
+        this.elements.singlePlayerBtn.addEventListener('click', () => this.handleCreateDemoRoom());
+        
+        // Room code input and join
+        this.elements.roomCodeInput.addEventListener('input', () => this.handleRoomCodeInput());
+        this.elements.joinRoomBtn.addEventListener('click', () => this.handleJoinRoomByCode());
         
         // Modal overlay click to close
         this.elements.createRoomModal.addEventListener('click', (e) => {
@@ -114,8 +110,7 @@ class DashboardManager {
             this.handleRoomDeleted(data);
         });
         
-        // User stats updates
-        this.socketManager.on('userStatsUpdated', (stats) => this.updateUserStats(stats));
+
         
         // Handle WebSocket authentication errors gracefully
         this.socketManager.on('auth_error', (error) => {
@@ -192,11 +187,8 @@ class DashboardManager {
         try {
             this.showLoading(true);
             
-            // Load rooms and user stats
-            await Promise.all([
-                this.loadRooms(),
-                this.loadUserStats()
-            ]);
+            // Load rooms
+            await this.loadRooms();
             
         } catch (error) {
             console.error('Error loading dashboard data:', error);
@@ -216,32 +208,55 @@ class DashboardManager {
         }
     }
 
-    async loadUserStats() {
+    handleRoomCodeInput() {
+        const code = this.elements.roomCodeInput.value.trim().toUpperCase();
+        const isValid = code.length >= 3; // Minimum code length
+        
+        this.elements.joinRoomBtn.disabled = !isValid;
+        
+        if (isValid) {
+            this.elements.joinRoomBtn.classList.remove('btn-disabled');
+        } else {
+            this.elements.joinRoomBtn.classList.add('btn-disabled');
+        }
+    }
+
+    async handleJoinRoomByCode() {
+        const code = this.elements.roomCodeInput.value.trim().toUpperCase();
+        
+        if (!code) {
+            this.showError('Please enter a room code');
+            return;
+        }
+
         try {
-            const stats = await this.authManager.getUserStats();
-            this.updateUserStats(stats);
+            this.showLoading(true);
+            
+            // Find room by code (assuming room codes are stored in room.code property)
+            const room = this.rooms.find(r => r.code === code || r.id === code);
+            
+            if (!room) {
+                throw new Error('Room not found. Please check the code and try again.');
+            }
+            
+            const response = await this.roomManager.joinRoom(room.id);
+            
+            // Hide loading and redirect to waiting room
+            this.showLoading(false);
+            window.location.href = `waiting-room.html?room=${response.roomId}`;
+            
         } catch (error) {
-            console.error('Error loading user stats:', error);
-            // Don't throw - stats are not critical
+            console.error('Join room by code error:', error);
+            this.showError(error.message || 'Failed to join room');
+            this.showLoading(false);
         }
     }
 
     updateConnectionStatus(status) {
         const indicator = this.elements.statusIndicator;
-        const text = this.elements.statusText;
         
-        indicator.className = `status-indicator ${status}`;
-        
-        switch (status) {
-            case 'connected':
-                text.textContent = 'Connected';
-                break;
-            case 'connecting':
-                text.textContent = 'Connecting...';
-                break;
-            case 'disconnected':
-                text.textContent = 'Disconnected';
-                break;
+        if (indicator) {
+            indicator.className = `status-indicator ${status}`;
         }
     }
 
@@ -306,17 +321,7 @@ class DashboardManager {
         });
     }
 
-    updateUserStats(stats) {
-        this.userStats = stats;
-        
-        this.elements.gamesPlayed.textContent = stats.gamesPlayed || 0;
-        this.elements.gamesWon.textContent = stats.gamesWon || 0;
-        
-        const winRate = stats.gamesPlayed > 0 
-            ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100)
-            : 0;
-        this.elements.winRate.textContent = `${winRate}%`;
-    }
+
 
     showCreateRoomModal() {
         this.elements.createRoomModal.classList.remove('hidden');

@@ -1,27 +1,64 @@
 /* Responsive design for all screen sizes with 932x430 optimization */
 
-/* 932x430 Resolution Optimizations */
+/* Exact 932x430 Resolution Optimizations */
+@media screen and (width: 932px) and (height: 430px) {
+  :root {
+    --dashboard-spacing-xs: 0.15rem;
+    --dashboard-spacing-sm: 0.3rem;
+    --dashboard-spacing-md: 0.5rem;
+    --dashboard-spacing-lg: 0.7rem;
+    --dashboard-spacing-xl: 1rem;
+    --dashboard-spacing-xxl: 1.3rem;
+    --dashboard-header-height: 42px;
+  }
+  
+  .dashboard-main {
+    padding: var(--dashboard-spacing-xs) 0;
+  }
+  
+  .btn-single-player {
+    min-height: 50px;
+  }
+  
+  .btn-create-room {
+    min-height: 50px;
+  }
+  
+  .join-code-form {
+    max-width: 260px;
+  }
+  
+  .rooms-list {
+    max-height: 180px;
+  }
+}
+
+/* General small screen optimizations */
 @media screen and (max-width: 932px) and (max-height: 430px) {
   :root {
-    --dashboard-spacing-xs: 0.125rem;
-    --dashboard-spacing-sm: 0.25rem;
-    --dashboard-spacing-md: 0.5rem;
-    --dashboard-spacing-lg: 0.75rem;
-    --dashboard-spacing-xl: 1rem;
-    --dashboard-spacing-xxl: 1.25rem;
-    --dashboard-header-height: 40px;
+    --dashboard-spacing-xs: 0.2rem;
+    --dashboard-spacing-sm: 0.4rem;
+    --dashboard-spacing-md: 0.6rem;
+    --dashboard-spacing-lg: 0.8rem;
+    --dashboard-spacing-xl: 1.2rem;
+    --dashboard-spacing-xxl: 1.6rem;
+    --dashboard-header-height: 45px;
     --room-item-padding: var(--dashboard-spacing-sm);
-    --dashboard-font-size-xs: 0.625rem;
+    --dashboard-font-size-xs: 0.65rem;
     --dashboard-font-size-sm: 0.75rem;
-    --dashboard-font-size-base: 0.875rem;
-    --dashboard-font-size-lg: 1rem;
-    --dashboard-font-size-xl: 1.125rem;
-    --dashboard-font-size-xxl: 1.25rem;
-    --dashboard-font-size-title: 1.5rem;
+    --dashboard-font-size-base: 0.85rem;
+    --dashboard-font-size-lg: 0.95rem;
+    --dashboard-font-size-xl: 1.05rem;
+    --dashboard-font-size-xxl: 1.2rem;
+    --dashboard-font-size-title: 1.4rem;
+  }
+  
+  .dashboard-main {
+    padding: var(--dashboard-spacing-sm) 0;
   }
   
   .dashboard-header {
-    padding: var(--dashboard-spacing-sm) 0;
+    padding: var(--dashboard-spacing-xs) 0;
   }
   
   .header-content {
@@ -32,23 +69,36 @@
     padding: 0 var(--dashboard-spacing-sm);
   }
   
-  .room-item {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--dashboard-spacing-sm);
+  .btn-single-player {
+    padding: var(--dashboard-spacing-sm) var(--dashboard-spacing-md);
+    min-height: 55px;
   }
   
-  .room-actions {
-    justify-content: center;
+  .btn-create-room {
+    padding: var(--dashboard-spacing-sm) var(--dashboard-spacing-md);
+    min-height: 55px;
   }
   
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--dashboard-spacing-sm);
+  .join-code-form {
+    max-width: 280px;
   }
   
-  .stat-card {
+  .code-input-container {
+    min-height: 40px;
     padding: var(--dashboard-spacing-sm);
+  }
+  
+  .btn-join-room {
+    min-height: 40px;
+    padding: var(--dashboard-spacing-sm);
+  }
+  
+  .rooms-list {
+    max-height: 200px;
+  }
+  
+  .room-item {
+    padding: var(--dashboard-spacing-sm) var(--dashboard-spacing-md);
   }
 }
 
@@ -72,6 +122,46 @@
     justify-content: center;
   }
   
+  .btn-single-player {
+    padding: var(--dashboard-spacing-lg);
+  }
+  
+  .btn-single-player .btn-title {
+    font-size: var(--dashboard-font-size-lg);
+  }
+  
+  .btn-single-player .btn-subtitle {
+    font-size: var(--dashboard-font-size-xs);
+  }
+  
+  .btn-create-room {
+    padding: var(--dashboard-spacing-lg);
+  }
+  
+  .btn-create-room .btn-title {
+    font-size: var(--dashboard-font-size-lg);
+  }
+  
+  .btn-create-room .btn-subtitle {
+    font-size: var(--dashboard-font-size-xs);
+  }
+  
+  .join-code-form {
+    max-width: 100%;
+  }
+  
+  .code-input-container {
+    padding: var(--dashboard-spacing-sm);
+  }
+  
+  #room-code-input {
+    font-size: var(--dashboard-font-size-base);
+  }
+  
+  .btn-join-room {
+    padding: var(--dashboard-spacing-sm) var(--dashboard-spacing-md);
+  }
+  
   .room-item {
     flex-direction: column;
     align-items: stretch;
@@ -86,10 +176,6 @@
     justify-content: center;
   }
   
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-  
   .modal-content {
     width: 95%;
     margin: var(--dashboard-spacing-sm);
@@ -102,37 +188,64 @@
 
 /* Small Mobile */
 @media (max-width: 480px) {
+  .btn-single-player {
+    padding: var(--dashboard-spacing-md);
+    text-align: center;
+    gap: var(--dashboard-spacing-sm);
+  }
+  
+  .btn-single-player .btn-icon {
+    margin-right: 0;
+    margin-bottom: var(--dashboard-spacing-xs);
+  }
+  
+  .btn-create-room {
+    padding: var(--dashboard-spacing-md);
+    text-align: center;
+    gap: var(--dashboard-spacing-sm);
+  }
+  
+  .btn-create-room .btn-icon {
+    margin-right: 0;
+    margin-bottom: var(--dashboard-spacing-xs);
+  }
+  
+  .join-code-header h2 {
+    font-size: var(--dashboard-font-size-xl);
+  }
+  
   .room-item {
     padding: var(--dashboard-spacing-md);
-  }
-  
-  .stat-card {
-    padding: var(--dashboard-spacing-md);
-  }
-  
-  .btn-demo {
-    padding: var(--dashboard-spacing-xs) var(--dashboard-spacing-sm);
-    font-size: var(--dashboard-font-size-sm);
   }
 }
 
 /* Tablet Portrait */
 @media screen and (min-width: 768px) and (max-width: 1023px) {
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .join-code-form {
+    max-width: 500px;
   }
 }
 
 /* Desktop */
 @media (min-width: 1024px) {
-  .stats-grid {
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  .join-code-form {
+    max-width: 600px;
   }
 }
 
 /* Touch-friendly enhancements */
 @media (hover: none) and (pointer: coarse) {
-  .btn-demo {
+  .btn-single-player {
+    min-height: 80px;
+    padding: var(--dashboard-spacing-lg);
+  }
+  
+  .btn-create-room {
+    min-height: 80px;
+    padding: var(--dashboard-spacing-lg);
+  }
+  
+  .btn-join-room {
     min-height: 44px;
     padding: var(--dashboard-spacing-md) var(--dashboard-spacing-lg);
   }
@@ -164,7 +277,15 @@
     transition-duration: 0.01ms !important;
   }
   
-  .stat-card:hover {
+  .btn-single-player:hover {
+    transform: none !important;
+  }
+  
+  .btn-create-room:hover {
+    transform: none !important;
+  }
+  
+  .btn-join-room:hover {
     transform: none !important;
   }
 }

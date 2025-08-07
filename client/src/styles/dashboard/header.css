@@ -11,7 +11,7 @@
 }
 
 .header-content {
-  max-width: 1200px;
+  max-width: 932px; /* Match dashboard container */
   margin: 0 auto;
   padding: 0 var(--dashboard-spacing-md);
   display: flex;
@@ -29,12 +29,12 @@
 .user-info {
   display: flex;
   align-items: center;
-  gap: var(--dashboard-spacing-md);
+  gap: var(--dashboard-spacing-sm);
 }
 
 .username {
   color: var(--text-secondary);
-  font-size: var(--dashboard-font-size-base);
+  font-size: var(--dashboard-font-size-sm);
 }
 
 /* Connection Status */
@@ -50,11 +50,13 @@
 }
 
 .status-indicator {
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--status-connecting);
   animation: pulse 2s infinite;
+  margin-left: var(--dashboard-spacing-xs);
+  flex-shrink: 0;
 }
 
 .status-indicator.connected {
