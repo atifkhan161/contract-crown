@@ -11,21 +11,33 @@
   - Implement database initialization with proper error handling and logging
   - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 2. Define RxDB schemas for all data models
-  - [ ] 2.1 Create base schema definitions for all collections
+- [x] 2. Define RxDB schemas for all data models
+
+
+
+
+
+  - [x] 2.1 Create base schema definitions for all collections
+
+
     - Define Users collection schema with validation rules
     - Define Games collection schema with status enums and relationships
     - Define Rooms collection schema with settings and game state
     - Define Teams, GamePlayers, GameRounds, GameTricks, and UserSessions schemas
     - _Requirements: 6.1, 6.2, 6.3_
 
-  - [ ] 2.2 Implement schema validation and constraints
+  - [x] 2.2 Implement schema validation and constraints
+
+
     - Add field validation rules matching current MariaDB constraints
     - Implement enum validations for status fields
     - Add required field validations and default values
+
     - _Requirements: 8.1, 8.2_
 
+
 - [ ] 3. Create data migration service
+
   - [ ] 3.1 Implement MariaDB data export functionality
     - Create service to export all tables to JSON format
     - Implement data validation during export process
