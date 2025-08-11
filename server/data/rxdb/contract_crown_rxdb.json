@@ -1,0 +1,21 @@
+{
+  "name": "contract_crown_rxdb",
+  "instanceToken": "zvnhyvisln",
+  "collections": [
+    {
+      "name": "setup_test",
+      "schemaHash": "1d593ffc5bacf65479904decd6aa67812ebcb3447aaa3364c5b993a75d4b3985",
+      "docs": [
+        {
+          "id": "setup-test-1754905800929",
+          "message": "RxDB setup verification",
+          "timestamp": "2025-08-11T09:50:00.929Z",
+          "_meta": {
+            "lwt": 1754905800930.01
+          },
+          "_deleted": false
+        }
+      ]
+    }
+  ]
+}

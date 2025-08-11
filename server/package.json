@@ -7,9 +7,14 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "vitest --run"
+    "test": "vitest --run",
+    "rxdb:init": "node database/rxdb-init.js init",
+    "rxdb:reset": "node database/rxdb-init.js reset",
+    "rxdb:status": "node database/rxdb-init.js status",
+    "rxdb:check": "node scripts/check-rxdb-setup.js"
   },
   "dependencies": {
+    "ajv": "^8.17.1",
     "axios": "^1.11.0",
     "bcrypt": "^5.1.1",
     "compression": "^1.8.1",
@@ -21,7 +26,9 @@
     "helmet": "^7.1.0",
     "http-proxy-middleware": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
+    "lokijs": "^1.5.12",
     "mysql2": "^3.6.5",
+    "rxdb": "^16.16.0",
     "socket.io": "^4.7.4",
     "uuid": "^9.0.1"
   },
