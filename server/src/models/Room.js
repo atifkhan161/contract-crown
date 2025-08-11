@@ -1,10 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
-import dbConnection from '../../database/connection.js';
+import BaseRxDBModel from './BaseRxDBModel.js';
 import User from './User.js';
 import Game from './Game.js';
 
-class Room {
+class Room extends BaseRxDBModel {
     constructor(roomData = {}) {
+        super('rooms', roomData);
         this.room_id = roomData.room_id || uuidv4();
         this.name = roomData.name;
         this.max_players = roomData.max_players || 4;
@@ -13,8 +14,8 @@ class Room {
         this.is_private = roomData.is_private || false;
         this.invite_code = roomData.invite_code;
         this.room_code = roomData.invite_code; // Use invite_code as room_code
-        this.game_state = roomData.game_state ? JSON.parse(roomData.game_state) : null;
-        this.settings = roomData.settings ? JSON.parse(roomData.settings) : {
+        this.game_state = roomData.game_state || null;
+        this.settings = roomData.settings || {
             timeLimit: 30,
             allowSpectators: true,
             autoStart: false
@@ -111,57 +112,49 @@ class Room {
                 console.log('[Room] Using fallback room code:', roomCode);
             }
 
-            // Create room instance
-            const room = new Room({
+            // Create room data
+            const roomModel = new Room();
+            const roomDataToCreate = {
+                room_id: uuidv4(),
                 name: name.trim(),
                 max_players: maxPlayers,
                 owner_id: ownerId,
+                status: 'waiting',
                 is_private: !!isPrivate,
-                invite_code: roomCode
+                invite_code: roomCode,
+                game_state: null,
+                settings: {
+                    timeLimit: 30,
+                    allowSpectators: true,
+                    autoStart: false
+                },
+                version: 1
+            };
+
+            console.log('[Room] Creating room with data:', {
+                room_id: roomDataToCreate.room_id,
+                name: roomDataToCreate.name,
+                invite_code: roomDataToCreate.invite_code
             });
 
-            console.log('[Room] Created room instance with data:', {
-                room_id: room.room_id,
-                name: room.name,
-                invite_code: room.invite_code
-            });
-
-            // Insert room into database using existing schema
-            try {
-                console.log('[Room] Attempting to insert room with code:', roomCode);
-                await dbConnection.query(`
-                    INSERT INTO rooms (room_id, name, max_players, owner_id, status, is_private, invite_code, version, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-                `, [room.room_id, room.name, room.max_players, room.owner_id, room.status, room.is_private, room.invite_code, room.version]);
-                console.log('[Room] Room inserted successfully with code:', roomCode);
-            } catch (columnError) {
-                console.log('[Room] Column error, attempting to add version column:', columnError.message);
-                // Add version column if it doesn't exist and retry
-                try {
-                    console.log('[Room] Adding version column...');
-                    await dbConnection.query(`ALTER TABLE rooms ADD COLUMN version INT DEFAULT 1`);
-                    console.log('[Room] Version column added, retrying insertion...');
-                    await dbConnection.query(`
-                        INSERT INTO rooms (room_id, name, max_players, owner_id, status, is_private, invite_code, version, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-                    `, [room.room_id, room.name, room.max_players, room.owner_id, room.status, room.is_private, room.invite_code, room.version]);
-                    console.log('[Room] Room inserted successfully after adding version column');
-                } catch (retryError) {
-                    console.error('[Room] Failed to insert room even after adding version column:', retryError.message);
-                    throw retryError;
-                }
-            }
+            // Insert room into RxDB
+            const createdRoom = await roomModel.create(roomDataToCreate);
 
             // Add owner as first player
-            await dbConnection.query(`
-                INSERT INTO room_players (room_id, user_id, joined_at)
-                VALUES (?, ?, NOW())
-            `, [room.room_id, ownerId]);
+            const roomPlayersModel = new (await import('./RoomPlayer.js')).default();
+            await roomPlayersModel.create({
+                id: `${createdRoom.room_id}_${ownerId}`,
+                room_id: createdRoom.room_id,
+                user_id: ownerId,
+                is_ready: false,
+                team_assignment: null,
+                joined_at: new Date().toISOString()
+            });
 
-            console.log(`[Room] Created new room: ${room.name} (${room.room_id})`);
+            console.log(`[Room] Created new room: ${createdRoom.name} (${createdRoom.room_id})`);
 
             // Load and return complete room data
-            return await Room.findById(room.room_id);
+            return await Room.findById(createdRoom.room_id);
         } catch (error) {
             console.error('[Room] Create error:', error.message);
             throw error;
@@ -170,15 +163,14 @@ class Room {
 
     static async findById(roomId) {
         try {
-            const rows = await dbConnection.query(`
-                SELECT * FROM rooms WHERE room_id = ?
-            `, [roomId]);
+            const roomModel = new Room();
+            const roomData = await roomModel.findById(roomId);
 
-            if (rows.length === 0) {
+            if (!roomData) {
                 return null;
             }
 
-            const room = new Room(rows[0]);
+            const room = new Room(roomData);
             await room.loadPlayers();
             return room;
         } catch (error) {
@@ -189,26 +181,24 @@ class Room {
 
     static async findAll(status = null) {
         try {
-            let query = 'SELECT * FROM rooms';
-            let params = [];
+            const roomModel = new Room();
+            let query = {};
 
             if (status) {
                 if (Array.isArray(status)) {
-                    query += ` WHERE status IN (${status.map(() => '?').join(',')})`;
-                    params = status;
+                    query.status = { $in: status };
                 } else {
-                    query += ' WHERE status = ?';
-                    params = [status];
+                    query.status = status;
                 }
             }
 
-            query += ' ORDER BY created_at DESC';
+            const roomsData = await roomModel.find(query, { 
+                sort: { created_at: -1 } 
+            });
 
-            const rows = await dbConnection.query(query, params);
             const rooms = [];
-
-            for (const row of rows) {
-                const room = new Room(row);
+            for (const roomData of roomsData) {
+                const room = new Room(roomData);
                 await room.loadPlayers();
                 rooms.push(room);
             }
@@ -222,20 +212,26 @@ class Room {
 
     static async findUserActiveRoom(userId) {
         try {
-            const rows = await dbConnection.query(`
-                SELECT r.* FROM rooms r
-                JOIN room_players rp ON r.room_id = rp.room_id
-                WHERE rp.user_id = ? AND r.status IN ('waiting', 'playing')
-                LIMIT 1
-            `, [userId]);
+            // Find room players for this user
+            const roomPlayersModel = new (await import('./RoomPlayer.js')).default();
+            const userRoomPlayers = await roomPlayersModel.find({ user_id: userId });
 
-            if (rows.length === 0) {
+            if (userRoomPlayers.length === 0) {
                 return null;
             }
 
-            const room = new Room(rows[0]);
-            await room.loadPlayers();
-            return room;
+            // Check each room to find active ones
+            const roomModel = new Room();
+            for (const roomPlayer of userRoomPlayers) {
+                const roomData = await roomModel.findById(roomPlayer.room_id);
+                if (roomData && ['waiting', 'playing'].includes(roomData.status)) {
+                    const room = new Room(roomData);
+                    await room.loadPlayers();
+                    return room;
+                }
+            }
+
+            return null;
         } catch (error) {
             console.error('[Room] FindUserActiveRoom error:', error.message);
             throw error;
@@ -244,15 +240,14 @@ class Room {
 
     static async findByCode(roomCode) {
         try {
-            const rows = await dbConnection.query(`
-                SELECT * FROM rooms WHERE invite_code = ?
-            `, [roomCode]);
+            const roomModel = new Room();
+            const roomData = await roomModel.findOne({ invite_code: roomCode });
 
-            if (rows.length === 0) {
+            if (!roomData) {
                 return null;
             }
 
-            const room = new Room(rows[0]);
+            const room = new Room(roomData);
             await room.loadPlayers();
             return room;
         } catch (error) {
@@ -263,36 +258,30 @@ class Room {
 
     async loadPlayers() {
         try {
-            // Try to load with new columns first, fallback to old structure if columns don't exist
-            let rows;
-            try {
-                rows = await dbConnection.query(`
-                    SELECT u.user_id, u.username, rp.joined_at, rp.is_ready, rp.team_assignment
-                    FROM room_players rp
-                    JOIN users u ON rp.user_id = u.user_id
-                    WHERE rp.room_id = ?
-                    ORDER BY rp.joined_at ASC
-                `, [this.room_id]);
-            } catch (columnError) {
-                // Fallback to old structure if new columns don't exist
-                console.log('[Room] New columns not found, using fallback query');
-                rows = await dbConnection.query(`
-                    SELECT u.user_id, u.username, rp.joined_at
-                    FROM room_players rp
-                    JOIN users u ON rp.user_id = u.user_id
-                    WHERE rp.room_id = ?
-                    ORDER BY rp.joined_at ASC
-                `, [this.room_id]);
+            // Get room players for this room
+            const roomPlayersModel = new (await import('./RoomPlayer.js')).default();
+            const roomPlayers = await roomPlayersModel.find({ room_id: this.room_id });
+
+            // Get user information for each player
+            const userModel = new User();
+            this.players = [];
+
+            for (const roomPlayer of roomPlayers) {
+                const user = await userModel.findById(roomPlayer.user_id);
+                if (user) {
+                    this.players.push({
+                        id: roomPlayer.user_id,
+                        username: user.username,
+                        joinedAt: roomPlayer.joined_at,
+                        isReady: roomPlayer.is_ready || false,
+                        teamAssignment: roomPlayer.team_assignment || null,
+                        isConnected: true // Default to connected for database-loaded players
+                    });
+                }
             }
 
-            this.players = rows.map(row => ({
-                id: row.user_id,
-                username: row.username,
-                joinedAt: row.joined_at,
-                isReady: !!row.is_ready || false, // Default to false if column doesn't exist
-                teamAssignment: row.team_assignment || null,
-                isConnected: true // Default to connected for database-loaded players
-            }));
+            // Sort players by joined time
+            this.players.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
 
             // Load owner details
             if (this.owner_id) {
@@ -321,22 +310,26 @@ class Room {
             }
 
             // Add player to room
-            await dbConnection.query(`
-                INSERT INTO room_players (room_id, user_id, joined_at)
-                VALUES (?, ?, NOW())
-            `, [this.room_id, userId]);
+            const roomPlayersModel = new (await import('./RoomPlayer.js')).default();
+            await roomPlayersModel.create({
+                id: `${this.room_id}_${userId}`,
+                room_id: this.room_id,
+                user_id: userId,
+                is_ready: isBot, // Bots are ready by default
+                team_assignment: null,
+                joined_at: new Date().toISOString()
+            });
 
-            // If it's a bot and we have username, set ready status
-            if (isBot) {
-                await dbConnection.query(`
-                    UPDATE room_players SET is_ready = 1 WHERE room_id = ? AND user_id = ?
-                `, [this.room_id, userId]);
-            }
+            // Update room version to track state change
+            await this.updateById(this.room_id, {
+                version: this.version + 1
+            });
+            this.version += 1;
 
             // Reload players
             await this.loadPlayers();
 
-            console.log(`[Room] ${isBot ? 'Bot' : 'User'} ${userId} joined room ${this.room_id}`);
+            console.log(`[Room] ${isBot ? 'Bot' : 'User'} ${userId} joined room ${this.room_id} (version ${this.version})`);
             return this;
         } catch (error) {
             console.error('[Room] AddPlayer error:', error.message);
@@ -352,29 +345,36 @@ class Room {
                 throw new Error('User is not in this room');
             }
 
-            // Use transaction for atomic update
-            await dbConnection.transaction(async (connection) => {
-                // Remove player from room
-                await connection.execute(`
-                    DELETE FROM room_players WHERE room_id = ? AND user_id = ?
-                `, [this.room_id, userId]);
+            // Remove player from room
+            const roomPlayersModel = new (await import('./RoomPlayer.js')).default();
+            await roomPlayersModel.deleteById(`${this.room_id}_${userId}`);
 
-                // If owner left and there are other players, assign new owner
-                if (this.owner_id === userId) {
-                    const remainingPlayers = this.players.filter(p => p.id !== userId && p.isConnected !== false);
-                    if (remainingPlayers.length > 0) {
-                        // Prefer connected players for new host
-                        const newHostId = remainingPlayers[0].id;
-                        await connection.execute(`
-                            UPDATE rooms SET owner_id = ?, updated_at = NOW() WHERE room_id = ?
-                        `, [newHostId, this.room_id]);
-                        this.owner_id = newHostId;
-                    }
+            // If owner left and there are other players, assign new owner
+            if (this.owner_id === userId) {
+                const remainingPlayers = this.players.filter(p => p.id !== userId && p.isConnected !== false);
+                if (remainingPlayers.length > 0) {
+                    // Prefer connected players for new host
+                    const newHostId = remainingPlayers[0].id;
+                    await this.updateById(this.room_id, {
+                        owner_id: newHostId,
+                        version: this.version + 1
+                    });
+                    this.owner_id = newHostId;
+                    this.version += 1;
+                } else {
+                    // Increment version even if no new owner
+                    await this.updateById(this.room_id, {
+                        version: this.version + 1
+                    });
+                    this.version += 1;
                 }
-
+            } else {
                 // Increment room version to track state change
-                await this.incrementVersionInTransaction(connection);
-            });
+                await this.updateById(this.room_id, {
+                    version: this.version + 1
+                });
+                this.version += 1;
+            }
 
             // Remove player from in-memory data
             this.players = this.players.filter(p => p.id !== userId);
@@ -390,14 +390,11 @@ class Room {
     async delete() {
         try {
             // Delete room players first
-            await dbConnection.query(`
-                DELETE FROM room_players WHERE room_id = ?
-            `, [this.room_id]);
+            const roomPlayersModel = new (await import('./RoomPlayer.js')).default();
+            await roomPlayersModel.deleteMany({ room_id: this.room_id });
 
             // Delete room
-            await dbConnection.query(`
-                DELETE FROM rooms WHERE room_id = ?
-            `, [this.room_id]);
+            await this.deleteById(this.room_id);
 
             console.log(`[Room] Deleted room ${this.room_id}`);
         } catch (error) {
@@ -408,138 +405,23 @@ class Room {
 
     async updateStatus(status) {
         try {
-            await this.updateWithVersionControl({ status });
-            console.log(`[Room] Updated room ${this.room_id} status to ${status}`);
+            const updatedRoom = await this.updateById(this.room_id, {
+                status,
+                version: this.version + 1
+            });
+
+            if (updatedRoom) {
+                this.status = status;
+                this.version += 1;
+                console.log(`[Room] Updated room ${this.room_id} status to ${status} (version ${this.version})`);
+            }
         } catch (error) {
             console.error('[Room] UpdateStatus error:', error.message);
             throw error;
         }
     }
 
-    /**
-     * Update room with optimistic concurrency control
-     * @param {Object} updates - Fields to update
-     * @param {number} expectedVersion - Expected current version (optional)
-     * @returns {Promise<Room>} Updated room instance
-     */
-    async updateWithVersionControl(updates, expectedVersion = null) {
-        try {
-            const currentVersion = expectedVersion || this.version;
-            const newVersion = currentVersion + 1;
-            
-            // Build update query dynamically
-            const updateFields = [];
-            const updateValues = [];
-            
-            for (const [field, value] of Object.entries(updates)) {
-                if (field !== 'version') {
-                    updateFields.push(`${field} = ?`);
-                    updateValues.push(value);
-                }
-            }
-            
-            if (updateFields.length === 0) {
-                throw new Error('No fields to update');
-            }
-            
-            // Add version and timestamp updates
-            updateFields.push('version = ?', 'updated_at = NOW()');
-            updateValues.push(newVersion, this.room_id, currentVersion);
-            
-            const query = `
-                UPDATE rooms 
-                SET ${updateFields.join(', ')} 
-                WHERE room_id = ? AND version = ?
-            `;
-            
-            const result = await dbConnection.query(query, updateValues);
-            
-            if (result.affectedRows === 0) {
-                // Version mismatch - room was updated by another process
-                const currentRoom = await Room.findById(this.room_id);
-                throw new Error(`Optimistic concurrency conflict. Expected version ${currentVersion}, current version is ${currentRoom ? currentRoom.version : 'unknown'}`);
-            }
-            
-            // Update local instance
-            Object.assign(this, updates);
-            this.version = newVersion;
-            this.updated_at = new Date();
-            
-            return this;
-            
-        } catch (error) {
-            console.error('[Room] UpdateWithVersionControl error:', error.message);
-            throw error;
-        }
-    }
 
-    /**
-     * Increment version without other changes (for state synchronization)
-     */
-    async incrementVersion() {
-        try {
-            const newVersion = this.version + 1;
-            
-            const result = await dbConnection.query(`
-                UPDATE rooms 
-                SET version = ?, updated_at = NOW() 
-                WHERE room_id = ? AND version = ?
-            `, [newVersion, this.room_id, this.version]);
-            
-            if (result.affectedRows === 0) {
-                throw new Error(`Version increment failed - concurrent update detected`);
-            }
-            
-            this.version = newVersion;
-            this.updated_at = new Date();
-            
-            return this;
-            
-        } catch (error) {
-            console.error('[Room] IncrementVersion error:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * Increment version within a transaction with retry logic
-     */
-    async incrementVersionInTransaction(connection) {
-        try {
-            // Get the current version from database to avoid stale data
-            const [currentRows] = await connection.execute(`
-                SELECT version FROM rooms WHERE room_id = ?
-            `, [this.room_id]);
-            
-            if (currentRows.length === 0) {
-                throw new Error(`Room ${this.room_id} not found`);
-            }
-            
-            const currentVersion = currentRows[0].version;
-            const newVersion = currentVersion + 1;
-            
-            const result = await connection.execute(`
-                UPDATE rooms 
-                SET version = ?, updated_at = NOW() 
-                WHERE room_id = ? AND version = ?
-            `, [newVersion, this.room_id, currentVersion]);
-            
-            if (result.affectedRows === 0) {
-                // This shouldn't happen within a transaction, but handle gracefully
-                console.warn(`[Room] Version increment had no effect for room ${this.room_id}`);
-            }
-            
-            // Update instance version
-            this.version = newVersion;
-            this.updated_at = new Date();
-            
-            return this;
-            
-        } catch (error) {
-            console.error('[Room] IncrementVersionInTransaction error:', error.message);
-            throw error;
-        }
-    }
 
     canUserJoin(userId) {
         // Check if room is waiting for players
@@ -558,6 +440,69 @@ class Room {
         }
 
         return { canJoin: true };
+    }
+
+    // Reactive query methods
+    static subscribeToRoom(subscriptionId, roomId, callback) {
+        try {
+            const roomModel = new Room();
+            return roomModel.subscribeById(subscriptionId, roomId, callback);
+        } catch (error) {
+            console.error('[Room] SubscribeToRoom error:', error.message);
+            throw error;
+        }
+    }
+
+    static subscribeToRooms(subscriptionId, query, callback) {
+        try {
+            const roomModel = new Room();
+            return roomModel.subscribe(subscriptionId, query, callback);
+        } catch (error) {
+            console.error('[Room] SubscribeToRooms error:', error.message);
+            throw error;
+        }
+    }
+
+    static subscribeToActiveRooms(subscriptionId, callback) {
+        try {
+            const roomModel = new Room();
+            return roomModel.subscribe(subscriptionId, { 
+                status: { $in: ['waiting', 'playing'] }
+            }, callback);
+        } catch (error) {
+            console.error('[Room] SubscribeToActiveRooms error:', error.message);
+            throw error;
+        }
+    }
+
+    static subscribeToRoomsByOwner(subscriptionId, ownerId, callback) {
+        try {
+            const roomModel = new Room();
+            return roomModel.subscribe(subscriptionId, { owner_id: ownerId }, callback);
+        } catch (error) {
+            console.error('[Room] SubscribeToRoomsByOwner error:', error.message);
+            throw error;
+        }
+    }
+
+    static unsubscribe(subscriptionId) {
+        try {
+            const roomModel = new Room();
+            return roomModel.unsubscribe(subscriptionId);
+        } catch (error) {
+            console.error('[Room] Unsubscribe error:', error.message);
+            return false;
+        }
+    }
+
+    // Instance method to subscribe to this room's changes
+    subscribeToChanges(subscriptionId, callback) {
+        try {
+            return this.subscribeById(subscriptionId, this.room_id, callback);
+        } catch (error) {
+            console.error('[Room] SubscribeToChanges error:', error.message);
+            throw error;
+        }
     }
 
     // Convert to API response format
@@ -614,31 +559,17 @@ class Room {
                 throw new Error('Ready status must be a boolean value');
             }
 
-            // Use transaction for atomic update with version control
-            await dbConnection.transaction(async (connection) => {
-                // Try to update ready status, add column if it doesn't exist
-                try {
-                    const result = await connection.execute(`
-                        UPDATE room_players SET is_ready = ? WHERE room_id = ? AND user_id = ?
-                    `, [isReady, this.room_id, userId]);
-
-                    if (result.affectedRows === 0) {
-                        throw new Error('Player not found in database');
-                    }
-                } catch (columnError) {
-                    // Add column if it doesn't exist and retry
-                    console.log('[Room] Adding is_ready column to room_players table');
-                    await connection.execute(`
-                        ALTER TABLE room_players ADD COLUMN is_ready BOOLEAN DEFAULT FALSE
-                    `);
-                    await connection.execute(`
-                        UPDATE room_players SET is_ready = ? WHERE room_id = ? AND user_id = ?
-                    `, [isReady, this.room_id, userId]);
-                }
-
-                // Increment room version to track state change
-                await this.incrementVersionInTransaction(connection);
+            // Update player ready status
+            const roomPlayersModel = new (await import('./RoomPlayer.js')).default();
+            await roomPlayersModel.updateById(`${this.room_id}_${userId}`, {
+                is_ready: isReady
             });
+
+            // Increment room version to track state change
+            await this.updateById(this.room_id, {
+                version: this.version + 1
+            });
+            this.version += 1;
 
             // Update in-memory player data
             player.isReady = isReady;
@@ -695,51 +626,35 @@ class Room {
                 team2Players = [connectedPlayers[1]];
             }
 
-            // Use transaction for atomic update with version control
-            await dbConnection.transaction(async (connection) => {
-                // Clear existing team assignments first
-                await connection.execute(`
-                    UPDATE room_players SET team_assignment = NULL WHERE room_id = ?
-                `, [this.room_id]);
-
-                // Try to update team assignments, add column if it doesn't exist
-                try {
-                    // Update team assignments in database
-                    for (const player of team1Players) {
-                        await connection.execute(`
-                            UPDATE room_players SET team_assignment = 1 WHERE room_id = ? AND user_id = ?
-                        `, [this.room_id, player.id]);
-                    }
-
-                    for (const player of team2Players) {
-                        await connection.execute(`
-                            UPDATE room_players SET team_assignment = 2 WHERE room_id = ? AND user_id = ?
-                        `, [this.room_id, player.id]);
-                    }
-                } catch (columnError) {
-                    // Add column if it doesn't exist and retry
-                    console.log('[Room] Adding team_assignment column to room_players table');
-                    await connection.execute(`
-                        ALTER TABLE room_players ADD COLUMN team_assignment INT NULL CHECK (team_assignment IN (1, 2))
-                    `);
-
-                    // Retry team assignments
-                    for (const player of team1Players) {
-                        await connection.execute(`
-                            UPDATE room_players SET team_assignment = 1 WHERE room_id = ? AND user_id = ?
-                        `, [this.room_id, player.id]);
-                    }
-
-                    for (const player of team2Players) {
-                        await connection.execute(`
-                            UPDATE room_players SET team_assignment = 2 WHERE room_id = ? AND user_id = ?
-                        `, [this.room_id, player.id]);
-                    }
+            // Clear existing team assignments first
+            const roomPlayersModel = new (await import('./RoomPlayer.js')).default();
+            const allRoomPlayers = await roomPlayersModel.find({ room_id: this.room_id });
+            
+            // Update team assignments for all players
+            const updatePromises = [];
+            for (const roomPlayer of allRoomPlayers) {
+                let teamAssignment = null;
+                
+                if (team1Players.some(p => p.id === roomPlayer.user_id)) {
+                    teamAssignment = 1;
+                } else if (team2Players.some(p => p.id === roomPlayer.user_id)) {
+                    teamAssignment = 2;
                 }
 
-                // Increment room version to track state change
-                await this.incrementVersionInTransaction(connection);
+                updatePromises.push(
+                    roomPlayersModel.updateById(roomPlayer.id, {
+                        team_assignment: teamAssignment
+                    })
+                );
+            }
+
+            await Promise.all(updatePromises);
+
+            // Increment room version to track state change
+            await this.updateById(this.room_id, {
+                version: this.version + 1
             });
+            this.version += 1;
 
             // Update in-memory player data
             this.players.forEach(player => {
@@ -871,7 +786,10 @@ class Room {
             player.lastConnectionUpdate = new Date();
 
             // Increment version to track state change
-            await this.incrementVersion();
+            await this.updateById(this.room_id, {
+                version: this.version + 1
+            });
+            this.version += 1;
 
             console.log(`[Room] Player ${userId} connection status set to ${isConnected} in room ${this.room_id} (version ${this.version})`);
             return this;
@@ -920,7 +838,11 @@ class Room {
             }
 
             // Update host in database
-            await this.updateWithVersionControl({ owner_id: newHostId });
+            await this.updateById(this.room_id, {
+                owner_id: newHostId,
+                version: this.version + 1
+            });
+            this.version += 1;
 
             console.log(`[Room] Host transferred from ${this.owner_id} to ${newHostId} in room ${this.room_id}`);
             return this;
@@ -936,16 +858,21 @@ class Room {
      */
     async resetAllPlayerReadyStatus() {
         try {
-            // Use transaction for atomic update
-            await dbConnection.transaction(async (connection) => {
-                // Reset ready status for all players in database
-                await connection.execute(`
-                    UPDATE room_players SET is_ready = FALSE WHERE room_id = ?
-                `, [this.room_id]);
+            // Reset ready status for all players in database
+            const roomPlayersModel = new (await import('./RoomPlayer.js')).default();
+            const allRoomPlayers = await roomPlayersModel.find({ room_id: this.room_id });
+            
+            const updatePromises = allRoomPlayers.map(roomPlayer =>
+                roomPlayersModel.updateById(roomPlayer.id, { is_ready: false })
+            );
+            
+            await Promise.all(updatePromises);
 
-                // Increment room version to track state change
-                await this.incrementVersionInTransaction(connection);
+            // Increment room version to track state change
+            await this.updateById(this.room_id, {
+                version: this.version + 1
             });
+            this.version += 1;
 
             // Update in-memory player data
             this.players.forEach(player => {
@@ -966,16 +893,21 @@ class Room {
      */
     async clearTeamAssignments() {
         try {
-            // Use transaction for atomic update
-            await dbConnection.transaction(async (connection) => {
-                // Clear team assignments in database
-                await connection.execute(`
-                    UPDATE room_players SET team_assignment = NULL WHERE room_id = ?
-                `, [this.room_id]);
+            // Clear team assignments in database
+            const roomPlayersModel = new (await import('./RoomPlayer.js')).default();
+            const allRoomPlayers = await roomPlayersModel.find({ room_id: this.room_id });
+            
+            const updatePromises = allRoomPlayers.map(roomPlayer =>
+                roomPlayersModel.updateById(roomPlayer.id, { team_assignment: null })
+            );
+            
+            await Promise.all(updatePromises);
 
-                // Increment room version to track state change
-                await this.incrementVersionInTransaction(connection);
+            // Increment room version to track state change
+            await this.updateById(this.room_id, {
+                version: this.version + 1
             });
+            this.version += 1;
 
             // Update in-memory player data
             this.players.forEach(player => {
@@ -1086,10 +1018,15 @@ class Room {
             }
 
             // Update room status to playing
-            await this.updateWithVersionControl({ 
+            const now = new Date().toISOString();
+            await this.updateById(this.room_id, {
                 status: 'playing',
-                started_at: new Date()
+                started_at: now,
+                version: this.version + 1
             });
+            this.status = 'playing';
+            this.started_at = now;
+            this.version += 1;
 
             return {
                 success: true,
@@ -1143,10 +1080,15 @@ class Room {
             const game = await Game.createFromRoom(gameData);
 
             // Update room status to playing
-            await this.updateWithVersionControl({ 
+            const now = new Date().toISOString();
+            await this.updateById(this.room_id, {
                 status: 'playing',
-                started_at: new Date()
+                started_at: now,
+                version: this.version + 1
             });
+            this.status = 'playing';
+            this.started_at = now;
+            this.version += 1;
 
             console.log(`[Room] Created game ${game.game_code} from room ${this.room_id}`);
 

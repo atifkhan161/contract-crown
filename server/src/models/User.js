@@ -1,9 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt';
-import dbConnection from '../../database/connection.js';
+import BaseRxDBModel from './BaseRxDBModel.js';
 
-class User {
+class User extends BaseRxDBModel {
   constructor(userData = {}) {
+    super('users', userData);
     this.user_id = userData.user_id || uuidv4();
     this.username = userData.username;
     this.email = userData.email;
@@ -13,16 +14,30 @@ class User {
     this.total_games_played = userData.total_games_played || 0;
     this.total_games_won = userData.total_games_won || 0;
     this.is_active = userData.is_active !== undefined ? userData.is_active : true;
+    this.is_bot = userData.is_bot || false;
   }
 
   // Static methods for database operations
   static async create(userData) {
     try {
       const { username, email, password } = userData;
-      
+
       // Validate required fields
       if (!username || !email || !password) {
         throw new Error('Username, email, and password are required');
+      }
+
+      // Validate input format
+      if (!User.validateEmail(email)) {
+        throw new Error('Invalid email format');
+      }
+
+      if (!User.validateUsername(username)) {
+        throw new Error('Invalid username format');
+      }
+
+      if (!User.validatePassword(password)) {
+        throw new Error('Invalid password format');
       }
 
       // Check if user already exists
@@ -40,22 +55,26 @@ class User {
       const saltRounds = parseInt(process.env.BCRYPT_ROUNDS) || 12;
       const password_hash = await bcrypt.hash(password, saltRounds);
 
-      // Create user instance
-      const user = new User({
+      // Create user data
+      const userModel = new User();
+      const userData = {
+        user_id: uuidv4(),
         username: username.trim(),
         email: email.trim().toLowerCase(),
-        password_hash
-      });
+        password_hash,
+        total_games_played: 0,
+        total_games_won: 0,
+        is_active: true,
+        is_bot: false
+      };
 
-      // Insert into database
-      await dbConnection.query(`
-        INSERT INTO users (user_id, username, email, password_hash, created_at)
-        VALUES (?, ?, ?, ?, NOW())
-      `, [user.user_id, user.username, user.email, user.password_hash]);
+      // Insert into RxDB
+      const createdDoc = await userModel.create(userData);
 
-      console.log(`[User] Created new user: ${user.username} (${user.user_id})`);
-      
+      console.log(`[User] Created new user: ${createdDoc.username} (${createdDoc.user_id})`);
+
       // Return user without password hash
+      const user = new User(createdDoc);
       return user.toSafeObject();
     } catch (error) {
       console.error('[User] Create error:', error.message);
@@ -65,15 +84,17 @@ class User {
 
   static async findById(userId) {
     try {
-      const rows = await dbConnection.query(`
-        SELECT * FROM users WHERE user_id = ? AND is_active = TRUE
-      `, [userId]);
+      const userModel = new User();
+      const userData = await userModel.findOne({
+        user_id: userId,
+        is_active: true
+      });
 
-      if (rows.length === 0) {
+      if (!userData) {
         return null;
       }
 
-      return new User(rows[0]);
+      return new User(userData);
     } catch (error) {
       console.error('[User] FindById error:', error.message);
       throw error;
@@ -82,15 +103,17 @@ class User {
 
   static async findByEmail(email) {
     try {
-      const rows = await dbConnection.query(`
-        SELECT * FROM users WHERE email = ? AND is_active = TRUE
-      `, [email.trim().toLowerCase()]);
+      const userModel = new User();
+      const userData = await userModel.findOne({
+        email: email.trim().toLowerCase(),
+        is_active: true
+      });
 
-      if (rows.length === 0) {
+      if (!userData) {
         return null;
       }
 
-      return new User(rows[0]);
+      return new User(userData);
     } catch (error) {
       console.error('[User] FindByEmail error:', error.message);
       throw error;
@@ -99,15 +122,17 @@ class User {
 
   static async findByUsername(username) {
     try {
-      const rows = await dbConnection.query(`
-        SELECT * FROM users WHERE username = ? AND is_active = TRUE
-      `, [username.trim()]);
+      const userModel = new User();
+      const userData = await userModel.findOne({
+        username: username.trim(),
+        is_active: true
+      });
 
-      if (rows.length === 0) {
+      if (!userData) {
         return null;
       }
 
-      return new User(rows[0]);
+      return new User(userData);
     } catch (error) {
       console.error('[User] FindByUsername error:', error.message);
       throw error;
@@ -116,16 +141,28 @@ class User {
 
   static async findByEmailOrUsername(email, username) {
     try {
-      const rows = await dbConnection.query(`
-        SELECT * FROM users 
-        WHERE (email = ? OR username = ?) AND is_active = TRUE
-      `, [email.trim().toLowerCase(), username.trim()]);
+      const userModel = new User();
 
-      if (rows.length === 0) {
-        return null;
+      // RxDB doesn't support OR queries directly, so we need to check both separately
+      const emailUser = await userModel.findOne({
+        email: email.trim().toLowerCase(),
+        is_active: true
+      });
+
+      if (emailUser) {
+        return new User(emailUser);
       }
 
-      return new User(rows[0]);
+      const usernameUser = await userModel.findOne({
+        username: username.trim(),
+        is_active: true
+      });
+
+      if (usernameUser) {
+        return new User(usernameUser);
+      }
+
+      return null;
     } catch (error) {
       console.error('[User] FindByEmailOrUsername error:', error.message);
       throw error;
@@ -143,12 +180,15 @@ class User {
 
   async updateLastLogin() {
     try {
-      await dbConnection.query(`
-        UPDATE users SET last_login = NOW() WHERE user_id = ?
-      `, [this.user_id]);
+      const now = new Date().toISOString();
+      const updatedUser = await this.updateById(this.user_id, {
+        last_login: now
+      });
 
-      this.last_login = new Date();
-      console.log(`[User] Updated last login for user: ${this.username}`);
+      if (updatedUser) {
+        this.last_login = now;
+        console.log(`[User] Updated last login for user: ${this.username}`);
+      }
     } catch (error) {
       console.error('[User] Update last login error:', error.message);
       throw error;
@@ -157,18 +197,23 @@ class User {
 
   async updateGameStats(won = false) {
     try {
-      const query = won 
-        ? 'UPDATE users SET total_games_played = total_games_played + 1, total_games_won = total_games_won + 1 WHERE user_id = ?'
-        : 'UPDATE users SET total_games_played = total_games_played + 1 WHERE user_id = ?';
+      const updateData = {
+        total_games_played: this.total_games_played + 1
+      };
 
-      await dbConnection.query(query, [this.user_id]);
-
-      this.total_games_played += 1;
       if (won) {
-        this.total_games_won += 1;
+        updateData.total_games_won = this.total_games_won + 1;
       }
 
-      console.log(`[User] Updated game stats for user: ${this.username}`);
+      const updatedUser = await this.updateById(this.user_id, updateData);
+
+      if (updatedUser) {
+        this.total_games_played += 1;
+        if (won) {
+          this.total_games_won += 1;
+        }
+        console.log(`[User] Updated game stats for user: ${this.username}`);
+      }
     } catch (error) {
       console.error('[User] Update game stats error:', error.message);
       throw error;
@@ -187,6 +232,57 @@ class User {
       total_games_won: this.total_games_won,
       is_active: this.is_active
     };
+  }
+
+  // Reactive query methods
+  static subscribeToUser(subscriptionId, userId, callback) {
+    try {
+      const userModel = new User();
+      return userModel.subscribeById(subscriptionId, userId, callback);
+    } catch (error) {
+      console.error('[User] SubscribeToUser error:', error.message);
+      throw error;
+    }
+  }
+
+  static subscribeToUsers(subscriptionId, query, callback) {
+    try {
+      const userModel = new User();
+      return userModel.subscribe(subscriptionId, query, callback);
+    } catch (error) {
+      console.error('[User] SubscribeToUsers error:', error.message);
+      throw error;
+    }
+  }
+
+  static subscribeToActiveUsers(subscriptionId, callback) {
+    try {
+      const userModel = new User();
+      return userModel.subscribe(subscriptionId, { is_active: true }, callback);
+    } catch (error) {
+      console.error('[User] SubscribeToActiveUsers error:', error.message);
+      throw error;
+    }
+  }
+
+  static unsubscribe(subscriptionId) {
+    try {
+      const userModel = new User();
+      return userModel.unsubscribe(subscriptionId);
+    } catch (error) {
+      console.error('[User] Unsubscribe error:', error.message);
+      return false;
+    }
+  }
+
+  // Instance method to subscribe to this user's changes
+  subscribeToChanges(subscriptionId, callback) {
+    try {
+      return this.subscribeById(subscriptionId, this.user_id, callback);
+    } catch (error) {
+      console.error('[User] SubscribeToChanges error:', error.message);
+      throw error;
+    }
   }
 
   // Validation methods
