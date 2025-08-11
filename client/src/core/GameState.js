@@ -7,13 +7,8 @@ export class GameState {
     constructor() {
         this.state = {
             gameId: null,
-            currentPlayer: 'player1',
-            players: {
-                'player1': { username: 'You', seatPosition: 1, handSize: 4 },
-                'player2': { username: 'Player 2', seatPosition: 2, handSize: 4 },
-                'player3': { username: 'Player 3', seatPosition: 3, handSize: 4 },
-                'player4': { username: 'Player 4', seatPosition: 4, handSize: 4 }
-            },
+            currentPlayer: null,
+            players: {},
             currentRound: 1,
             currentTrick: {
                 trickNumber: 1,
@@ -26,10 +21,10 @@ export class GameState {
             roundScores: { team1: 0, team2: 0 }, // Round wins
             playerHand: [
                 // Initial 4 cards for trump declaration (sorted by suit)
-                { suit: 'spades', rank: 'J' },
-                { suit: 'hearts', rank: 'A' },
-                { suit: 'hearts', rank: 'K' },
-                { suit: 'diamonds', rank: 'Q' }
+                { suit: 'Spades', rank: 'J' },
+                { suit: 'Hearts', rank: 'A' },
+                { suit: 'Hearts', rank: 'K' },
+                { suit: 'Diamonds', rank: 'Q' }
             ],
             selectedCard: null,
             isMyTurn: false,
@@ -180,7 +175,7 @@ export class GameState {
      * @returns {string} Current player ID
      */
     getCurrentPlayerId() {
-        return this.state.currentPlayer || 'player1';
+        return this.state.currentPlayer || null;
     }
 
     /**
@@ -221,7 +216,7 @@ export class GameState {
      * @returns {Array} Sorted cards
      */
     sortCardsBySuit(cards) {
-        const suitOrder = ['spades', 'hearts', 'diamonds', 'clubs'];
+        const suitOrder = ['Spades', 'Hearts', 'Diamonds', 'Clubs'];
         const rankOrder = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
         
         return [...cards].sort((a, b) => {
@@ -246,7 +241,7 @@ export class GameState {
         this.state = {
             gameId,
             isDemoMode,
-            currentPlayer: 'player1',
+            currentPlayer: null,
             players: {},
             currentRound: 1,
             currentTrick: {

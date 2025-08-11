@@ -18,7 +18,7 @@ export class GameManager {
         this.gameState = new GameState();
         
         // Initialize managers
-        this.uiManager = new UIManager(this.gameState);
+        this.uiManager = new UIManager(this.gameState, this.authManager);
         this.cardManager = new CardManager(this.gameState, this.uiManager);
         this.trumpManager = new TrumpManager(this.gameState, this.uiManager);
         this.trickManager = new TrickManager(this.gameState, this.uiManager);
@@ -79,7 +79,11 @@ export class GameManager {
                 this.currentGameManager = this.webSocketGameManager;
                 
                 // Set up specific callbacks for multiplayer mode
-                this.cardManager.setCardPlayCallback((card) => this.webSocketGameManager.handleCardPlay(card));
+                console.log('[GameManager] Setting up multiplayer callbacks');
+                this.cardManager.setCardPlayCallback((card) => {
+                    console.log('[GameManager] Card play callback triggered:', card);
+                    return this.webSocketGameManager.handleCardPlay(card);
+                });
                 this.trumpManager.setTrumpDeclarationCallback((suit) => this.webSocketGameManager.handleTrumpDeclaration(suit));
                 
                 await this.webSocketGameManager.init(gameId);

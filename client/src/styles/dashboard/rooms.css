@@ -45,6 +45,17 @@
   gap: var(--dashboard-spacing-md);
   color: var(--text-secondary);
   font-size: var(--dashboard-font-size-xs);
+  flex-wrap: wrap;
+}
+
+.room-code {
+  background: var(--primary-color);
+  color: var(--text-primary);
+  padding: 2px var(--dashboard-spacing-xs);
+  border-radius: var(--radius-sm);
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  font-size: var(--dashboard-font-size-xs);
 }
 
 .room-status {

@@ -26,6 +26,7 @@ export class CardManager {
      * @param {Function} callback - Function to call when card is played
      */
     setCardPlayCallback(callback) {
+        console.log('[CardManager] Setting card play callback:', !!callback);
         this.onCardPlay = callback;
     }
 
@@ -139,11 +140,23 @@ export class CardManager {
         this.gameState.removeCardFromHand(card);
 
         // Trigger card play callback
+        console.log('[CardManager] Card play callback check:', {
+            hasCallback: !!this.onCardPlay,
+            callbackType: typeof this.onCardPlay
+        });
+        
         if (this.onCardPlay) {
             console.log('[CardManager] Triggering card play callback');
-            await this.onCardPlay(card);
+            try {
+                await this.onCardPlay(card);
+                console.log('[CardManager] Card play callback completed successfully');
+            } catch (error) {
+                console.error('[CardManager] Card play callback error:', error);
+                this.uiManager.addGameMessage('Failed to play card', 'error');
+            }
         } else {
             console.warn('[CardManager] No card play callback set');
+            this.uiManager.addGameMessage('Card play system not initialized', 'error');
         }
 
         // Update UI
@@ -241,6 +254,13 @@ export class CardManager {
         const playerHand = state.playerHand || [];
         const handElement = document.getElementById('player-hand');
         
+        console.log('[CardManager] Rendering player hand:', {
+            playerHand,
+            handLength: playerHand.length,
+            gamePhase: state.gamePhase,
+            trumpSuit: state.trumpSuit
+        });
+        
         if (!handElement) return;
 
         handElement.innerHTML = '';
@@ -271,14 +291,14 @@ export class CardManager {
         cardElement.style.zIndex = index + 1;
 
         const suitSymbols = {
-            hearts: '♥',
-            diamonds: '♦',
-            clubs: '♣',
-            spades: '♠'
+            Hearts: '♥',
+            Diamonds: '♦',
+            Clubs: '♣',
+            Spades: '♠'
         };
 
-        // Add suit class for styling
-        cardElement.classList.add(card.suit);
+        // Add lowercase suit class for CSS styling
+        cardElement.classList.add(card.suit.toLowerCase());
         
         cardElement.innerHTML = `
             <div class="card-corner card-corner-top">
@@ -441,7 +461,7 @@ export class CardManager {
      * @returns {Array} Sorted cards
      */
     sortCardsBySuit(cards) {
-        const suitOrder = ['spades', 'hearts', 'diamonds', 'clubs'];
+        const suitOrder = ['Spades', 'Hearts', 'Diamonds', 'Clubs'];
         const rankOrder = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
         
         return [...cards].sort((a, b) => {

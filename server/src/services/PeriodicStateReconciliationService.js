@@ -343,7 +343,7 @@ class PeriodicStateReconciliationService {
                     
                     // Update database to reflect removal
                     try {
-                        await dbConnection.execute(
+                        await dbConnection.query(
                             'DELETE FROM room_players WHERE room_id = ? AND user_id = ?',
                             [gameId, playerId]
                         );
@@ -361,7 +361,7 @@ class PeriodicStateReconciliationService {
                     
                     // Update database room status
                     try {
-                        await dbConnection.execute(
+                        await dbConnection.query(
                             'UPDATE rooms SET status = ?, updated_at = NOW() WHERE room_id = ?',
                             ['abandoned', gameId]
                         );
@@ -399,7 +399,7 @@ class PeriodicStateReconciliationService {
             const placeholders = activeGameIds.map(() => '?').join(',');
             
             // Find rooms in database that are not active in websocket manager
-            const [orphanedRooms] = await dbConnection.execute(`
+            const orphanedRooms = await dbConnection.query(`
                 SELECT DISTINCT room_id FROM room_players 
                 WHERE room_id NOT IN (${placeholders})
                 AND created_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)
@@ -410,13 +410,13 @@ class PeriodicStateReconciliationService {
                 console.log(`[PeriodicReconciliation] Cleaning up orphaned room ${roomId}`);
                 
                 // Remove room players
-                await dbConnection.execute(
+                await dbConnection.query(
                     'DELETE FROM room_players WHERE room_id = ?',
                     [roomId]
                 );
                 
                 // Update room status
-                await dbConnection.execute(
+                await dbConnection.query(
                     'UPDATE rooms SET status = ?, updated_at = NOW() WHERE room_id = ?',
                     ['abandoned', roomId]
                 );

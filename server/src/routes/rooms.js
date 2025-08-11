@@ -76,9 +76,110 @@ router.post('/', auth, async (req, res) => {
         });
     } catch (error) {
         console.error('Error creating room:', error);
+        
+        // Provide more specific error messages
+        let errorMessage = 'Failed to create room';
+        let statusCode = 500;
+        
+        if (error.message.includes('unique room code')) {
+            errorMessage = 'Unable to generate a unique room code. Please try again.';
+            statusCode = 503; // Service Temporarily Unavailable
+        } else if (error.message.includes('room_code') || error.message.includes('column')) {
+            errorMessage = 'Database schema issue. Please contact support.';
+            statusCode = 503;
+        } else if (error.message.includes('Room name')) {
+            errorMessage = error.message;
+            statusCode = 400;
+        } else if (error.message.includes('Max players')) {
+            errorMessage = error.message;
+            statusCode = 400;
+        } else if (error.message.includes('Owner ID')) {
+            errorMessage = 'Authentication error. Please log in again.';
+            statusCode = 401;
+        }
+        
+        res.status(statusCode).json({
+            success: false,
+            message: errorMessage,
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
+
+// Join a room by code
+router.post('/join-by-code', auth, async (req, res) => {
+    try {
+        const { roomCode } = req.body;
+        const userId = req.user.id;
+
+        if (!roomCode || roomCode.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Room code is required'
+            });
+        }
+
+        const code = roomCode.trim().toUpperCase();
+        const room = await Room.findByCode(code);
+
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                message: 'Room not found. Please check the code and try again.'
+            });
+        }
+
+        // Check if user is already in another room
+        const existingRoom = await Room.findUserActiveRoom(userId);
+        if (existingRoom && existingRoom.room_id !== room.room_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'You are already in another room'
+            });
+        }
+
+        // Check if user is already in this room - if so, just return success
+        const isAlreadyInRoom = room.players.some(p => p.id === userId);
+        
+        if (isAlreadyInRoom) {
+            // User is already in this room, just redirect them back
+            return res.json({
+                success: true,
+                message: 'Rejoined room successfully',
+                roomId: room.room_id,
+                room: room.toApiResponse(),
+                rejoined: true
+            });
+        }
+
+        // Add user to room (this will validate if user can join)
+        await room.addPlayer(userId);
+
+        // Emit player joined event
+        req.io.to(`room_${room.room_id}`).emit('playerJoined', {
+            roomId: room.room_id,
+            player: {
+                id: userId,
+                username: req.user.username
+            },
+            players: room.players
+        });
+
+        // Emit rooms updated event to all clients
+        const allRooms = await Room.findAll(['waiting', 'playing']);
+        req.io.emit('roomsUpdated', allRooms.map(r => r.toApiResponse()));
+
+        res.json({
+            success: true,
+            message: 'Joined room successfully',
+            roomId: room.room_id,
+            room: room.toApiResponse()
+        });
+    } catch (error) {
+        console.error('Error joining room by code:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Failed to create room'
+            message: error.message || 'Failed to join room'
         });
     }
 });
@@ -527,6 +628,61 @@ router.post('/:roomId/start', auth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: error.message || 'Failed to start game'
+        });
+    }
+});
+
+// Reset room to waiting status (for returning to waiting room after game)
+router.post('/:roomId/reset-to-waiting', async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const userId = req.user?.userId;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
+
+        // Find room
+        const room = await Room.findById(roomId);
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                message: 'Room not found'
+            });
+        }
+
+        // Check if user is the room owner
+        if (room.owner_id !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Only the room owner can reset the room to waiting status'
+            });
+        }
+
+        // Reset room status to waiting and clear ready states
+        await room.updateStatus('waiting');
+        await room.resetAllPlayerReadyStatus();
+
+        // Emit room status update to all players
+        req.io.to(`room_${roomId}`).emit('roomStatusChanged', {
+            roomId: room.room_id,
+            status: 'waiting',
+            message: 'Room has been reset to waiting status'
+        });
+
+        res.json({
+            success: true,
+            message: 'Room reset to waiting status successfully',
+            room: room.toApiResponse()
+        });
+    } catch (error) {
+        console.error('Error resetting room to waiting:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to reset room to waiting status'
         });
     }
 });

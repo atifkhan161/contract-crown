@@ -178,12 +178,30 @@ export class TrickManager {
         const state = this.gameState.getState();
         const currentScores = { ...state.scores };
 
-        // Determine team assignment (simplified - players 1&3 vs 2&4)
-        const team1Players = ['player1', 'player3', 'human_player', 'bot_2'];
-        const team2Players = ['player2', 'player4', 'bot_1', 'bot_3'];
+        // Get team assignments from game state (server-provided)
+        const getPlayerTeam = (playerId) => {
+            if (state.players && state.players[playerId] && state.players[playerId].teamAssignment) {
+                return state.players[playerId].teamAssignment;
+            }
+            
+            // Fallback for demo mode
+            if (state.isDemoMode) {
+                const team1Players = ['human_player', 'bot_2'];
+                const team2Players = ['bot_1', 'bot_3'];
+                
+                if (team1Players.includes(playerId)) {
+                    return 1;
+                } else if (team2Players.includes(playerId)) {
+                    return 2;
+                }
+            }
+            
+            // Final fallback
+            return 1;
+        };
 
-        const isTeam1 = team1Players.includes(winnerPlayerId);
-        const teamKey = isTeam1 ? 'team1' : 'team2';
+        const winnerTeam = getPlayerTeam(winnerPlayerId);
+        const teamKey = `team${winnerTeam}`;
 
         // Add 1 point for winning the trick (simplified scoring)
         currentScores[teamKey] += 1;

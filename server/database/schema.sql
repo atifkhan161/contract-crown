@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
     total_games_played INT DEFAULT 0,
     total_games_won INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
+    is_bot BOOLEAN DEFAULT FALSE,
     
     INDEX idx_username (username),
     INDEX idx_email (email),
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS games (
     completed_at TIMESTAMP NULL,
     winning_team_id VARCHAR(36) NULL,
     target_score INT NOT NULL DEFAULT 52,
+    is_demo_mode BOOLEAN DEFAULT FALSE,
     
     FOREIGN KEY (host_id) REFERENCES users(user_id) ON DELETE CASCADE,
     INDEX idx_game_code (game_code),
@@ -130,7 +132,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     owner_id VARCHAR(36) NOT NULL,
     status ENUM('waiting', 'playing', 'finished') NOT NULL DEFAULT 'waiting',
     is_private BOOLEAN DEFAULT FALSE,
-    invite_code VARCHAR(10) NULL,
+    invite_code VARCHAR(5) NULL,
     game_state JSON NULL,
     settings JSON NULL,
     version INT DEFAULT 1,

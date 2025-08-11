@@ -136,7 +136,7 @@ export class DemoGameManager {
      * @returns {Object} Card distribution
      */
     generateDemoCards() {
-        const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+        const suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
         const ranks = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
         
         // Create full deck
@@ -618,7 +618,7 @@ export class DemoGameManager {
      * @returns {Array} Sorted cards
      */
     sortCardsBySuit(cards) {
-        const suitOrder = ['spades', 'hearts', 'diamonds', 'clubs'];
+        const suitOrder = ['Spades', 'Hearts', 'Diamonds', 'Clubs'];
         const rankOrder = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
         
         return [...cards].sort((a, b) => {

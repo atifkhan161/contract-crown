@@ -232,14 +232,8 @@ class DashboardManager {
         try {
             this.showLoading(true);
             
-            // Find room by code (assuming room codes are stored in room.code property)
-            const room = this.rooms.find(r => r.code === code || r.id === code);
-            
-            if (!room) {
-                throw new Error('Room not found. Please check the code and try again.');
-            }
-            
-            const response = await this.roomManager.joinRoom(room.id);
+            // Use the new joinRoomByCode method
+            const response = await this.roomManager.joinRoomByCode(code);
             
             // Hide loading and redirect to waiting room
             this.showLoading(false);
@@ -282,6 +276,7 @@ class DashboardManager {
         const isWaiting = room.status === 'waiting';
         const canJoin = isWaiting && room.players.length < room.maxPlayers;
         const isOwner = room.owner === (this.currentUser.user_id || this.currentUser.id);
+        const roomCode = room.roomCode || room.code || room.inviteCode;
         
         return `
             <div class="room-item" data-room-id="${room.id}">
@@ -292,6 +287,7 @@ class DashboardManager {
                         <span class="room-status ${room.status}">
                             ${room.status === 'waiting' ? 'Waiting for players' : 'Game in progress'}
                         </span>
+                        ${roomCode ? `<span class="room-code">Code: ${roomCode}</span>` : ''}
                         ${room.isPrivate ? '<span class="room-private">Private</span>' : ''}
                     </div>
                 </div>

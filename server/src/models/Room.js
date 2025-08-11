@@ -12,6 +12,7 @@ class Room {
         this.status = roomData.status || 'waiting';
         this.is_private = roomData.is_private || false;
         this.invite_code = roomData.invite_code;
+        this.room_code = roomData.invite_code; // Use invite_code as room_code
         this.game_state = roomData.game_state ? JSON.parse(roomData.game_state) : null;
         this.settings = roomData.settings ? JSON.parse(roomData.settings) : {
             timeLimit: 30,
@@ -27,6 +28,58 @@ class Room {
         // These will be populated separately
         this.players = [];
         this.owner = null;
+    }
+
+    /**
+     * Generate a unique 5-digit room code
+     * @returns {string} 5-digit room code
+     */
+    static generateRoomCode() {
+        // Generate a 5-digit code using numbers and uppercase letters (excluding confusing characters)
+        const chars = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // Excluded I, O for clarity
+        let code = '';
+        for (let i = 0; i < 5; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+    }
+
+    /**
+     * Generate a unique room code that doesn't exist in database
+     * @returns {Promise<string>} Unique 5-digit room code
+     */
+    static async generateUniqueRoomCode() {
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        while (attempts < maxAttempts) {
+            const code = Room.generateRoomCode();
+            console.log(`[Room] Generated room code attempt ${attempts + 1}: ${code}`);
+            
+            // Check if code already exists (using existing invite_code column)
+            try {
+                const existing = await dbConnection.query(`
+                    SELECT room_id FROM rooms WHERE invite_code = ?
+                `, [code]);
+                
+                console.log(`[Room] Code ${code} uniqueness check: ${existing.length === 0 ? 'unique' : 'exists'}`);
+                
+                if (existing.length === 0) {
+                    console.log(`[Room] Using unique code: ${code}`);
+                    return code;
+                }
+            } catch (error) {
+                console.warn('[Room] Error checking room code uniqueness:', error);
+                // If database error, return the generated code anyway
+                console.log('[Room] Database error, returning generated code');
+                return code;
+            }
+            
+            attempts++;
+        }
+        
+        console.error('[Room] Failed to generate unique room code after', maxAttempts, 'attempts');
+        throw new Error('Failed to generate unique room code after multiple attempts');
     }
 
     // Static methods for database operations
@@ -47,8 +100,16 @@ class Room {
                 throw new Error('Max players must be between 2 and 6');
             }
 
-            // Generate invite code for private rooms
-            const inviteCode = isPrivate ? Math.random().toString(36).substring(2, 8).toUpperCase() : null;
+            // Generate 5-digit room code for all rooms (not just private ones)
+            let roomCode;
+            try {
+                roomCode = await Room.generateUniqueRoomCode();
+            } catch (error) {
+                console.warn('[Room] Failed to generate unique room code, using fallback:', error.message);
+                // Fallback: generate a code with timestamp to ensure uniqueness
+                roomCode = Room.generateRoomCode();
+                console.log('[Room] Using fallback room code:', roomCode);
+            }
 
             // Create room instance
             const room = new Room({
@@ -56,25 +117,39 @@ class Room {
                 max_players: maxPlayers,
                 owner_id: ownerId,
                 is_private: !!isPrivate,
-                invite_code: inviteCode
+                invite_code: roomCode
             });
 
-            // Insert room into database
+            console.log('[Room] Created room instance with data:', {
+                room_id: room.room_id,
+                name: room.name,
+                invite_code: room.invite_code
+            });
+
+            // Insert room into database using existing schema
             try {
+                console.log('[Room] Attempting to insert room with code:', roomCode);
                 await dbConnection.query(`
                     INSERT INTO rooms (room_id, name, max_players, owner_id, status, is_private, invite_code, version, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                 `, [room.room_id, room.name, room.max_players, room.owner_id, room.status, room.is_private, room.invite_code, room.version]);
+                console.log('[Room] Room inserted successfully with code:', roomCode);
             } catch (columnError) {
+                console.log('[Room] Column error, attempting to add version column:', columnError.message);
                 // Add version column if it doesn't exist and retry
-                console.log('[Room] Adding version column to rooms table');
-                await dbConnection.query(`
-                    ALTER TABLE rooms ADD COLUMN version INT DEFAULT 1
-                `);
-                await dbConnection.query(`
-                    INSERT INTO rooms (room_id, name, max_players, owner_id, status, is_private, invite_code, version, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
-                `, [room.room_id, room.name, room.max_players, room.owner_id, room.status, room.is_private, room.invite_code, room.version]);
+                try {
+                    console.log('[Room] Adding version column...');
+                    await dbConnection.query(`ALTER TABLE rooms ADD COLUMN version INT DEFAULT 1`);
+                    console.log('[Room] Version column added, retrying insertion...');
+                    await dbConnection.query(`
+                        INSERT INTO rooms (room_id, name, max_players, owner_id, status, is_private, invite_code, version, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                    `, [room.room_id, room.name, room.max_players, room.owner_id, room.status, room.is_private, room.invite_code, room.version]);
+                    console.log('[Room] Room inserted successfully after adding version column');
+                } catch (retryError) {
+                    console.error('[Room] Failed to insert room even after adding version column:', retryError.message);
+                    throw retryError;
+                }
             }
 
             // Add owner as first player
@@ -163,6 +238,25 @@ class Room {
             return room;
         } catch (error) {
             console.error('[Room] FindUserActiveRoom error:', error.message);
+            throw error;
+        }
+    }
+
+    static async findByCode(roomCode) {
+        try {
+            const rows = await dbConnection.query(`
+                SELECT * FROM rooms WHERE invite_code = ?
+            `, [roomCode]);
+
+            if (rows.length === 0) {
+                return null;
+            }
+
+            const room = new Room(rows[0]);
+            await room.loadPlayers();
+            return room;
+        } catch (error) {
+            console.error('[Room] FindByCode error:', error.message);
             throw error;
         }
     }
@@ -487,6 +581,8 @@ class Room {
             status: this.status,
             isPrivate: this.is_private,
             inviteCode: this.invite_code,
+            roomCode: this.invite_code, // Use invite_code as room code
+            code: this.invite_code, // Alternative field name
             createdAt: this.created_at,
             updatedAt: this.updated_at,
             startedAt: this.started_at,

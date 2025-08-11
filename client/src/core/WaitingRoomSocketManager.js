@@ -259,6 +259,11 @@ export class WaitingRoomSocketManager {
             this.emit('room-updated', data);
         });
 
+        this.socket.on('roomStatusChanged', (data) => {
+            console.log('[WaitingRoomSocketManager] Room status changed:', data);
+            this.emit('room-status-changed', data);
+        });
+
         // Game events
         this.socket.on('waiting-room-game-starting', (data) => {
             console.log('[WaitingRoomSocketManager] Game starting:', data);

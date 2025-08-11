@@ -45,6 +45,19 @@
   gap: var(--waiting-spacing-md);
 }
 
+/* When multiple buttons are present, arrange them horizontally on larger screens */
+.host-controls:has(#reset-to-waiting-btn:not(.hidden)) {
+  flex-direction: row;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .host-controls:has(#reset-to-waiting-btn:not(.hidden)) {
+    flex-direction: column;
+  }
+}
+
 .host-info {
   color: var(--text-secondary);
   font-size: var(--waiting-font-size-sm);

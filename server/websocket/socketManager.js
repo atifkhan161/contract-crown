@@ -93,7 +93,7 @@ class SocketManager {
 
     // Set up event handlers
     this.setupSocketEvents(socket);
-    
+
     // Set up waiting room specific event handlers
     this.waitingRoomHandler.setupWaitingRoomEvents(socket);
 
@@ -132,10 +132,15 @@ class SocketManager {
 
     // Game events
     socket.on('declare-trump', (data) => {
+      console.log(`[WebSocket] Received declare-trump event:`, data);
       this.handleDeclareTrump(socket, data);
     });
 
     socket.on('play-card', (data) => {
+      this.handlePlayCard(socket, data);
+    });
+
+    socket.on('game:play_card', (data) => {
       this.handlePlayCard(socket, data);
     });
 
@@ -148,8 +153,10 @@ class SocketManager {
       this.handleTrickComplete(socket, data);
     });
 
-    socket.on('round-complete', (data) => {
-      this.handleRoundComplete(socket, data);
+    // Note: round-complete is now handled server-side automatically
+
+    socket.on('start-next-round', (data) => {
+      this.handleStartNextRound(socket, data);
     });
 
     // Connection status events
@@ -165,6 +172,37 @@ class SocketManager {
         from: username,
         timestamp: new Date().toISOString()
       });
+    });
+
+    // Manual game initialization for testing
+    socket.on('manual-init-game', async (data) => {
+      const { gameId } = data;
+      console.log(`[WebSocket] Manual game initialization requested by ${username} for game ${gameId}`);
+
+      const room = this.gameRooms.get(gameId);
+      if (room) {
+        try {
+          await this.checkAndInitializeGame(gameId, room);
+          socket.emit('manual-init-response', {
+            success: true,
+            message: 'Game initialization attempted',
+            gameId
+          });
+        } catch (error) {
+          console.error(`[WebSocket] Manual initialization error:`, error);
+          socket.emit('manual-init-response', {
+            success: false,
+            message: error.message,
+            gameId
+          });
+        }
+      } else {
+        socket.emit('manual-init-response', {
+          success: false,
+          message: 'Game room not found',
+          gameId
+        });
+      }
     });
   }
 
@@ -251,18 +289,18 @@ class SocketManager {
         existingPlayer.socketId = socket.id;
         existingPlayer.isConnected = true;
         existingPlayer.reconnectedAt = new Date().toISOString();
-        
+
         // Restore team assignment from database on reconnection
         try {
           const dbConnection = (await import('../database/connection.js')).default;
-          const [rows] = await dbConnection.query(`
+          const rows = await dbConnection.query(`
             SELECT team_assignment FROM room_players WHERE room_id = ? AND user_id = ?
           `, [gameId, effectiveUserId]);
-          
-          if (rows.length > 0 && rows[0].team_assignment !== null) {
+
+          if (rows && rows.length > 0 && rows[0].team_assignment !== null) {
             const dbTeamAssignment = rows[0].team_assignment;
             existingPlayer.teamAssignment = dbTeamAssignment;
-            
+
             // Update room teams structure
             if (dbTeamAssignment === 1 && !room.teams.team1.includes(effectiveUserId)) {
               room.teams.team1.push(effectiveUserId);
@@ -273,13 +311,13 @@ class SocketManager {
               // Remove from team1 if present
               room.teams.team1 = room.teams.team1.filter(id => id !== effectiveUserId);
             }
-            
+
             console.log(`[WebSocket] Restored team assignment ${dbTeamAssignment} for ${effectiveUsername} on reconnection`);
           }
         } catch (dbError) {
           console.error(`[WebSocket] Failed to restore team assignment for ${effectiveUsername}:`, dbError);
         }
-        
+
         console.log(`[WebSocket] Player ${effectiveUsername} now marked as connected: ${existingPlayer.isConnected}`);
 
         // If player was disconnected and is now reconnecting, broadcast the reconnection
@@ -404,9 +442,250 @@ class SocketManager {
         });
       }
 
+      // Check if all players have joined and initialize game if needed
+      try {
+        await this.checkAndInitializeGame(gameId, room);
+      } catch (initError) {
+        console.error(`[WebSocket] Error in checkAndInitializeGame for ${gameId}:`, initError);
+      }
+
     } catch (error) {
       console.error('[WebSocket] Error joining game room:', error);
       socket.emit('error', { message: 'Failed to join game room' });
+    }
+  }
+
+  /**
+   * Check if all players have joined and initialize game if needed
+   */
+  async checkAndInitializeGame(gameId, room) {
+    try {
+      const gameState = this.gameStateManager.getGameState(gameId);
+
+      console.log(`[WebSocket] Checking game initialization for ${gameId}. Current state:`, {
+        phase: gameState?.phase,
+        status: gameState?.status,
+        hasPlayers: !!gameState?.players
+      });
+
+      // Only initialize if game is in lobby phase and not already initialized
+      if (!gameState || gameState.phase !== 'lobby' || (gameState.status !== 'waiting' && gameState.status !== 'in_progress')) {
+        console.log(`[WebSocket] Game ${gameId} not ready for initialization. Phase: ${gameState?.phase}, Status: ${gameState?.status}`);
+        return;
+      }
+
+      // Check if game is already being initialized or has been initialized
+      if (gameState.currentRound || gameState.phase !== 'lobby') {
+        console.log(`[WebSocket] Game ${gameId} already initialized. Current round: ${gameState.currentRound}, Phase: ${gameState.phase}`);
+        return;
+      }
+
+      // Check if all expected players have joined
+      const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
+
+      console.log(`[WebSocket] Connected players for game ${gameId}: ${connectedPlayers.length}`, connectedPlayers.map(p => p.username));
+
+      // For now, initialize when we have at least 2 connected players
+      // In a full implementation, you might want to wait for all 4 players
+      if (connectedPlayers.length >= 2) {
+        // Prevent concurrent initialization attempts
+        if (this.initializingGames?.has(gameId)) {
+          console.log(`[WebSocket] Game ${gameId} is already being initialized`);
+          return;
+        }
+
+        // Track initialization in progress
+        if (!this.initializingGames) {
+          this.initializingGames = new Set();
+        }
+        this.initializingGames.add(gameId);
+
+        console.log(`[WebSocket] Initializing game ${gameId} with ${connectedPlayers.length} players`);
+
+        // Add bots if we have fewer than 4 players
+        if (connectedPlayers.length < 4) {
+          const botsNeeded = 4 - connectedPlayers.length;
+          console.log(`[WebSocket] Adding ${botsNeeded} bots to game ${gameId}`);
+
+          try {
+            const { default: botManager } = await import('../src/services/BotManager.js');
+
+            // Create bots for the game
+            const bots = botManager.createBotsForGame(gameId, botsNeeded);
+
+            // Store bots in database
+            await botManager.storeBotPlayersInDatabase(gameId);
+
+            // Assign bots to teams to balance the teams
+            // Get current human players and their team assignments
+            const humanPlayers = Array.from(room.players.values()).filter(p => !p.isBot);
+            const team1Count = humanPlayers.filter(p => p.teamAssignment === 1).length;
+            const team2Count = humanPlayers.filter(p => p.teamAssignment === 2).length;
+
+            console.log(`[WebSocket] Current team distribution - Team 1: ${team1Count}, Team 2: ${team2Count}`);
+
+            // Add bots to the room players with proper team assignments
+            bots.forEach((bot, index) => {
+              // Assign bots to balance teams (alternate assignment or fill the smaller team)
+              let botTeamAssignment;
+              if (team1Count < team2Count) {
+                botTeamAssignment = 1;
+              } else if (team2Count < team1Count) {
+                botTeamAssignment = 2;
+              } else {
+                // Teams are equal, alternate bot assignments
+                botTeamAssignment = (index % 2) + 1;
+              }
+
+              const botPlayer = {
+                userId: bot.id,
+                username: bot.name,
+                socketId: null, // Bots don't have socket connections
+                isReady: true, // Bots are always ready
+                teamAssignment: botTeamAssignment,
+                joinedAt: new Date().toISOString(),
+                isConnected: true,
+                isBot: true
+              };
+              room.players.set(bot.id, botPlayer);
+
+              // Also add to room teams structure
+              if (botTeamAssignment === 1) {
+                room.teams.team1.push(bot.id);
+              } else {
+                room.teams.team2.push(bot.id);
+              }
+
+              console.log(`[WebSocket] Added bot ${bot.name} (${bot.id}) to team ${botTeamAssignment} in game ${gameId}`);
+            });
+
+            // Update game state with bot players
+            const botGameStateUpdates = {};
+            bots.forEach(bot => {
+              const botRoomPlayer = room.players.get(bot.id);
+              botGameStateUpdates[bot.id] = {
+                username: bot.name,
+                teamAssignment: botRoomPlayer.teamAssignment,
+                hand: [],
+                handSize: 0,
+                tricksWon: 0,
+                isBot: true
+              };
+            });
+
+            this.gameStateManager.updateGameState(gameId, {
+              players: botGameStateUpdates
+            }, 'server');
+
+            // Broadcast bot additions to all players
+            this.io.to(gameId).emit('bots-added', {
+              gameId,
+              bots: bots.map(bot => {
+                const botRoomPlayer = room.players.get(bot.id);
+                return {
+                  userId: bot.id,
+                  username: bot.name,
+                  isReady: true,
+                  teamAssignment: botRoomPlayer.teamAssignment,
+                  isConnected: true,
+                  isBot: true
+                };
+              }),
+              totalPlayers: room.players.size,
+              timestamp: new Date().toISOString()
+            });
+
+          } catch (botError) {
+            console.error(`[WebSocket] Failed to add bots to game ${gameId}:`, botError);
+            // Continue without bots if there's an error
+          }
+        }
+
+        // Initialize the actual game with GameEngine
+        const { default: GameEngine } = await import('../src/services/GameEngine.js');
+        const gameEngine = new GameEngine();
+
+        // Deal initial 4 cards to each player
+        console.log(`[WebSocket] Dealing initial cards for game ${gameId}`);
+        const dealResult = await gameEngine.dealInitialCards(gameId);
+
+        // Create the first round
+        const roundId = await gameEngine.createGameRound(
+          gameId,
+          1, // Round number
+          dealResult.dealerUserId,
+          dealResult.firstPlayerUserId
+        );
+
+        // Update game state with initial cards and round info
+        const gameStateUpdate = {
+          status: 'in_progress',
+          phase: 'trump_declaration',
+          currentRound: 1,
+          roundId: roundId,
+          dealerUserId: dealResult.dealerUserId,
+          trumpDeclarer: dealResult.firstPlayerUserId,
+          remainingDeck: dealResult.remainingDeck,
+          players: {}
+        };
+
+        // Add player hands to the game state
+        for (const [playerId, hand] of Object.entries(dealResult.playerHands)) {
+          gameStateUpdate.players[playerId] = {
+            hand: hand,
+            handSize: hand.length,
+            tricksWon: 0
+          };
+        }
+
+        // Update game state manager
+        this.gameStateManager.updateGameState(gameId, gameStateUpdate, 'server');
+
+        console.log(`[WebSocket] Game ${gameId} initialized with trump declaration phase. Trump declarer: ${dealResult.firstPlayerUserId}`);
+
+        // Check if trump declarer is a bot and process immediately
+        const room = this.gameRooms.get(gameId);
+        const trumpDeclarerPlayer = room.players.get(dealResult.firstPlayerUserId);
+        console.log(`[WebSocket] Trump declarer info:`, {
+          playerId: dealResult.firstPlayerUserId,
+          playerName: trumpDeclarerPlayer?.username,
+          isBot: trumpDeclarerPlayer?.isBot
+        });
+
+        // Broadcast updated game state to all players
+        const updatedGameState = this.gameStateManager.getGameState(gameId);
+        this.gameStateManager.broadcastStateUpdate(gameId, updatedGameState, 'server');
+
+        // Broadcast game initialization
+        this.io.to(gameId).emit('game-initialized', {
+          gameId,
+          phase: 'trump_declaration',
+          currentRound: 1,
+          trumpDeclarer: dealResult.firstPlayerUserId,
+          dealerUserId: dealResult.dealerUserId,
+          timestamp: new Date().toISOString()
+        });
+
+        // Check if trump declarer is a bot and process trump declaration immediately
+        setTimeout(async () => {
+          try {
+            console.log(`[WebSocket] Checking for bot trump declaration after game initialization`);
+            await this.processBotTurnsIfNeeded(gameId);
+          } catch (botError) {
+            console.error(`[WebSocket] Error processing bot trump declaration after initialization:`, botError);
+          }
+        }, 2000);
+
+        // Remove from initialization tracking
+        this.initializingGames?.delete(gameId);
+      } else {
+        console.log(`[WebSocket] Not enough connected players for game ${gameId}: ${connectedPlayers.length} < 2`);
+      }
+
+    } catch (error) {
+      console.error(`[WebSocket] Error initializing game ${gameId}:`, error);
+      // Remove from initialization tracking on error
+      this.initializingGames?.delete(gameId);
     }
   }
 
@@ -813,7 +1092,7 @@ class SocketManager {
 
       // Assign players to teams and update database
       const dbConnection = (await import('../database/connection.js')).default;
-      
+
       try {
         // Start transaction for atomic team assignment
         await dbConnection.query('START TRANSACTION');
@@ -821,7 +1100,7 @@ class SocketManager {
         for (let i = 0; i < shuffledPlayers.length; i++) {
           const player = shuffledPlayers[i];
           const teamAssignment = i < team1Size ? 1 : 2;
-          
+
           // Update websocket state
           player.teamAssignment = teamAssignment;
           if (teamAssignment === 1) {
@@ -860,14 +1139,14 @@ class SocketManager {
         // Rollback transaction on error
         await dbConnection.query('ROLLBACK');
         console.error('[WebSocket] Database error during team formation:', dbError);
-        
+
         // Revert websocket state changes
         room.teams.team1 = [];
         room.teams.team2 = [];
         players.forEach(player => {
           player.teamAssignment = null;
         });
-        
+
         socket.emit('error', { message: 'Failed to persist team assignments to database' });
         return;
       }
@@ -898,7 +1177,7 @@ class SocketManager {
 
       // Use reliable broadcast to ensure all players receive the update
       this.io.in(gameId).emit('teams-formed', teamFormationData);
-      
+
       // Also emit the legacy event name for backward compatibility
       this.io.in(gameId).emit('teamsFormed', teamFormationData);
 
@@ -1001,7 +1280,7 @@ class SocketManager {
       // Validation: Need at least 2 connected players
       if (connectedPlayers.length < 2) {
         console.log(`[WebSocket] Not enough connected players: ${connectedPlayers.length} < 2`);
-        socket.emit('error', { 
+        socket.emit('error', {
           message: 'Need at least 2 connected players to start game',
           details: {
             connectedPlayers: connectedPlayers.length,
@@ -1015,7 +1294,7 @@ class SocketManager {
       if (readyConnectedPlayers.length !== connectedPlayers.length) {
         const notReadyPlayers = connectedPlayers.filter(p => !p.isReady).map(p => p.username);
         console.log(`[WebSocket] Not all connected players are ready. Not ready: ${notReadyPlayers.join(', ')}`);
-        socket.emit('error', { 
+        socket.emit('error', {
           message: 'All connected players must be ready to start game',
           details: {
             readyPlayers: readyConnectedPlayers.length,
@@ -1031,7 +1310,7 @@ class SocketManager {
         const playersWithTeams = connectedPlayers.filter(p => p.teamAssignment !== null);
         if (playersWithTeams.length !== 4) {
           console.log(`[WebSocket] Teams not formed for 4-player game. Players with teams: ${playersWithTeams.length}/4`);
-          socket.emit('error', { 
+          socket.emit('error', {
             message: 'Teams must be formed before starting a 4-player game',
             details: {
               playersWithTeams: playersWithTeams.length,
@@ -1046,7 +1325,7 @@ class SocketManager {
         const team2Players = connectedPlayers.filter(p => p.teamAssignment === 2);
         if (team1Players.length !== 2 || team2Players.length !== 2) {
           console.log(`[WebSocket] Unbalanced teams. Team 1: ${team1Players.length}, Team 2: ${team2Players.length}`);
-          socket.emit('error', { 
+          socket.emit('error', {
             message: 'Teams must be balanced (2 players each) to start the game',
             details: {
               team1Size: team1Players.length,
@@ -1126,6 +1405,64 @@ class SocketManager {
         timestamp: new Date().toISOString()
       };
 
+      // Initialize the actual game with GameEngine
+      try {
+        const { default: GameEngine } = await import('../src/services/GameEngine.js');
+        const gameEngine = new GameEngine();
+
+        // Deal initial 4 cards to each player
+        console.log(`[WebSocket] Dealing initial cards for game ${gameId}`);
+        const dealResult = await gameEngine.dealInitialCards(gameId);
+
+        // Create the first round
+        const roundId = await gameEngine.createGameRound(
+          gameId,
+          1, // Round number
+          dealResult.dealerUserId,
+          dealResult.firstPlayerUserId
+        );
+
+        // Update game state with initial cards and round info
+        const gameStateUpdate = {
+          status: 'in_progress',
+          phase: 'trump_declaration',
+          currentRound: 1,
+          roundId: roundId,
+          dealerUserId: dealResult.dealerUserId,
+          trumpDeclarer: dealResult.firstPlayerUserId,
+          remainingDeck: dealResult.remainingDeck,
+          players: {}
+        };
+
+        // Add player hands to the game state
+        for (const [playerId, hand] of Object.entries(dealResult.playerHands)) {
+          gameStateUpdate.players[playerId] = {
+            hand: hand,
+            handSize: hand.length,
+            tricksWon: 0
+          };
+        }
+
+        // Update game state manager
+        this.gameStateManager.updateGameState(gameId, gameStateUpdate, 'server');
+
+        console.log(`[WebSocket] Game initialized with initial cards dealt. Trump declarer: ${dealResult.firstPlayerUserId}`);
+
+        // Enhanced game start data with initial game state
+        gameStartData.phase = 'trump_declaration';
+        gameStartData.currentRound = 1;
+        gameStartData.trumpDeclarer = dealResult.firstPlayerUserId;
+        gameStartData.dealerUserId = dealResult.dealerUserId;
+
+      } catch (gameInitError) {
+        console.error(`[WebSocket] Failed to initialize game with GameEngine:`, gameInitError);
+        socket.emit('error', {
+          message: 'Failed to initialize game',
+          details: gameInitError.message
+        });
+        return;
+      }
+
       // Try to broadcast via websocket with error handling and retry
       try {
         this.io.to(gameId).emit('game-starting', gameStartData);
@@ -1178,53 +1515,13 @@ class SocketManager {
   }
 
   /**
-   * Handle trump declaration
+   * Handle trump declaration with GameEngine integration
    */
-  handleDeclareTrump(socket, data) {
+  async handleDeclareTrump(socket, data) {
     const { gameId, trumpSuit } = data;
     const { userId, username } = socket;
 
-    console.log(`[WebSocket] Trump declared by ${username}: ${trumpSuit} in game ${gameId}`);
-
-    // Emit player:declare_trump event first
-    this.io.to(gameId).emit('player:declare_trump', {
-      gameId,
-      playerId: userId,
-      playerName: username,
-      trumpSuit,
-      timestamp: new Date().toISOString()
-    });
-
-    // Then emit game:trump_declared event with full game state
-    this.io.to(gameId).emit('game:trump_declared', {
-      gameId,
-      trumpSuit,
-      declaredBy: userId,
-      declaredByName: username,
-      declaringTeam: null, // Will be populated by game engine
-      challengingTeam: null, // Will be populated by game engine
-      phase: 'final_dealing',
-      timestamp: new Date().toISOString()
-    });
-
-    // Legacy event for backward compatibility
-    this.io.to(gameId).emit('trump-declared', {
-      gameId,
-      trumpSuit,
-      declaredBy: userId,
-      declaredByName: username,
-      timestamp: new Date().toISOString()
-    });
-  }
-
-  /**
-   * Handle card play with game engine integration
-   */
-  async handlePlayCard(socket, data) {
-    const { gameId, card, trickId, roundId } = data;
-    const { userId, username } = socket;
-
-    console.log(`[WebSocket] Card play attempt by ${username}:`, card, `in game ${gameId}`);
+    console.log(`[WebSocket] Trump declaration attempt by ${username}: ${trumpSuit} in game ${gameId}`);
 
     try {
       // Import GameEngine if not already available
@@ -1233,73 +1530,257 @@ class SocketManager {
         this.gameEngine = new GameEngine();
       }
 
-      // Validate and process card play through game engine
-      const playResult = await this.gameEngine.playCard(gameId, roundId, trickId, userId, card);
+      // Get current game state to find the round ID
+      const gameState = this.gameStateManager.getGameState(gameId);
+      if (!gameState || !gameState.roundId) {
+        socket.emit('error', { message: 'Game round not found' });
+        return;
+      }
 
-      // Emit player action event first
-      this.io.to(gameId).emit('player:play_card', {
+      // Validate trump declaration through game engine
+      const trumpResult = await this.gameEngine.declareTrump(gameId, gameState.roundId, userId, trumpSuit);
+
+      // Deal final 4 cards to each player
+      const finalHands = await this.gameEngine.dealFinalCards(gameId, gameState.remainingDeck);
+
+      console.log(`[WebSocket] Final hands dealt:`, {
+        gameId,
+        finalHandsKeys: Object.keys(finalHands),
+        handSizes: Object.fromEntries(Object.entries(finalHands).map(([id, hand]) => [id, hand.length]))
+      });
+
+      // Determine who starts the first trick (trump declarer)
+      const firstTrickPlayer = userId; // Trump declarer starts the first trick
+
+      // Update game state with trump declaration and final hands
+      const gameStateUpdate = {
+        phase: 'playing',
+        gamePhase: 'playing', // Add both property names for consistency
+        trumpSuit: trumpResult.trumpSuit,
+        declaringTeamId: trumpResult.declaringTeamId,
+        challengingTeamId: trumpResult.challengingTeamId,
+        declaringTeam: trumpResult.declaringTeam,
+        challengingTeam: trumpResult.challengingTeam,
+        currentTurnPlayer: firstTrickPlayer, // Set the current turn player
+        currentTrick: {
+          trickNumber: 1,
+          cardsPlayed: [],
+          leadSuit: null,
+          currentPlayer: firstTrickPlayer // First player of declaring team starts
+        },
+        players: {}
+      };
+
+      // Update player hands with final 8 cards
+      for (const [playerId, hand] of Object.entries(finalHands)) {
+        gameStateUpdate.players[playerId] = {
+          hand: hand,
+          handSize: hand.length,
+          tricksWon: 0
+        };
+        console.log(`[WebSocket] Updated player ${playerId} with ${hand.length} cards`);
+      }
+
+      // Update game state manager
+      this.gameStateManager.updateGameState(gameId, gameStateUpdate, 'server');
+
+      console.log(`[WebSocket] Trump declared successfully: ${trumpSuit} by ${username}. Game phase: playing`);
+
+      // Emit trump declaration events
+      this.io.to(gameId).emit('player:declare_trump', {
         gameId,
         playerId: userId,
         playerName: username,
-        card,
-        trickId,
-        roundId,
+        trumpSuit,
         timestamp: new Date().toISOString()
       });
 
-      // Emit game state update with play result
-      this.io.to(gameId).emit('game:card_played', {
+      this.io.to(gameId).emit('game:trump_declared', {
         gameId,
-        card: playResult.cardPlayed,
-        playedBy: userId,
-        playedByName: username,
-        trickId: playResult.trickId,
-        roundId,
-        cardsInTrick: playResult.cardsInTrick,
-        nextPlayerId: playResult.nextPlayerId,
-        trickComplete: playResult.trickComplete,
-        leadSuit: playResult.leadSuit,
+        trumpSuit: trumpResult.trumpSuit,
+        declaredBy: userId,
+        declaredByName: username,
+        declaringTeam: trumpResult.declaringTeam,
+        challengingTeam: trumpResult.challengingTeam,
+        phase: 'playing',
+        currentTurnPlayer: firstTrickPlayer,
+        currentTrick: gameStateUpdate.currentTrick,
         timestamp: new Date().toISOString()
       });
 
-      // If trick is complete, handle trick completion
-      if (playResult.trickComplete) {
-        this.handleTrickComplete(socket, {
-          gameId,
-          trickId: playResult.trickId,
-          winnerId: playResult.winner,
-          winnerName: this.getPlayerName(gameId, playResult.winner),
-          winningCard: playResult.winningCard,
-          cardsPlayed: playResult.cardsPlayed,
-          nextLeaderId: playResult.nextLeaderId,
-          roundComplete: playResult.roundComplete
-        });
+      // Legacy event for backward compatibility
+      this.io.to(gameId).emit('trump-declared', {
+        gameId,
+        trumpSuit: trumpResult.trumpSuit,
+        declaredBy: userId,
+        declaredByName: username,
+        declaringTeam: trumpResult.declaringTeam,
+        challengingTeam: trumpResult.challengingTeam,
+        timestamp: new Date().toISOString()
+      });
 
-        // If round is complete, handle round completion
-        if (playResult.roundComplete) {
-          this.handleRoundComplete(socket, {
-            gameId,
-            roundId: playResult.roundId,
-            roundNumber: playResult.roundNumber,
-            scores: playResult.scores,
-            declaringTeamTricks: playResult.declaringTeamTricks,
-            challengingTeamTricks: playResult.challengingTeamTricks,
-            gameComplete: playResult.gameComplete,
-            winningTeam: playResult.winningTeam
-          });
+      // After trump declaration, check if any bots need to play
+      // (This handles the case where the trump declarer is a bot or the first player is a bot)
+      setTimeout(async () => {
+        try {
+          console.log(`[WebSocket] Checking for bot turns after trump declaration. First player: ${firstTrickPlayer}`);
+          await this.processBotTurnsIfNeeded(gameId);
+        } catch (botError) {
+          console.error(`[WebSocket] Error processing bot turns after trump declaration:`, botError);
+        }
+      }, 3000); // Give time for UI to update and cards to be dealt
+
+    } catch (error) {
+      console.error(`[WebSocket] Trump declaration error:`, error);
+      socket.emit('error', {
+        message: 'Failed to declare trump',
+        details: error.message
+      });
+    }
+  }
+
+  /**
+   * Handle card play with game engine integration
+   */
+  async handlePlayCard(socket, data) {
+    const { gameId, card, trickId, roundId, playerId } = data;
+    const { userId, username } = socket;
+
+    // Use playerId from data if provided, otherwise use socket userId
+    const effectiveUserId = playerId || userId;
+
+    console.log(`[WebSocket] Card play attempt by ${username}:`, card, `in game ${gameId}`);
+
+    try {
+      // Get current game state to extract missing IDs if needed
+      const gameState = this.gameStateManager.getGameState(gameId);
+      if (!gameState) {
+        throw new Error('Game state not found');
+      }
+
+      // Extract roundId and trickId from game state if not provided
+      const effectiveRoundId = roundId || gameState.roundId || gameState.currentRound;
+      const effectiveTrickId = trickId || gameState.currentTrick?.trickId || 1;
+
+      console.log(`[WebSocket] Using IDs - roundId: ${effectiveRoundId}, trickId: ${effectiveTrickId}, userId: ${effectiveUserId}`);
+
+      // For now, let's handle card play without GameEngine to get basic functionality working
+      // We'll broadcast the card play and let the client handle the logic
+
+      // Remove card from player's hand and update turn
+      if (gameState.players && gameState.players[effectiveUserId] && gameState.players[effectiveUserId].hand) {
+        const playerHand = gameState.players[effectiveUserId].hand;
+        const cardIndex = playerHand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
+        if (cardIndex !== -1) {
+          playerHand.splice(cardIndex, 1);
+
+          // Determine next player in turn order
+          const room = this.gameRooms.get(gameId);
+          const playerIds = Array.from(room.players.keys());
+          const currentPlayerIndex = playerIds.indexOf(effectiveUserId);
+          const nextPlayerIndex = (currentPlayerIndex + 1) % playerIds.length;
+          const nextPlayerId = playerIds[nextPlayerIndex];
+
+          console.log(`[WebSocket] Turn update: ${effectiveUserId} -> ${nextPlayerId}`);
+
+          // Add card to current trick
+          const currentTrick = gameState.currentTrick || { cardsPlayed: [], trickNumber: 1 };
+          const cardPlay = {
+            playerId: effectiveUserId,
+            playerName: username,
+            card: card
+          };
+
+          // Add to trick if not already present
+          const existingCardIndex = currentTrick.cardsPlayed.findIndex(play =>
+            play.playerId === effectiveUserId
+          );
+
+          if (existingCardIndex === -1) {
+            currentTrick.cardsPlayed.push(cardPlay);
+          }
+
+          // Set lead suit if this is the first card
+          if (currentTrick.cardsPlayed.length === 1) {
+            currentTrick.leadSuit = card.suit;
+          }
+
+          console.log(`[WebSocket] Trick progress: ${currentTrick.cardsPlayed.length}/4 cards played`);
+
+          // Update game state with new hand, turn, and trick
+          this.gameStateManager.updateGameState(gameId, {
+            currentTurnPlayer: nextPlayerId,
+            phase: gameState.phase || 'playing', // Preserve phase
+            gamePhase: gameState.gamePhase || gameState.phase || 'playing', // Ensure both properties
+            currentTrick: currentTrick,
+            players: {
+              [effectiveUserId]: {
+                ...gameState.players[effectiveUserId],
+                hand: playerHand,
+                handSize: playerHand.length
+              }
+            }
+          }, effectiveUserId);
         }
       }
 
-      // Update game state
-      this.gameStateManager.updateGameState(gameId, {
-        currentPlayer: playResult.nextPlayerId,
-        currentTrick: {
-          trickId: playResult.trickId,
-          cardsPlayed: playResult.cardsInTrick,
-          leadSuit: playResult.leadSuit,
-          complete: playResult.trickComplete
-        }
-      }, userId);
+      // Get the updated game state to get the next player
+      const updatedGameState = this.gameStateManager.getGameState(gameId);
+      const nextPlayerId = updatedGameState.currentTurnPlayer;
+
+      // Get updated game state to check trick completion
+      const finalGameState = this.gameStateManager.getGameState(gameId);
+      const finalTrick = finalGameState.currentTrick;
+      const trickComplete = finalTrick && finalTrick.cardsPlayed.length === 4;
+
+      // Broadcast card played event
+      this.io.to(gameId).emit('game:card_played', {
+        gameId,
+        card: card,
+        playedBy: effectiveUserId,
+        playedByName: username,
+        trickId: effectiveTrickId,
+        roundId: effectiveRoundId,
+        cardsInTrick: finalTrick?.cardsPlayed || [],
+        nextPlayerId: trickComplete ? null : nextPlayerId, // No next player if trick is complete
+        trickComplete: trickComplete,
+        leadSuit: finalTrick?.leadSuit || null,
+        timestamp: new Date().toISOString()
+      });
+
+      console.log(`[WebSocket] Card play broadcasted for ${username} in game ${gameId}. Trick complete: ${trickComplete}`);
+
+      if (trickComplete) {
+        // Evaluate trick after a short delay
+        setTimeout(async () => {
+          try {
+            await this.evaluateTrick(gameId, finalTrick);
+          } catch (trickError) {
+            console.error(`[WebSocket] Error evaluating trick:`, trickError);
+          }
+        }, 2000);
+      } else {
+        // After a human player plays, check if any bots need to play
+        setTimeout(async () => {
+          try {
+            console.log(`[WebSocket] Checking for bot turns after ${username} played ${card.rank} of ${card.suit}`);
+            await this.processBotTurnsIfNeeded(gameId);
+          } catch (botError) {
+            console.error(`[WebSocket] Error processing bot turns after card play:`, botError);
+          }
+        }, 1000); // Small delay to let the UI update
+      }
+
+      /* 
+      // TODO: Re-enable GameEngine integration once we have proper game state setup
+      // Import GameEngine if not already available
+      if (!this.gameEngine) {
+        const { default: GameEngine } = await import('../src/services/GameEngine.js');
+        this.gameEngine = new GameEngine();
+      }
+      */
+
+      // Note: Old GameEngine integration removed - using simplified server-side logic
 
       console.log(`[WebSocket] Card play successful for ${username} in game ${gameId}`);
 
@@ -1313,379 +1794,1008 @@ class SocketManager {
         code: error.code || 'UNKNOWN_ERROR',
         gameId,
         card,
-        trickId,
-        roundId
+        trickId: trickId || null,
+        roundId: roundId || null
       };
 
-      // Send error to the specific player
       socket.emit('game:error', errorResponse);
-
-      // Also emit to game room for debugging (optional)
-      socket.to(gameId).emit('game:player_error', {
-        playerId: userId,
-        playerName: username,
-        error: errorResponse,
-        timestamp: new Date().toISOString()
-      });
     }
   }
 
   /**
-   * Get player name from game room
+   * Process bot turns if needed
    * @param {string} gameId - Game ID
-   * @param {string} playerId - Player ID
-   * @returns {string} Player name
    */
-  getPlayerName(gameId, playerId) {
-    const room = this.gameRooms.get(gameId);
-    if (room && room.players.has(playerId)) {
-      return room.players.get(playerId).username;
-    }
-    return `Player ${playerId}`;
-  }
+  async processBotTurnsIfNeeded(gameId) {
+        try {
+          const gameState = this.gameStateManager.getGameState(gameId);
+          console.log(`[WebSocket] processBotTurnsIfNeeded - gameState:`, {
+            hasGameState: !!gameState,
+            currentTurnPlayer: gameState?.currentTurnPlayer,
+            trumpDeclarer: gameState?.trumpDeclarer,
+            gamePhase: gameState?.gamePhase,
+            phase: gameState?.phase,
+            trumpSuit: gameState?.trumpSuit
+          });
+
+          // Fix phase consistency if needed
+          if (gameState && gameState.trumpSuit && !gameState.gamePhase && !gameState.phase) {
+            console.log(`[WebSocket] Fixing missing game phase - trump is declared so should be playing`);
+            this.gameStateManager.updateGameState(gameId, {
+              phase: 'playing',
+              gamePhase: 'playing'
+            }, 'server');
+            // Get updated state
+            const updatedGameState = this.gameStateManager.getGameState(gameId);
+            Object.assign(gameState, updatedGameState);
+          }
+
+          if (!gameState) {
+            console.log(`[WebSocket] No game state for game ${gameId}`);
+            return;
+          }
+
+          const room = this.gameRooms.get(gameId);
+          if (!room) {
+            console.log(`[WebSocket] No room found for game ${gameId}`);
+            return;
+          }
+
+          // For trump declaration phase, check trump declarer instead of currentTurnPlayer
+          let playerToCheck = gameState.currentTurnPlayer;
+          if (gameState.gamePhase === 'trump_declaration' && gameState.trumpDeclarer) {
+            playerToCheck = gameState.trumpDeclarer;
+            console.log(`[WebSocket] Trump declaration phase - checking trump declarer: ${playerToCheck}`);
+          }
+
+          if (!playerToCheck) {
+            console.log(`[WebSocket] No player to check for bot processing in game ${gameId}`);
+            return;
+          }
+
+          // Check if the player is a bot
+          const currentPlayer = room.players.get(playerToCheck);
+          console.log(`[WebSocket] Player to check: ${playerToCheck}, Player data:`, {
+            exists: !!currentPlayer,
+            username: currentPlayer?.username,
+            isBot: currentPlayer?.isBot
+          });
+
+          if (!currentPlayer || !currentPlayer.isBot) {
+            console.log(`[WebSocket] Player is not a bot or not found. IsBot: ${currentPlayer?.isBot}, Player: ${currentPlayer?.username}`);
+            return;
+          }
+
+          console.log(`[WebSocket] Processing bot turn for ${currentPlayer.username} in game ${gameId}`);
+
+          // For now, use a simple bot card play system
+          // TODO: Replace with full BotTurnProcessor integration later
+          const botResult = await this.processSimpleBotTurn(gameId, playerToCheck, currentPlayer);
+
+          if (botResult) {
+            console.log(`[WebSocket] Bot ${currentPlayer.username} completed action: ${botResult.actionType}`);
+
+            // If bot played a card, broadcast it
+            if (botResult.actionType === 'play_card' && botResult.card) {
+              // Update bot's hand in game state (remove the played card)
+              const updatedGameState = this.gameStateManager.getGameState(gameId);
+              if (updatedGameState.players && updatedGameState.players[gameState.currentTurnPlayer]) {
+                const botPlayer = updatedGameState.players[gameState.currentTurnPlayer];
+                if (botPlayer.hand) {
+                  const cardIndex = botPlayer.hand.findIndex(c =>
+                    c.suit === botResult.card.suit && c.rank === botResult.card.rank
+                  );
+                  if (cardIndex !== -1) {
+                    botPlayer.hand.splice(cardIndex, 1);
+                    botPlayer.handSize = botPlayer.hand.length;
+                  }
+                }
+              }
+
+              // Determine next player in turn order
+              const room = this.gameRooms.get(gameId);
+              const playerIds = Array.from(room.players.keys());
+              const currentPlayerIndex = playerIds.indexOf(gameState.currentTurnPlayer);
+              const nextPlayerIndex = (currentPlayerIndex + 1) % playerIds.length;
+              const nextPlayerId = playerIds[nextPlayerIndex];
+
+              // Update game state with next turn player
+              this.gameStateManager.updateGameState(gameId, {
+                currentTurnPlayer: nextPlayerId,
+                players: updatedGameState.players
+              }, 'server');
+
+              // Broadcast bot card play
+              this.io.to(gameId).emit('game:card_played', {
+                gameId,
+                card: botResult.card,
+                playedBy: gameState.currentTurnPlayer,
+                playedByName: currentPlayer.username,
+                trickId: gameState.currentTrick?.trickId || 1,
+                roundId: gameState.roundId || gameState.currentRound,
+                cardsInTrick: [],
+                nextPlayerId: nextPlayerId,
+                trickComplete: false,
+                leadSuit: null,
+                timestamp: new Date().toISOString()
+              });
+
+              console.log(`[WebSocket] Bot ${currentPlayer.username} played ${botResult.card.rank} of ${botResult.card.suit}. Next player: ${nextPlayerId}`);
+
+              // Continue processing if there are more bots to play
+              setTimeout(() => {
+                this.processBotTurnsIfNeeded(gameId);
+              }, 2000);
+            }
+
+            // If bot declared trump, handle it like a human trump declaration
+            if (botResult.actionType === 'declare_trump' && botResult.trumpSuit) {
+              console.log(`[WebSocket] Bot ${currentPlayer.username} declared trump: ${botResult.trumpSuit}`);
+
+              // Simulate trump declaration by calling the trump handler
+              const fakeSocket = {
+                userId: gameState.currentTurnPlayer,
+                username: currentPlayer.username
+              };
+
+              const trumpData = {
+                gameId: gameId,
+                trumpSuit: botResult.trumpSuit
+              };
+
+              // Call the trump declaration handler
+              await this.handleDeclareTrump(fakeSocket, trumpData);
+            }
+          }
+
+        } catch (error) {
+          console.error(`[WebSocket] Error processing bot turns for game ${gameId}:`, error);
+        }
+      }
 
   /**
-   * Get socket ID for a user
-   * @param {string} userId - User ID
-   * @returns {string|null} Socket ID
+   * Process a simple bot turn (simplified version)
+   * @param {string} gameId - Game ID
+   * @param {string} botPlayerId - Bot player ID
+   * @param {Object} botPlayer - Bot player data
+   * @returns {Object} Bot action result
    */
-  getUserSocket(userId) {
-    return this.userSockets.get(userId) || null;
-  }
+  async processSimpleBotTurn(gameId, botPlayerId, botPlayer) {
+        try {
+          const gameState = this.gameStateManager.getGameState(gameId);
+
+          // Use phase or gamePhase (different parts of the code use different property names)
+          const currentPhase = gameState.gamePhase || gameState.phase;
+
+          console.log(`[WebSocket] Processing simple bot turn for ${botPlayer.username}:`, {
+            gamePhase: gameState.gamePhase,
+            phase: gameState.phase,
+            currentPhase: currentPhase,
+            trumpSuit: gameState.trumpSuit,
+            trumpDeclarer: gameState.trumpDeclarer,
+            botPlayerId,
+            isTrumpDeclarer: gameState.trumpDeclarer === botPlayerId
+          });
+
+          // Check if bot needs to declare trump
+          if (currentPhase === 'trump_declaration' && gameState.trumpDeclarer === botPlayerId) {
+            // Simple trump declaration - choose a random suit
+            const trumpSuits = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
+            const chosenTrump = trumpSuits[Math.floor(Math.random() * trumpSuits.length)];
+
+            console.log(`[WebSocket] Bot ${botPlayer.username} declaring trump: ${chosenTrump}`);
+
+            return {
+              actionType: 'declare_trump',
+              trumpSuit: chosenTrump,
+              playerName: botPlayer.username
+            };
+          }
+
+          // Check if bot needs to play a card
+          if (currentPhase === 'playing' || (!currentPhase && gameState.trumpSuit)) {
+            // Get bot's hand from game state
+            const botHand = gameState.players?.[botPlayerId]?.hand || [];
+
+            console.log(`[WebSocket] Bot ${botPlayer.username} hand:`, {
+              handSize: botHand.length,
+              cards: botHand.map(c => `${c.rank} of ${c.suit}`)
+            });
+
+            if (botHand.length === 0) {
+              console.log(`[WebSocket] Bot ${botPlayer.username} has no cards to play`);
+              return null;
+            }
+
+            // Simple card selection - play the first valid card
+            const chosenCard = botHand[0];
+
+            console.log(`[WebSocket] Bot ${botPlayer.username} playing card: ${chosenCard.rank} of ${chosenCard.suit}`);
+
+            return {
+              actionType: 'play_card',
+              card: chosenCard,
+              playerName: botPlayer.username
+            };
+          }
+
+          // If we get here, the bot doesn't know what to do
+          console.log(`[WebSocket] Bot ${botPlayer.username} - no action determined:`, {
+            currentPhase,
+            trumpSuit: gameState.trumpSuit,
+            isTrumpDeclarer: gameState.trumpDeclarer === botPlayerId,
+            hasHand: !!(gameState.players?.[botPlayerId]?.hand),
+            handSize: gameState.players?.[botPlayerId]?.hand?.length || 0
+          });
+
+          return null;
+
+        } catch (error) {
+          console.error(`[WebSocket] Error in simple bot turn processing:`, error);
+          return null;
+        }
+      }
+
+  /**
+   * Evaluate trick to determine winner
+   * @param {string} gameId - Game ID
+   * @param {Object} trick - Trick data with cards played
+   */
+  async evaluateTrick(gameId, trick) {
+        try {
+          console.log(`[WebSocket] Evaluating trick for game ${gameId}:`, trick);
+
+          const gameState = this.gameStateManager.getGameState(gameId);
+          if (!gameState || !trick || !trick.cardsPlayed || trick.cardsPlayed.length !== 4) {
+            console.error(`[WebSocket] Invalid trick data for evaluation`);
+            return;
+          }
+
+          // Determine trick winner using simple logic
+          const winner = this.determineTrickWinner(trick.cardsPlayed, trick.leadSuit, gameState.trumpSuit);
+
+          if (!winner) {
+            console.error(`[WebSocket] Could not determine trick winner`);
+            return;
+          }
+
+          console.log(`[WebSocket] Trick winner: ${winner.playerName} with ${winner.card.rank} of ${winner.card.suit}`);
+
+          // Update scores (simple: 1 point per trick)
+          const currentScores = gameState.scores || { team1: 0, team2: 0 };
+          const winnerTeam = this.getPlayerTeam(gameId, winner.playerId);
+          const teamKey = `team${winnerTeam}`;
+          currentScores[teamKey] += 1;
+
+          // Broadcast trick won event
+          this.io.to(gameId).emit('game:trick_won', {
+            gameId,
+            winnerId: winner.playerId,
+            winnerName: winner.playerName,
+            winningCard: winner.card,
+            cardsPlayed: trick.cardsPlayed,
+            scores: currentScores,
+            timestamp: new Date().toISOString()
+          });
+
+          // Clear trick and set up next trick after delay
+          setTimeout(async () => {
+            await this.startNextTrick(gameId, winner.playerId, currentScores);
+          }, 3000);
+
+        } catch (error) {
+          console.error(`[WebSocket] Error evaluating trick:`, error);
+        }
+      }
+
+      /**
+       * Determine trick winner
+       * @param {Array} cardsPlayed - Cards played in trick
+       * @param {string} leadSuit - Lead suit
+       * @param {string} trumpSuit - Trump suit
+       * @returns {Object} Winner info
+       */
+      determineTrickWinner(cardsPlayed, leadSuit, trumpSuit) {
+        if (!cardsPlayed || cardsPlayed.length === 0) return null;
+
+        let winningPlay = cardsPlayed[0];
+        const rankValues = {
+          '7': 1, '8': 2, '9': 3, '10': 4,
+          'J': 5, 'Q': 6, 'K': 7, 'A': 8
+        };
+
+        for (const play of cardsPlayed) {
+          const currentCard = play.card;
+          const winningCard = winningPlay.card;
+
+          // Trump cards beat non-trump cards
+          const isCurrentTrump = currentCard.suit === trumpSuit;
+          const isWinningTrump = winningCard.suit === trumpSuit;
+
+          if (isCurrentTrump && !isWinningTrump) {
+            winningPlay = play;
+          } else if (!isCurrentTrump && isWinningTrump) {
+            // Winning card remains trump
+            continue;
+          } else if (isCurrentTrump && isWinningTrump) {
+            // Both trump - higher rank wins
+            if (rankValues[currentCard.rank] > rankValues[winningCard.rank]) {
+              winningPlay = play;
+            }
+          } else {
+            // Neither trump - must follow lead suit
+            const isCurrentLeadSuit = currentCard.suit === leadSuit;
+            const isWinningLeadSuit = winningCard.suit === leadSuit;
+
+            if (isCurrentLeadSuit && !isWinningLeadSuit) {
+              winningPlay = play;
+            } else if (isCurrentLeadSuit && isWinningLeadSuit) {
+              // Both lead suit - higher rank wins
+              if (rankValues[currentCard.rank] > rankValues[winningCard.rank]) {
+                winningPlay = play;
+              }
+            }
+          }
+        }
+
+        return {
+          playerId: winningPlay.playerId,
+          playerName: winningPlay.playerName,
+          card: winningPlay.card
+        };
+      }
+
+  /**
+   * Start next trick
+   * @param {string} gameId - Game ID
+   * @param {string} leaderId - Player who leads next trick
+   * @param {Object} scores - Updated scores
+   */
+  async startNextTrick(gameId, leaderId, scores) {
+        try {
+          const gameState = this.gameStateManager.getGameState(gameId);
+          const currentTrickNumber = (gameState.currentTrick?.trickNumber || 1) + 1;
+
+          // Check if round is complete (8 tricks played)
+          if (currentTrickNumber > 8) {
+            console.log(`[WebSocket] Round complete for game ${gameId}. Final scores:`, scores);
+            await this.handleRoundComplete(gameId, scores);
+            return;
+          }
+
+          // Update game state for next trick
+          this.gameStateManager.updateGameState(gameId, {
+            currentTurnPlayer: leaderId,
+            currentTrick: {
+              trickNumber: currentTrickNumber,
+              cardsPlayed: [],
+              leadSuit: null
+            },
+            scores: scores
+          }, 'server');
+
+          console.log(`[WebSocket] Starting trick ${currentTrickNumber}, leader: ${leaderId}`);
+
+          // Broadcast next trick start
+          this.io.to(gameId).emit('game:next_trick', {
+            gameId,
+            trickNumber: currentTrickNumber,
+            leaderId: leaderId,
+            leaderName: this.getPlayerName(gameId, leaderId),
+            scores: scores,
+            timestamp: new Date().toISOString()
+          });
+
+          // Check if leader is a bot and process their turn
+          setTimeout(async () => {
+            await this.processBotTurnsIfNeeded(gameId);
+          }, 1000);
+
+        } catch (error) {
+          console.error(`[WebSocket] Error starting next trick:`, error);
+        }
+      }
+
+  /**
+   * Handle round completion
+   * @param {string} gameId - Game ID
+   * @param {Object} scores - Final trick scores
+   */
+  async handleRoundComplete(gameId, scores) {
+        try {
+          const gameState = this.gameStateManager.getGameState(gameId);
+
+          // Determine round winner based on trump declaring team rules
+          const roundWinner = this.determineRoundWinner(gameId, scores, gameState.trumpDeclarer);
+
+          if (!roundWinner) {
+            console.error(`[WebSocket] Could not determine round winner`);
+            return;
+          }
+
+          console.log(`[WebSocket] Round winner: ${roundWinner.teamName} (${roundWinner.reason})`);
+
+          // Update round scores (accumulate tricks won by winning team)
+          const currentRoundScores = gameState.roundScores || { team1: 0, team2: 0 };
+          const tricksWon = scores[roundWinner.teamKey];
+          currentRoundScores[roundWinner.teamKey] += tricksWon;
+
+          // Update game state with round completion
+          this.gameStateManager.updateGameState(gameId, {
+            roundScores: currentRoundScores,
+            lastRoundWinner: roundWinner
+          }, 'server');
+
+          // Broadcast round completion
+          this.io.to(gameId).emit('game:round_complete', {
+            gameId,
+            roundWinner: roundWinner,
+            trickScores: scores,
+            roundScores: currentRoundScores,
+            tricksWon: tricksWon,
+            currentRound: gameState.currentRound || 1,
+            timestamp: new Date().toISOString()
+          });
+
+          console.log(`[WebSocket] Round complete broadcasted. Updated round scores:`, currentRoundScores);
+
+        } catch (error) {
+          console.error(`[WebSocket] Error handling round completion:`, error);
+        }
+      }
+
+      /**
+       * Determine round winner based on trump declaring team rules
+       * @param {string} gameId - Game ID
+       * @param {Object} scores - Trick scores
+       * @param {string} trumpDeclarer - Player who declared trump
+       * @returns {Object} Round winner information
+       */
+      determineRoundWinner(gameId, scores, trumpDeclarer) {
+        // Determine which team declared trump
+        const trumpDeclaringTeam = this.getPlayerTeam(gameId, trumpDeclarer);
+        const nonDeclaringTeam = trumpDeclaringTeam === 1 ? 2 : 1;
+
+        const declaringTeamKey = `team${trumpDeclaringTeam}`;
+        const nonDeclaringTeamKey = `team${nonDeclaringTeam}`;
+
+        const declaringTeamScore = scores[declaringTeamKey];
+        const nonDeclaringTeamScore = scores[nonDeclaringTeamKey];
+
+        // Trump declaring team needs more than 4 tricks (5 or more) to win
+        // Non-declaring team needs 4 or more tricks to win
+        if (declaringTeamScore >= 5) {
+          return {
+            teamKey: declaringTeamKey,
+            teamName: `Team ${trumpDeclaringTeam}`,
+            reason: `Trump declaring team won ${declaringTeamScore} tricks (needed 5+)`
+          };
+        } else if (nonDeclaringTeamScore >= 4) {
+          return {
+            teamKey: nonDeclaringTeamKey,
+            teamName: `Team ${nonDeclaringTeam}`,
+            reason: `Non-declaring team won ${nonDeclaringTeamScore} tricks (needed 4+)`
+          };
+        }
+
+        // Fallback (shouldn't happen in an 8-trick game)
+        return {
+          teamKey: declaringTeamScore > nonDeclaringTeamScore ? declaringTeamKey : nonDeclaringTeamKey,
+          teamName: declaringTeamScore > nonDeclaringTeamScore ? `Team ${trumpDeclaringTeam}` : `Team ${nonDeclaringTeam}`,
+          reason: 'Won by having more tricks'
+        };
+      }
+
+  /**
+   * Handle start next round request
+   * @param {Object} socket - Socket connection
+   * @param {Object} data - Next round data
+   */
+  async handleStartNextRound(socket, data) {
+        const { gameId, previousRoundWinner } = data;
+        const { userId, username } = socket;
+
+        console.log(`[WebSocket] Starting next round for game ${gameId} requested by ${username}`);
+
+        try {
+          const gameState = this.gameStateManager.getGameState(gameId);
+          if (!gameState) {
+            socket.emit('error', { message: 'Game state not found' });
+            return;
+          }
+
+          // Check if game is complete (first to 52 points wins)
+          const roundScores = gameState.roundScores || { team1: 0, team2: 0 };
+          const pointsToWin = 52;
+
+          if (roundScores.team1 >= pointsToWin || roundScores.team2 >= pointsToWin) {
+            console.log(`[WebSocket] Game complete! Final scores:`, roundScores);
+            await this.handleGameComplete(gameId, roundScores);
+            return;
+          }
+
+          // Determine next trump declarer
+          let nextTrumpDeclarer;
+          if (previousRoundWinner) {
+            // If the trump declaring team won, they declare again
+            // If they lost, next player in clockwise order declares
+            const room = this.gameRooms.get(gameId);
+            const playerIds = Array.from(room.players.keys());
+            const currentDeclarerIndex = playerIds.indexOf(gameState.trumpDeclarer);
+
+            const currentDeclarerTeam = this.getPlayerTeam(gameId, gameState.trumpDeclarer);
+            const winnerTeamNumber = parseInt(previousRoundWinner.teamKey.replace('team', ''));
+
+            if (winnerTeamNumber === currentDeclarerTeam) {
+              // Same team won, same player declares trump again
+              nextTrumpDeclarer = gameState.trumpDeclarer;
+            } else {
+              // Other team won, next player in clockwise order declares
+              const nextDeclarerIndex = (currentDeclarerIndex + 1) % playerIds.length;
+              nextTrumpDeclarer = playerIds[nextDeclarerIndex];
+            }
+          } else {
+            // Fallback to next player in order
+            const room = this.gameRooms.get(gameId);
+            const playerIds = Array.from(room.players.keys());
+            const currentDeclarerIndex = playerIds.indexOf(gameState.trumpDeclarer);
+            const nextDeclarerIndex = (currentDeclarerIndex + 1) % playerIds.length;
+            nextTrumpDeclarer = playerIds[nextDeclarerIndex];
+          }
+
+          console.log(`[WebSocket] Next trump declarer: ${nextTrumpDeclarer}`);
+
+          // Deal new cards for the new round
+          const { default: GameEngine } = await import('../src/services/GameEngine.js');
+          const gameEngine = new GameEngine();
+          const dealResult = await gameEngine.dealInitialCards(gameId);
+
+          // Create new round
+          const nextRoundNumber = (gameState.currentRound || 1) + 1;
+          const roundId = await gameEngine.createGameRound(
+            gameId,
+            nextRoundNumber,
+            dealResult.dealerUserId,
+            nextTrumpDeclarer
+          );
+
+          // Reset game state for new round
+          const gameStateUpdate = {
+            currentRound: nextRoundNumber,
+            roundId: roundId,
+            phase: 'trump_declaration',
+            gamePhase: 'trump_declaration',
+            trumpSuit: null,
+            trumpDeclarer: nextTrumpDeclarer,
+            dealerUserId: dealResult.dealerUserId,
+            scores: { team1: 0, team2: 0 }, // Reset trick scores
+            currentTrick: {
+              trickNumber: 1,
+              cardsPlayed: [],
+              leadSuit: null
+            },
+            currentTurnPlayer: null,
+            players: {}
+          };
+
+          // Update player hands with new cards
+          for (const [playerId, hand] of Object.entries(dealResult.playerHands)) {
+            gameStateUpdate.players[playerId] = {
+              ...gameState.players[playerId],
+              hand: hand,
+              handSize: hand.length,
+              tricksWon: 0
+            };
+          }
+
+          // Update game state
+          this.gameStateManager.updateGameState(gameId, gameStateUpdate, 'server');
+
+          console.log(`[WebSocket] Round ${nextRoundNumber} started. Trump declarer: ${nextTrumpDeclarer}`);
+
+          // Broadcast new round start
+          this.io.to(gameId).emit('game:new_round', {
+            gameId,
+            roundNumber: nextRoundNumber,
+            trumpDeclarer: nextTrumpDeclarer,
+            trumpDeclarerName: this.getPlayerName(gameId, nextTrumpDeclarer),
+            dealerUserId: dealResult.dealerUserId,
+            timestamp: new Date().toISOString()
+          });
+
+          // Broadcast updated game state
+          const updatedGameState = this.gameStateManager.getGameState(gameId);
+          this.gameStateManager.broadcastStateUpdate(gameId, updatedGameState, 'server');
+
+          // Check if trump declarer is a bot and process immediately
+          setTimeout(async () => {
+            await this.processBotTurnsIfNeeded(gameId);
+          }, 2000);
+
+        } catch (error) {
+          console.error(`[WebSocket] Error starting next round:`, error);
+          socket.emit('error', {
+            message: 'Failed to start next round',
+            details: error.message
+          });
+        }
+      }
+
+  /**
+   * Handle game completion
+   * @param {string} gameId - Game ID
+   * @param {Object} finalScores - Final game scores
+   */
+  async handleGameComplete(gameId, finalScores) {
+        try {
+          const winner = finalScores.team1 > finalScores.team2 ? 'Team 1' : 'Team 2';
+          const finalScore = `${finalScores.team1} - ${finalScores.team2}`;
+
+          console.log(`[WebSocket] Game ${gameId} complete! ${winner} wins with ${finalScore} points`);
+
+          // Broadcast game completion
+          this.io.to(gameId).emit('game:complete', {
+            gameId,
+            winner: winner,
+            finalScores: finalScores,
+            finalScore: finalScore,
+            timestamp: new Date().toISOString()
+          });
+
+        } catch (error) {
+          console.error(`[WebSocket] Error handling game completion:`, error);
+        }
+      }
+
+      /**
+       * Get player team
+       * @param {string} gameId - Game ID
+       * @param {string} playerId - Player ID
+       * @returns {number} Team number (1 or 2)
+       */
+      getPlayerTeam(gameId, playerId) {
+        const room = this.gameRooms.get(gameId);
+        if (room && room.players.has(playerId)) {
+          return room.players.get(playerId).teamAssignment || 1;
+        }
+        return 1; // Default to team 1
+      }
+
+      /**
+       * Get player name from game room
+       * @param {string} gameId - Game ID
+       * @param {string} playerId - Player ID
+       * @returns {string} Player name
+       */
+      getPlayerName(gameId, playerId) {
+        const room = this.gameRooms.get(gameId);
+        if (room && room.players.has(playerId)) {
+          return room.players.get(playerId).username;
+        }
+        return `Player ${playerId}`;
+      }
+
+      /**
+       * Get socket ID for a user
+       * @param {string} userId - User ID
+       * @returns {string|null} Socket ID
+       */
+      getUserSocket(userId) {
+        return this.userSockets.get(userId) || null;
+      }
 
   /**
    * Handle game state request
    */
-  handleGameStateRequest(socket, data) {
-    const { gameId } = data;
-    const { userId, username } = socket;
+  async handleGameStateRequest(socket, data) {
+        const { gameId } = data;
+        const { userId, username } = socket;
 
-    console.log(`[WebSocket] Game state requested by ${username} for game ${gameId}`);
+        console.log(`[WebSocket] Game state requested by ${username} for game ${gameId}`);
 
-    // Get current game state
-    const gameState = this.gameStateManager.getGameState(gameId);
-    if (!gameState) {
-      socket.emit('error', { message: 'Game state not found' });
-      return;
-    }
+        // Get current game state
+        const gameState = this.gameStateManager.getGameState(gameId);
+        if (!gameState) {
+          socket.emit('error', { message: 'Game state not found' });
+          return;
+        }
 
-    // Send player-specific game state
-    const playerState = this.gameStateManager.filterStateForPlayer(gameState, userId);
-    socket.emit('game:state_update', {
-      ...playerState,
-      requestedBy: userId,
-      timestamp: new Date().toISOString()
-    });
-  }
+        // Send player-specific game state
+        const playerState = this.gameStateManager.filterStateForPlayer(gameState, userId);
+        socket.emit('game:state_update', {
+          ...playerState,
+          requestedBy: userId,
+          timestamp: new Date().toISOString()
+        });
 
-  /**
-   * Handle trick completion
-   */
-  handleTrickComplete(socket, data) {
-    const { gameId, trickId, winnerId, winnerName, winningCard, cardsPlayed, nextLeaderId } = data;
-    const { userId, username } = socket;
+        // Check if we need to initialize the game
+        const room = this.gameRooms.get(gameId);
+        if (room) {
+          try {
+            await this.checkAndInitializeGame(gameId, room);
+          } catch (initError) {
+            console.error(`[WebSocket] Error in checkAndInitializeGame from state request:`, initError);
+          }
+        }
+      }
 
-    console.log(`[WebSocket] Trick completed in game ${gameId}, won by ${winnerName}`);
+      /**
+       * Handle trick completion
+       */
+      handleTrickComplete(socket, data) {
+        const { gameId, trickId, winnerId, winnerName, winningCard, cardsPlayed, nextLeaderId } = data;
+        const { userId, username } = socket;
 
-    // Broadcast trick completion to all players
-    this.io.to(gameId).emit('game:trick_won', {
-      gameId,
-      trickId,
-      winnerId,
-      winnerName,
-      winningCard,
-      cardsPlayed,
-      nextLeaderId,
-      reportedBy: userId,
-      timestamp: new Date().toISOString()
-    });
-  }
+        console.log(`[WebSocket] Trick completed in game ${gameId}, won by ${winnerName}`);
 
-  /**
-   * Handle round completion and scoring
-   */
-  async handleRoundComplete(socket, data) {
-    const { gameId, roundId, roundNumber, scores, declaringTeamTricks, challengingTeamTricks, gameComplete, winningTeam } = data;
-    const { userId, username } = socket;
+        // Broadcast trick completion to all players
+        this.io.to(gameId).emit('game:trick_won', {
+          gameId,
+          trickId,
+          winnerId,
+          winnerName,
+          winningCard,
+          cardsPlayed,
+          nextLeaderId,
+          reportedBy: userId,
+          timestamp: new Date().toISOString()
+        });
+      }
 
-    console.log(`[WebSocket] Round ${roundNumber} completed in game ${gameId}`);
-
-    // Broadcast round scores to all players
-    this.io.to(gameId).emit('game:round_scores', {
-      gameId,
-      roundId,
-      roundNumber,
-      scores,
-      declaringTeamTricks,
-      challengingTeamTricks,
-      gameComplete,
-      winningTeam,
-      reportedBy: userId,
-      timestamp: new Date().toISOString()
-    });
-
-    // If game is complete, handle game completion
-    if (gameComplete) {
-      await this.handleGameCompletion(gameId, {
-        winningTeam,
-        finalScores: scores,
-        totalRounds: roundNumber
-      });
-    }
-  }
+  // Note: Old handleRoundComplete method removed - using server-side round completion
 
   /**
    * Handle game completion and statistics update
    */
   async handleGameCompletion(gameId, completionData) {
-    try {
-      // Import StatisticsService if not already available
-      if (!this.statisticsService) {
-        const { default: StatisticsService } = await import('../src/services/StatisticsService.js');
-        this.statisticsService = new StatisticsService();
-      }
+        try {
+          // Import StatisticsService if not already available
+          if (!this.statisticsService) {
+            const { default: StatisticsService } = await import('../src/services/StatisticsService.js');
+            this.statisticsService = new StatisticsService();
+          }
 
-      // Update game statistics
-      const gameStats = await this.statisticsService.updateGameStatistics(gameId);
+          // Update game statistics
+          const gameStats = await this.statisticsService.updateGameStatistics(gameId);
 
-      // Broadcast game completion with statistics
-      this.io.to(gameId).emit('game:complete', {
-        gameId,
-        ...completionData,
-        statistics: gameStats,
-        timestamp: new Date().toISOString()
-      });
-
-      // Clean up game room
-      this.cleanupGameRoom(gameId);
-
-      console.log(`[WebSocket] Game ${gameId} completed and statistics updated`);
-    } catch (error) {
-      console.error(`[WebSocket] Error handling game completion for ${gameId}:`, error);
-
-      // Still broadcast completion even if statistics fail
-      this.io.to(gameId).emit('game:complete', {
-        gameId,
-        ...completionData,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-
-  /**
-   * Clean up game room after completion
-   */
-  cleanupGameRoom(gameId) {
-    try {
-      const room = this.gameRooms.get(gameId);
-      if (room) {
-        // Mark room as completed
-        room.status = 'completed';
-        room.completedAt = new Date().toISOString();
-
-        // Clean up game state
-        this.gameStateManager.cleanupGameState(gameId);
-
-        // Remove room after delay to allow final messages
-        setTimeout(() => {
-          this.gameRooms.delete(gameId);
-          console.log(`[WebSocket] Cleaned up completed game room ${gameId}`);
-        }, 30000); // 30 seconds delay
-      }
-    } catch (error) {
-      console.error(`[WebSocket] Error cleaning up game room ${gameId}:`, error);
-    }
-  }
-
-  /**
-   * Broadcast full game state update to all players in a room
-   */
-  broadcastGameStateUpdate(gameId, gameState) {
-    console.log(`[WebSocket] Broadcasting game state update for game ${gameId}`);
-
-    this.io.to(gameId).emit('game:state_update', {
-      gameId,
-      ...gameState,
-      timestamp: new Date().toISOString()
-    });
-  }
-
-  /**
-   * Send player-specific game state (filtered for hand visibility)
-   */
-  sendPlayerGameState(gameId, playerId, gameState) {
-    const socketId = this.userSockets.get(playerId);
-    if (socketId) {
-      console.log(`[WebSocket] Sending player-specific game state to ${playerId}`);
-
-      this.io.to(socketId).emit('game:state_update', {
-        gameId,
-        ...gameState,
-        isPlayerSpecific: true,
-        playerId,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-
-  /**
-   * Handle socket disconnection
-   */
-  handleDisconnection(socket, reason) {
-    if (!socket) {
-      console.warn('[WebSocket] Attempted to handle disconnection for null socket');
-      return;
-    }
-
-    const { userId, username } = socket;
-
-    console.log(`[WebSocket] Client disconnected: ${username} (${socket.id}), reason: ${reason}`);
-
-    // Clean up user-socket mappings
-    this.userSockets.delete(userId);
-    this.socketUsers.delete(socket.id);
-
-    // Handle disconnection through enhanced connection status manager
-    // This will update connection status and broadcast to all rooms
-    this.enhancedConnectionStatusManager.handlePlayerDisconnection(userId, reason);
-
-    // Find and update any game rooms the user was in
-    for (const [gameId, room] of this.gameRooms.entries()) {
-      if (room.players.has(userId)) {
-        const player = room.players.get(userId);
-
-        // Mark player as disconnected but keep in room for potential reconnection
-        player.isConnected = false;
-        player.disconnectedAt = new Date().toISOString();
-
-        // Handle waiting room disconnections differently from game disconnections
-        if (room.status === 'waiting') {
-          // Notify waiting room handler about disconnection
-          this.waitingRoomHandler.handlePlayerDisconnected(socket, {
-            roomId: gameId,
-            userId: userId
+          // Broadcast game completion with statistics
+          this.io.to(gameId).emit('game:complete', {
+            gameId,
+            ...completionData,
+            statistics: gameStats,
+            timestamp: new Date().toISOString()
           });
-        } else {
-          // Update game state for disconnection in active games
-          this.gameStateManager.handlePlayerDisconnection(gameId, userId);
 
-          // Set up cleanup timer for disconnected players (remove after 5 minutes for games)
-          setTimeout(() => {
-            if (room.players.has(userId) && !room.players.get(userId).isConnected) {
-              this.handlePlayerTimeout(gameId, userId, username);
-            }
-          }, 5 * 60 * 1000); // 5 minutes for games
+          // Clean up game room
+          this.cleanupGameRoom(gameId);
+
+          console.log(`[WebSocket] Game ${gameId} completed and statistics updated`);
+        } catch (error) {
+          console.error(`[WebSocket] Error handling game completion for ${gameId}:`, error);
+
+          // Still broadcast completion even if statistics fail
+          this.io.to(gameId).emit('game:complete', {
+            gameId,
+            ...completionData,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+
+      /**
+       * Clean up game room after completion
+       */
+      cleanupGameRoom(gameId) {
+        try {
+          const room = this.gameRooms.get(gameId);
+          if (room) {
+            // Mark room as completed
+            room.status = 'completed';
+            room.completedAt = new Date().toISOString();
+
+            // Clean up game state
+            this.gameStateManager.cleanupGameState(gameId);
+
+            // Remove room after delay to allow final messages
+            setTimeout(() => {
+              this.gameRooms.delete(gameId);
+              console.log(`[WebSocket] Cleaned up completed game room ${gameId}`);
+            }, 30000); // 30 seconds delay
+          }
+        } catch (error) {
+          console.error(`[WebSocket] Error cleaning up game room ${gameId}:`, error);
+        }
+      }
+
+      /**
+       * Broadcast full game state update to all players in a room
+       */
+      broadcastGameStateUpdate(gameId, gameState) {
+        console.log(`[WebSocket] Broadcasting game state update for game ${gameId}`);
+
+        this.io.to(gameId).emit('game:state_update', {
+          gameId,
+          ...gameState,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      /**
+       * Send player-specific game state (filtered for hand visibility)
+       */
+      sendPlayerGameState(gameId, playerId, gameState) {
+        const socketId = this.userSockets.get(playerId);
+        if (socketId) {
+          console.log(`[WebSocket] Sending player-specific game state to ${playerId}`);
+
+          this.io.to(socketId).emit('game:state_update', {
+            gameId,
+            ...gameState,
+            isPlayerSpecific: true,
+            playerId,
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+
+      /**
+       * Handle socket disconnection
+       */
+      handleDisconnection(socket, reason) {
+        if (!socket) {
+          console.warn('[WebSocket] Attempted to handle disconnection for null socket');
+          return;
         }
 
-        console.log(`[WebSocket] Player ${username} disconnected from ${room.status === 'waiting' ? 'waiting room' : 'game'} ${gameId}`);
+        const { userId, username } = socket;
+
+        console.log(`[WebSocket] Client disconnected: ${username} (${socket.id}), reason: ${reason}`);
+
+        // Clean up user-socket mappings
+        this.userSockets.delete(userId);
+        this.socketUsers.delete(socket.id);
+
+        // Handle disconnection through enhanced connection status manager
+        // This will update connection status and broadcast to all rooms
+        this.enhancedConnectionStatusManager.handlePlayerDisconnection(userId, reason);
+
+        // Find and update any game rooms the user was in
+        for (const [gameId, room] of this.gameRooms.entries()) {
+          if (room.players.has(userId)) {
+            const player = room.players.get(userId);
+
+            // Mark player as disconnected but keep in room for potential reconnection
+            player.isConnected = false;
+            player.disconnectedAt = new Date().toISOString();
+
+            // Handle waiting room disconnections differently from game disconnections
+            if (room.status === 'waiting') {
+              // Notify waiting room handler about disconnection
+              this.waitingRoomHandler.handlePlayerDisconnected(socket, {
+                roomId: gameId,
+                userId: userId
+              });
+            } else {
+              // Update game state for disconnection in active games
+              this.gameStateManager.handlePlayerDisconnection(gameId, userId);
+
+              // Set up cleanup timer for disconnected players (remove after 5 minutes for games)
+              setTimeout(() => {
+                if (room.players.has(userId) && !room.players.get(userId).isConnected) {
+                  this.handlePlayerTimeout(gameId, userId, username);
+                }
+              }, 5 * 60 * 1000); // 5 minutes for games
+            }
+
+            console.log(`[WebSocket] Player ${username} disconnected from ${room.status === 'waiting' ? 'waiting room' : 'game'} ${gameId}`);
+          }
+        }
+      }
+
+      /**
+       * Handle player timeout (remove disconnected player after timeout)
+       */
+      handlePlayerTimeout(gameId, userId, username) {
+        const room = this.gameRooms.get(gameId);
+        if (!room || !room.players.has(userId)) {
+          return;
+        }
+
+        console.log(`[WebSocket] Removing timed out player ${username} from room ${gameId}`);
+
+        // Remove player from room
+        room.players.delete(userId);
+
+        // Remove from teams if assigned
+        if (room.teams.team1.includes(userId)) {
+          room.teams.team1 = room.teams.team1.filter(id => id !== userId);
+        }
+        if (room.teams.team2.includes(userId)) {
+          room.teams.team2 = room.teams.team2.filter(id => id !== userId);
+        }
+
+        // Transfer host if needed
+        let newHostId = room.hostId;
+        if (String(room.hostId) === String(userId) && room.players.size > 0) {
+          newHostId = String(Array.from(room.players.keys())[0]);
+          room.hostId = newHostId;
+        }
+
+        // Broadcast player removal
+        this.io.to(gameId).emit('player-removed', {
+          gameId,
+          playerId: userId,
+          playerName: username,
+          reason: 'timeout',
+          players: Array.from(room.players.values()).map(p => ({
+            userId: p.userId,
+            username: p.username,
+            isReady: p.isReady,
+            teamAssignment: p.teamAssignment,
+            isConnected: p.isConnected
+          })),
+          teams: room.teams,
+          newHostId: newHostId,
+          playerCount: room.players.size,
+          timestamp: new Date().toISOString()
+        });
+
+        // Clean up empty rooms
+        if (room.players.size === 0) {
+          this.gameRooms.delete(gameId);
+          console.log(`[WebSocket] Cleaned up empty room after timeout: ${gameId}`);
+        }
+      }
+
+      /**
+       * Get connection status for a user
+       */
+      isUserConnected(userId) {
+        return this.userSockets.has(userId);
+      }
+
+      /**
+       * Get socket ID for a user
+       */
+      getUserSocket(userId) {
+        return this.userSockets.get(userId);
+      }
+
+      /**
+       * Get room information
+       */
+      getRoomInfo(gameId) {
+        return this.gameRooms.get(gameId);
+      }
+
+      /**
+       * Broadcast message to specific game room
+       */
+      broadcastToRoom(gameId, event, data) {
+        this.io.to(gameId).emit(event, data);
+      }
+
+      /**
+       * Send message to specific user
+       */
+      sendToUser(userId, event, data) {
+        const socketId = this.userSockets.get(userId);
+        if (socketId) {
+          this.io.to(socketId).emit(event, data);
+        }
+      }
+
+      /**
+       * Get statistics about active connections and rooms
+       */
+      getStats() {
+        return {
+          connectedUsers: this.userSockets.size,
+          activeRooms: this.gameRooms.size,
+          totalPlayersInRooms: Array.from(this.gameRooms.values())
+            .reduce((total, room) => total + room.players.size, 0)
+        };
       }
     }
-  }
-
-  /**
-   * Handle player timeout (remove disconnected player after timeout)
-   */
-  handlePlayerTimeout(gameId, userId, username) {
-    const room = this.gameRooms.get(gameId);
-    if (!room || !room.players.has(userId)) {
-      return;
-    }
-
-    console.log(`[WebSocket] Removing timed out player ${username} from room ${gameId}`);
-
-    // Remove player from room
-    room.players.delete(userId);
-
-    // Remove from teams if assigned
-    if (room.teams.team1.includes(userId)) {
-      room.teams.team1 = room.teams.team1.filter(id => id !== userId);
-    }
-    if (room.teams.team2.includes(userId)) {
-      room.teams.team2 = room.teams.team2.filter(id => id !== userId);
-    }
-
-    // Transfer host if needed
-    let newHostId = room.hostId;
-    if (String(room.hostId) === String(userId) && room.players.size > 0) {
-      newHostId = String(Array.from(room.players.keys())[0]);
-      room.hostId = newHostId;
-    }
-
-    // Broadcast player removal
-    this.io.to(gameId).emit('player-removed', {
-      gameId,
-      playerId: userId,
-      playerName: username,
-      reason: 'timeout',
-      players: Array.from(room.players.values()).map(p => ({
-        userId: p.userId,
-        username: p.username,
-        isReady: p.isReady,
-        teamAssignment: p.teamAssignment,
-        isConnected: p.isConnected
-      })),
-      teams: room.teams,
-      newHostId: newHostId,
-      playerCount: room.players.size,
-      timestamp: new Date().toISOString()
-    });
-
-    // Clean up empty rooms
-    if (room.players.size === 0) {
-      this.gameRooms.delete(gameId);
-      console.log(`[WebSocket] Cleaned up empty room after timeout: ${gameId}`);
-    }
-  }
-
-  /**
-   * Get connection status for a user
-   */
-  isUserConnected(userId) {
-    return this.userSockets.has(userId);
-  }
-
-  /**
-   * Get socket ID for a user
-   */
-  getUserSocket(userId) {
-    return this.userSockets.get(userId);
-  }
-
-  /**
-   * Get room information
-   */
-  getRoomInfo(gameId) {
-    return this.gameRooms.get(gameId);
-  }
-
-  /**
-   * Broadcast message to specific game room
-   */
-  broadcastToRoom(gameId, event, data) {
-    this.io.to(gameId).emit(event, data);
-  }
-
-  /**
-   * Send message to specific user
-   */
-  sendToUser(userId, event, data) {
-    const socketId = this.userSockets.get(userId);
-    if (socketId) {
-      this.io.to(socketId).emit(event, data);
-    }
-  }
-
-  /**
-   * Get statistics about active connections and rooms
-   */
-  getStats() {
-    return {
-      connectedUsers: this.userSockets.size,
-      activeRooms: this.gameRooms.size,
-      totalPlayersInRooms: Array.from(this.gameRooms.values())
-        .reduce((total, room) => total + room.players.size, 0)
-    };
-  }
-}
 
 export default SocketManager;

@@ -1,35 +1,49 @@
-import dbConnection from './database/connection.js';
+import mysql from 'mysql2/promise';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function runMigration() {
-    try {
-        const migrationName = process.argv[2] || 'add_ready_status_and_teams';
-        
-        console.log('Initializing database connection...');
-        await dbConnection.initialize();
-        
-        console.log(`Running migration: ${migrationName}.sql`);
-        
-        const migrationPath = path.join(process.cwd(), `database/migrations/${migrationName}.sql`);
-        const migration = fs.readFileSync(migrationPath, 'utf8');
-        const statements = migration.split(';').filter(stmt => stmt.trim());
-        
-        for (const statement of statements) {
-            if (statement.trim()) {
-                await dbConnection.query(statement);
-                console.log('✓ Executed:', statement.substring(0, 50).replace(/\s+/g, ' ') + '...');
-            }
+  try {
+    const connection = await mysql.createConnection({
+      host: 'localhost',
+      user: 'root',
+      password: '',
+      database: 'contract_crown'
+    });
+    
+    console.log('Running migration...');
+    
+    // Run individual statements
+    const statements = [
+      "ALTER TABLE games ADD COLUMN IF NOT EXISTS is_demo_mode BOOLEAN DEFAULT FALSE",
+      "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_bot BOOLEAN DEFAULT FALSE", 
+      "ALTER TABLE room_players ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+    ];
+    
+    for (const statement of statements) {
+      try {
+        await connection.execute(statement);
+        console.log('✓ Executed:', statement);
+      } catch (error) {
+        if (error.code === 'ER_DUP_FIELDNAME') {
+          console.log('✓ Column already exists:', statement);
+        } else {
+          console.error('✗ Error:', error.message);
         }
-        
-        console.log('✅ Migration completed successfully');
-        await dbConnection.close();
-        process.exit(0);
-    } catch (error) {
-        console.error('❌ Migration failed:', error.message);
-        await dbConnection.close();
-        process.exit(1);
+      }
     }
+    
+    console.log('Migration completed successfully');
+    await connection.end();
+  } catch (error) {
+    console.error('Migration failed:', error);
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+  }
 }
 
 runMigration();

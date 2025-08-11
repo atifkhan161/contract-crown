@@ -41,7 +41,12 @@ export class TrumpManager {
      */
     showTrumpDeclarationModal() {
         const modal = document.getElementById('trump-modal');
-        if (!modal) return;
+        if (!modal) {
+            console.error('[TrumpManager] Trump modal element not found');
+            return;
+        }
+
+        console.log('[TrumpManager] Showing trump declaration modal');
 
         // Render initial cards for trump declaration
         this.renderTrumpInitialCards();
@@ -73,6 +78,12 @@ export class TrumpManager {
         const playerHand = state.playerHand || [];
         const container = document.getElementById('trump-initial-cards');
         
+        console.log('[TrumpManager] Rendering trump cards:', {
+            playerHand,
+            handLength: playerHand.length,
+            gameState: state
+        });
+        
         if (!container) return;
 
         container.innerHTML = '';
@@ -80,6 +91,8 @@ export class TrumpManager {
         // Show first 4 cards for trump declaration, sorted by suit
         const initialCards = playerHand.slice(0, 4);
         const sortedCards = this.sortCardsBySuit(initialCards);
+        
+        console.log('[TrumpManager] Cards to render:', { initialCards, sortedCards });
         
         sortedCards.forEach((card, index) => {
             const cardElement = this.createTrumpCardElement(card, index);
@@ -96,15 +109,15 @@ export class TrumpManager {
     createTrumpCardElement(card, index) {
         const cardElement = document.createElement('div');
         cardElement.className = 'trump-modal-card';
-        cardElement.classList.add(card.suit); // Add suit class for styling
+        cardElement.classList.add(card.suit.toLowerCase()); // Add lowercase suit class for CSS styling
         cardElement.dataset.suit = card.suit;
         cardElement.dataset.rank = card.rank;
 
         const suitSymbols = {
-            hearts: '♥',
-            diamonds: '♦',
-            clubs: '♣',
-            spades: '♠'
+            Hearts: '♥',
+            Diamonds: '♦',
+            Clubs: '♣',
+            Spades: '♠'
         };
 
         cardElement.innerHTML = `
@@ -162,10 +175,10 @@ export class TrumpManager {
         const suitCards = playerHand.filter(card => card.suit === suit);
         
         const suitNames = {
-            hearts: 'Hearts',
-            diamonds: 'Diamonds',
-            clubs: 'Clubs',
-            spades: 'Spades'
+            Hearts: 'Hearts',
+            Diamonds: 'Diamonds',
+            Clubs: 'Clubs',
+            Spades: 'Spades'
         };
 
         const message = `Selected ${suitNames[suit]} as trump (${suitCards.length} cards in hand)`;
@@ -201,10 +214,10 @@ export class TrumpManager {
 
             // Show success message
             const suitNames = {
-                hearts: 'Hearts',
-                diamonds: 'Diamonds',
-                clubs: 'Clubs',
-                spades: 'Spades'
+                Hearts: 'Hearts',
+                Diamonds: 'Diamonds',
+                Clubs: 'Clubs',
+                Spades: 'Spades'
             };
 
             this.uiManager.addGameMessage(`Trump declared: ${suitNames[this.selectedTrumpSuit]}`, 'success');
@@ -337,7 +350,7 @@ export class TrumpManager {
      * @returns {boolean} True if valid
      */
     isValidTrumpSuit(suit) {
-        const validSuits = ['hearts', 'diamonds', 'clubs', 'spades'];
+        const validSuits = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
         return validSuits.includes(suit);
     }
 
@@ -359,17 +372,17 @@ export class TrumpManager {
         }
 
         const suitSymbols = {
-            hearts: '♥',
-            diamonds: '♦',
-            clubs: '♣',
-            spades: '♠'
+            Hearts: '♥',
+            Diamonds: '♦',
+            Clubs: '♣',
+            Spades: '♠'
         };
 
         const suitNames = {
-            hearts: 'Hearts',
-            diamonds: 'Diamonds',
-            clubs: 'Clubs',
-            spades: 'Spades'
+            Hearts: 'Hearts',
+            Diamonds: 'Diamonds',
+            Clubs: 'Clubs',
+            Spades: 'Spades'
         };
 
         return {
@@ -410,7 +423,7 @@ export class TrumpManager {
      * @returns {Array} Sorted cards
      */
     sortCardsBySuit(cards) {
-        const suitOrder = ['spades', 'hearts', 'diamonds', 'clubs'];
+        const suitOrder = ['Spades', 'Hearts', 'Diamonds', 'Clubs'];
         const rankOrder = ['7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
         
         return [...cards].sort((a, b) => {

@@ -44,6 +44,8 @@ export class WaitingRoomUI {
         this.elements.hostControls = document.getElementById('host-controls');
         this.elements.startGameBtn = document.getElementById('start-game-btn');
         this.elements.startSpinner = document.getElementById('start-spinner');
+        this.elements.resetToWaitingBtn = document.getElementById('reset-to-waiting-btn');
+        this.elements.resetSpinner = document.getElementById('reset-spinner');
         
         // Debug logging for host controls
         console.log('[WaitingRoomUI] Host controls element found:', !!this.elements.hostControls);
@@ -798,14 +800,16 @@ export class WaitingRoomUI {
      * @param {boolean} isHost - Whether current user is host
      * @param {boolean} canStart - Whether game can be started
      */
-    showHostControls(isHost, canStart = false) {
-        console.log('[WaitingRoomUI] showHostControls called:', { isHost, canStart });
+    showHostControls(isHost, canStart = false, roomStatus = 'waiting') {
+        console.log('[WaitingRoomUI] showHostControls called:', { isHost, canStart, roomStatus });
         
         const hostControls = this.elements.hostControls;
         const startButton = this.elements.startGameBtn;
+        const resetButton = this.elements.resetToWaitingBtn;
         
         console.log('[WaitingRoomUI] Host controls element:', hostControls);
         console.log('[WaitingRoomUI] Start button element:', startButton);
+        console.log('[WaitingRoomUI] Reset button element:', resetButton);
         
         if (hostControls) {
             if (isHost) {
@@ -820,17 +824,42 @@ export class WaitingRoomUI {
             console.error('[WaitingRoomUI] Host controls element not found!');
         }
 
+        // Handle start game button
         if (startButton) {
-            startButton.disabled = !canStart;
+            const shouldShowStartButton = roomStatus === 'waiting';
+            const shouldEnableStartButton = shouldShowStartButton && canStart;
             
-            if (canStart) {
-                startButton.classList.remove('btn-disabled');
+            startButton.disabled = !shouldEnableStartButton;
+            
+            if (shouldShowStartButton) {
+                startButton.classList.remove('hidden');
+                if (shouldEnableStartButton) {
+                    startButton.classList.remove('btn-disabled');
+                } else {
+                    startButton.classList.add('btn-disabled');
+                }
             } else {
-                startButton.classList.add('btn-disabled');
+                startButton.classList.add('hidden');
             }
-            console.log('[WaitingRoomUI] Start button disabled:', startButton.disabled);
+            
+            console.log('[WaitingRoomUI] Start button - show:', shouldShowStartButton, 'enabled:', shouldEnableStartButton);
         } else {
             console.error('[WaitingRoomUI] Start button element not found!');
+        }
+
+        // Handle reset to waiting button
+        if (resetButton) {
+            const shouldShowResetButton = roomStatus === 'playing';
+            
+            if (shouldShowResetButton) {
+                resetButton.classList.remove('hidden');
+            } else {
+                resetButton.classList.add('hidden');
+            }
+            
+            console.log('[WaitingRoomUI] Reset button - show:', shouldShowResetButton);
+        } else {
+            console.error('[WaitingRoomUI] Reset button element not found!');
         }
     }
 

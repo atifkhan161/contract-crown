@@ -4,8 +4,9 @@
  */
 
 export class UIManager {
-    constructor(gameState) {
+    constructor(gameState, authManager = null) {
         this.gameState = gameState;
+        this.authManager = authManager;
         this.elements = {};
         this.onNextRoundCallback = null;
         this.initializeElements();
@@ -119,15 +120,75 @@ export class UIManager {
     updatePlayerInfo() {
         const state = this.gameState.getState();
         
-        Object.entries(state.players).forEach(([playerId, player]) => {
+        // Filter out phantom players - only process players that have valid data
+        const validPlayers = Object.entries(state.players).filter(([playerId, player]) => {
+            return player && player.username && !playerId.startsWith('player');
+        });
+        
+        console.log('[UIManager] Valid players to render:', validPlayers.map(([id, p]) => `${id}: ${p.username}`));
+        
+        validPlayers.forEach(([playerId, player]) => {
             const position = this.getPlayerPosition(playerId);
-            const nameElement = this.elements[`player${position}Name`];
-            const cardsElement = this.elements[`player${position}Cards`];
+            
+            // Map position to correct element property names
+            let nameElement, cardsElement;
+            switch (position) {
+                case 'Top':
+                    nameElement = this.elements.playerTopName;
+                    cardsElement = this.elements.playerTopCards;
+                    break;
+                case 'Left':
+                    nameElement = this.elements.playerLeftName;
+                    cardsElement = this.elements.playerLeftCards;
+                    break;
+                case 'Right':
+                    nameElement = this.elements.playerRightName;
+                    cardsElement = this.elements.playerRightCards;
+                    break;
+                case 'Bottom':
+                    nameElement = this.elements.playerBottomName;
+                    cardsElement = this.elements.playerBottomCards;
+                    break;
+                default:
+                    console.warn(`[UIManager] Unknown position: ${position}`);
+                    return;
+            }
 
             if (nameElement) {
-                const teamNumber = this.getPlayerTeam(playerId);
+                const currentUserId = this.getCurrentUserId();
+                const currentUserTeam = this.getPlayerTeam(currentUserId);
+                const playerTeam = this.getPlayerTeam(playerId);
                 const playerName = player.username || `Player ${player.seatPosition}`;
-                nameElement.innerHTML = `<div class="player-display">Team ${teamNumber} - ${playerName}</div>`;
+                const displayName = playerId === currentUserId ? 'You' : playerName;
+                
+                // Debug logging for bot names
+                if (player.isBot) {
+                    console.log(`[UIManager] Bot player info:`, {
+                        playerId,
+                        username: player.username,
+                        seatPosition: player.seatPosition,
+                        playerName,
+                        displayName,
+                        position
+                    });
+                }
+                
+                // Show team from current player's perspective
+                const teamLabel = playerTeam === currentUserTeam ? 'My Team' : 'Opponent Team';
+                const botIndicator = player.isBot ? '🤖 ' : '';
+                
+                // Debug logging for team assignments
+                console.log(`[UIManager] Team assignment debug:`, {
+                    playerId,
+                    playerName,
+                    currentUserId,
+                    currentUserTeam,
+                    playerTeam,
+                    teamLabel,
+                    isBot: player.isBot
+                });
+                
+                nameElement.innerHTML = `<div class="player-display">${teamLabel} - ${botIndicator}${displayName}</div>`;
             }
 
             if (cardsElement) {
@@ -135,9 +196,18 @@ export class UIManager {
                 cardsElement.textContent = cardCount === 0 ? 'No cards' : `${cardCount} card${cardCount !== 1 ? 's' : ''}`;
             }
 
-            // Render opponent hands (card backs) for non-human players
-            // Only render if player has cards and is not the current human player
-            if (playerId !== 'human_player' && playerId !== state.currentPlayer) {
+            // Render opponent hands (card backs) for non-current players
+            // Only render if player has cards and is not the current user
+            const currentUserId = this.getCurrentUserId();
+            console.log(`[UIManager] Player rendering check:`, {
+                playerId,
+                currentUserId,
+                isCurrentUser: playerId === currentUserId,
+                playerHandSize: player.handSize,
+                shouldRenderCardBacks: playerId !== currentUserId && playerId !== 'human_player'
+            });
+            
+            if (playerId !== currentUserId && playerId !== 'human_player') {
                 const cardCount = player.handSize !== undefined ? player.handSize : 8;
                 this.renderOpponentHand(playerId, cardCount);
             }
@@ -153,17 +223,93 @@ export class UIManager {
         // Clear all turn indicators
         [this.elements.playerTopTurn, this.elements.playerLeftTurn,
          this.elements.playerRightTurn, this.elements.playerBottomTurn].forEach(indicator => {
-            if (indicator) indicator.classList.remove('active');
+            if (indicator) {
+                indicator.classList.remove('active');
+                indicator.title = ''; // Clear tooltip
+            }
         });
 
         // Highlight current player's turn
         if (state.currentTurnPlayer) {
             const position = this.getPlayerPosition(state.currentTurnPlayer);
-            const turnIndicator = this.elements[`player${position}Turn`];
+            const playerName = this.getPlayerNameById(state.currentTurnPlayer);
+            const isMyTurn = state.currentTurnPlayer === (this.authManager?.getUserId() || 'human_player');
+            
+            // Map position to correct element property name
+            let turnIndicator;
+            switch (position) {
+                case 'Top':
+                    turnIndicator = this.elements.playerTopTurn;
+                    break;
+                case 'Left':
+                    turnIndicator = this.elements.playerLeftTurn;
+                    break;
+                case 'Right':
+                    turnIndicator = this.elements.playerRightTurn;
+                    break;
+                case 'Bottom':
+                    turnIndicator = this.elements.playerBottomTurn;
+                    break;
+                default:
+                    console.warn(`[UIManager] Unknown position: ${position}`);
+                    return;
+            }
+            
             if (turnIndicator) {
                 turnIndicator.classList.add('active');
+                turnIndicator.title = isMyTurn ? 'Your turn!' : `${playerName}'s turn`;
+                
+                console.log(`[UIManager] Turn indicator activated for ${playerName} (${position}) - isMyTurn: ${isMyTurn}`);
             }
         }
+
+        // Also update the game status message
+        this.updateGameStatusMessage();
+    }
+
+    /**
+     * Update game status message to show whose turn it is
+     */
+    updateGameStatusMessage() {
+        const state = this.gameState.getState();
+        
+        if (state.currentTurnPlayer && state.gamePhase === 'playing') {
+            const playerName = this.getPlayerNameById(state.currentTurnPlayer);
+            const isMyTurn = state.currentTurnPlayer === (this.authManager?.getUserId() || 'human_player');
+            
+            if (isMyTurn) {
+                this.addGameMessage('Your turn to play a card!', 'info');
+            } else {
+                this.addGameMessage(`${playerName}'s turn to play`, 'info');
+            }
+        }
+    }
+
+    /**
+     * Get player name by ID
+     * @param {string} playerId - Player ID
+     * @returns {string} Player name
+     */
+    getPlayerNameById(playerId) {
+        const state = this.gameState.getState();
+        
+        // Check if it's demo mode with hardcoded names
+        if (state.isDemoMode) {
+            const nameMap = {
+                'human_player': 'You',
+                'bot_1': 'Bot 1',
+                'bot_2': 'Bot 2', 
+                'bot_3': 'Bot 3'
+            };
+            return nameMap[playerId] || 'Unknown Player';
+        }
+        
+        // For multiplayer, get from players data
+        if (state.players && state.players[playerId]) {
+            return state.players[playerId].username || 'Unknown Player';
+        }
+        
+        return 'Unknown Player';
     }
 
     /**
@@ -174,17 +320,17 @@ export class UIManager {
         
         if (state.trumpSuit) {
             const suitSymbols = {
-                hearts: '♥',
-                diamonds: '♦',
-                clubs: '♣',
-                spades: '♠'
+                Hearts: '♥',
+                Diamonds: '♦',
+                Clubs: '♣',
+                Spades: '♠'
             };
 
             const symbol = suitSymbols[state.trumpSuit] || '?';
             const name = state.trumpSuit.charAt(0).toUpperCase() + state.trumpSuit.slice(1);
 
             this.elements.trumpSuit.innerHTML = `
-                <span class="trump-symbol ${state.trumpSuit}">${symbol}</span>
+                <span class="trump-symbol ${state.trumpSuit.toLowerCase()}">${symbol}</span>
                 <span class="trump-name">${name}</span>
             `;
         } else {
@@ -201,35 +347,11 @@ export class UIManager {
      */
     updateScoreDisplay(animated = false) {
         const state = this.gameState.getState();
+        const currentUserId = this.getCurrentUserId();
+        const currentUserTeam = this.getPlayerTeam(currentUserId);
         
-        // Update trick scores (current round)
-        if (this.elements.team1Score) {
-            const scoreElement = this.elements.team1Score.querySelector('.score-value');
-            const newScore = state.scores.team1;
-
-            if (animated && scoreElement.textContent !== newScore.toString()) {
-                scoreElement.classList.add('updating');
-                setTimeout(() => {
-                    scoreElement.classList.remove('updating');
-                }, 800);
-            }
-
-            scoreElement.textContent = newScore;
-        }
-
-        if (this.elements.team2Score) {
-            const scoreElement = this.elements.team2Score.querySelector('.score-value');
-            const newScore = state.scores.team2;
-
-            if (animated && scoreElement.textContent !== newScore.toString()) {
-                scoreElement.classList.add('updating');
-                setTimeout(() => {
-                    scoreElement.classList.remove('updating');
-                }, 800);
-            }
-
-            scoreElement.textContent = newScore;
-        }
+        // Update team labels and scores based on current player's perspective
+        this.updateTeamLabelsAndScores(currentUserTeam, state.scores, animated);
 
         // Update round scores (game points) - handled separately
         this.updateRoundScoreDisplay(animated);
@@ -242,36 +364,11 @@ export class UIManager {
     updateRoundScoreDisplay(animated = false) {
         const state = this.gameState.getState();
         const roundScores = state.roundScores || { team1: 0, team2: 0 };
+        const currentUserId = this.getCurrentUserId();
+        const currentUserTeam = this.getPlayerTeam(currentUserId);
         
-        const team1RoundScore = document.getElementById('team-1-round-score');
-        if (team1RoundScore) {
-            const scoreElement = team1RoundScore.querySelector('.score-value');
-            const newScore = roundScores.team1;
-
-            if (animated && scoreElement.textContent !== newScore.toString()) {
-                scoreElement.classList.add('updating');
-                setTimeout(() => {
-                    scoreElement.classList.remove('updating');
-                }, 800);
-            }
-
-            scoreElement.textContent = newScore;
-        }
-
-        const team2RoundScore = document.getElementById('team-2-round-score');
-        if (team2RoundScore) {
-            const scoreElement = team2RoundScore.querySelector('.score-value');
-            const newScore = roundScores.team2;
-
-            if (animated && scoreElement.textContent !== newScore.toString()) {
-                scoreElement.classList.add('updating');
-                setTimeout(() => {
-                    scoreElement.classList.remove('updating');
-                }, 800);
-            }
-
-            scoreElement.textContent = newScore;
-        }
+        // Update round score labels and values based on current player's perspective
+        this.updateRoundScoreLabelsAndValues(currentUserTeam, roundScores, animated);
     }
 
     /**
@@ -440,15 +537,200 @@ export class UIManager {
      * @returns {string} Position (Bottom, Left, Top, Right)
      */
     getPlayerPosition(playerId) {
-        // Map specific player IDs to positions for demo game
-        const positionMap = {
-            'human_player': 'Bottom',
-            'bot_1': 'Left',
-            'bot_2': 'Top',
-            'bot_3': 'Right'
-        };
+        const state = this.gameState.getState();
         
-        return positionMap[playerId] || 'Bottom';
+        // For demo mode, use hardcoded positions
+        if (state.isDemoMode) {
+            const positionMap = {
+                'human_player': 'Bottom',
+                'bot_1': 'Left',
+                'bot_2': 'Top',
+                'bot_3': 'Right'
+            };
+            return positionMap[playerId] || 'Bottom';
+        }
+        
+        // For multiplayer mode, calculate relative positions
+        return this.getRelativePlayerPosition(playerId);
+    }
+
+    /**
+     * Get player position relative to current user
+     * @param {string} playerId - Player ID
+     * @returns {string} Position (Bottom, Left, Top, Right)
+     */
+    getRelativePlayerPosition(playerId) {
+        const state = this.gameState.getState();
+        
+        // Get current user ID from auth or game state
+        const currentUserId = this.getCurrentUserId();
+        
+        console.log(`[UIManager] Getting position for ${playerId}, current user: ${currentUserId}`);
+        
+        // Current user is always at the bottom
+        if (playerId === currentUserId) {
+            console.log(`[UIManager] ${playerId} is current user → Bottom`);
+            return 'Bottom';
+        }
+        
+        // Get all player IDs in order
+        const playerIds = Object.keys(state.players || {});
+        const currentUserIndex = playerIds.indexOf(currentUserId);
+        const targetPlayerIndex = playerIds.indexOf(playerId);
+        
+        console.log(`[UIManager] Player IDs: ${playerIds.join(', ')}`);
+        console.log(`[UIManager] Current user index: ${currentUserIndex}, target index: ${targetPlayerIndex}`);
+        
+        if (currentUserIndex === -1 || targetPlayerIndex === -1) {
+            console.warn(`[UIManager] Player not found in game state: ${playerId}`);
+            return 'Top';
+        }
+        
+        // Calculate relative position (4-player game)
+        const relativePosition = (targetPlayerIndex - currentUserIndex + 4) % 4;
+        const positions = ['Bottom', 'Left', 'Top', 'Right'];
+        
+        const finalPosition = positions[relativePosition];
+        console.log(`[UIManager] ${playerId} → ${finalPosition} (relative position: ${relativePosition})`);
+        
+        return finalPosition;
+    }
+
+    /**
+     * Get current user ID
+     * @returns {string} Current user ID
+     */
+    getCurrentUserId() {
+        const state = this.gameState.getState();
+        
+        // Try to get from auth manager first (most reliable)
+        if (this.authManager && this.authManager.getUserId) {
+            return this.authManager.getUserId();
+        }
+        
+        // Try to get from game state
+        if (state.currentUserId) {
+            return state.currentUserId;
+        }
+        
+        // Try to get from global auth manager
+        if (window.authManager && window.authManager.getUserId) {
+            return window.authManager.getUserId();
+        }
+        
+        // Fallback: try to find from WebSocket connection info
+        if (state.connectionInfo && state.connectionInfo.userId) {
+            return state.connectionInfo.userId;
+        }
+        
+        console.warn('[UIManager] Could not determine current user ID');
+        return null;
+    }
+
+    /**
+     * Update team labels and scores based on current player's perspective
+     * @param {number} currentUserTeam - Current user's team (1 or 2)
+     * @param {Object} scores - Current trick scores
+     * @param {boolean} animated - Whether to show animation
+     */
+    updateTeamLabelsAndScores(currentUserTeam, scores, animated = false) {
+        // Determine which team is "My Team" and which is "Opponent Team"
+        const myTeamScore = scores[`team${currentUserTeam}`] || 0;
+        const opponentTeamScore = scores[`team${currentUserTeam === 1 ? 2 : 1}`] || 0;
+        
+        // Update first score display (always show as "My Team")
+        if (this.elements.team1Score) {
+            const labelElement = this.elements.team1Score.querySelector('.team-label');
+            const scoreElement = this.elements.team1Score.querySelector('.score-value');
+            
+            if (labelElement) {
+                labelElement.textContent = 'My Team';
+            }
+            
+            if (scoreElement) {
+                if (animated && scoreElement.textContent !== myTeamScore.toString()) {
+                    scoreElement.classList.add('updating');
+                    setTimeout(() => {
+                        scoreElement.classList.remove('updating');
+                    }, 800);
+                }
+                scoreElement.textContent = myTeamScore;
+            }
+        }
+
+        // Update second score display (always show as "Opponent Team")
+        if (this.elements.team2Score) {
+            const labelElement = this.elements.team2Score.querySelector('.team-label');
+            const scoreElement = this.elements.team2Score.querySelector('.score-value');
+            
+            if (labelElement) {
+                labelElement.textContent = 'Opponent Team';
+            }
+            
+            if (scoreElement) {
+                if (animated && scoreElement.textContent !== opponentTeamScore.toString()) {
+                    scoreElement.classList.add('updating');
+                    setTimeout(() => {
+                        scoreElement.classList.remove('updating');
+                    }, 800);
+                }
+                scoreElement.textContent = opponentTeamScore;
+            }
+        }
+    }
+
+    /**
+     * Update round score labels and values based on current player's perspective
+     * @param {number} currentUserTeam - Current user's team (1 or 2)
+     * @param {Object} roundScores - Round scores
+     * @param {boolean} animated - Whether to show animation
+     */
+    updateRoundScoreLabelsAndValues(currentUserTeam, roundScores, animated = false) {
+        // Determine which team is "My Team" and which is "Opponent Team"
+        const myTeamScore = roundScores[`team${currentUserTeam}`] || 0;
+        const opponentTeamScore = roundScores[`team${currentUserTeam === 1 ? 2 : 1}`] || 0;
+        
+        // Update first round score display (always show as "My Team")
+        const team1RoundScore = document.getElementById('team-1-round-score');
+        if (team1RoundScore) {
+            const labelElement = team1RoundScore.querySelector('.team-label');
+            const scoreElement = team1RoundScore.querySelector('.score-value');
+            
+            if (labelElement) {
+                labelElement.textContent = 'My Team';
+            }
+            
+            if (scoreElement) {
+                if (animated && scoreElement.textContent !== myTeamScore.toString()) {
+                    scoreElement.classList.add('updating');
+                    setTimeout(() => {
+                        scoreElement.classList.remove('updating');
+                    }, 800);
+                }
+                scoreElement.textContent = myTeamScore;
+            }
+        }
+
+        // Update second round score display (always show as "Opponent Team")
+        const team2RoundScore = document.getElementById('team-2-round-score');
+        if (team2RoundScore) {
+            const labelElement = team2RoundScore.querySelector('.team-label');
+            const scoreElement = team2RoundScore.querySelector('.score-value');
+            
+            if (labelElement) {
+                labelElement.textContent = 'Opponent Team';
+            }
+            
+            if (scoreElement) {
+                if (animated && scoreElement.textContent !== opponentTeamScore.toString()) {
+                    scoreElement.classList.add('updating');
+                    setTimeout(() => {
+                        scoreElement.classList.remove('updating');
+                    }, 800);
+                }
+                scoreElement.textContent = opponentTeamScore;
+            }
+        }
     }
 
     /**
@@ -480,18 +762,26 @@ export class UIManager {
      * @returns {number} Team number (1 or 2)
      */
     getPlayerTeam(playerId) {
-        // Team 1: human_player and bot_2 (bottom and top)
-        // Team 2: bot_1 and bot_3 (left and right)
-        const team1Players = ['human_player', 'bot_2', 'player1', 'player3'];
-        const team2Players = ['bot_1', 'bot_3', 'player2', 'player4'];
+        const state = this.gameState.getState();
         
-        if (team1Players.includes(playerId)) {
-            return 1;
-        } else if (team2Players.includes(playerId)) {
-            return 2;
+        // First, try to get team assignment from player data (server-provided)
+        if (state.players && state.players[playerId] && state.players[playerId].teamAssignment) {
+            return state.players[playerId].teamAssignment;
         }
         
-        // Fallback: determine by position
+        // For demo mode, use hardcoded assignments
+        if (state.isDemoMode) {
+            const team1Players = ['human_player', 'bot_2'];
+            const team2Players = ['bot_1', 'bot_3'];
+            
+            if (team1Players.includes(playerId)) {
+                return 1;
+            } else if (team2Players.includes(playerId)) {
+                return 2;
+            }
+        }
+        
+        // Fallback: determine by position (for backward compatibility)
         const position = this.getPlayerPosition(playerId);
         return (position === 'Bottom' || position === 'Top') ? 1 : 2;
     }
@@ -548,7 +838,27 @@ export class UIManager {
      */
     renderOpponentHand(playerId, cardCount) {
         const position = this.getPlayerPosition(playerId);
-        const handElement = this.elements[`player${position}Hand`];
+        
+        // Map position to correct element property name
+        let handElement;
+        switch (position) {
+            case 'Top':
+                handElement = this.elements.playerTopHand;
+                break;
+            case 'Left':
+                handElement = this.elements.playerLeftHand;
+                break;
+            case 'Right':
+                handElement = this.elements.playerRightHand;
+                break;
+            case 'Bottom':
+                // Current user should never be rendered as opponent, but if it happens, skip it
+                console.warn(`[UIManager] Attempted to render opponent hand for current user at Bottom position - playerId: ${playerId}`);
+                return;
+            default:
+                console.warn(`[UIManager] Unknown position: ${position}`);
+                return;
+        }
         
         if (!handElement) {
             console.warn(`[UIManager] Hand element not found for position: ${position}`);
@@ -625,10 +935,10 @@ export class UIManager {
      */
     showLeadSuitToast(suit) {
         const suitSymbols = {
-            hearts: '♥',
-            diamonds: '♦',
-            clubs: '♣',
-            spades: '♠'
+            Hearts: '♥',
+            Diamonds: '♦',
+            Clubs: '♣',
+            Spades: '♠'
         };
 
         const symbol = suitSymbols[suit] || '?';
@@ -662,10 +972,10 @@ export class UIManager {
      */
     showTrumpDeclaredToast(suit, playerName = 'You') {
         const suitSymbols = {
-            hearts: '♥',
-            diamonds: '♦',
-            clubs: '♣',
-            spades: '♠'
+            Hearts: '♥',
+            Diamonds: '♦',
+            Clubs: '♣',
+            Spades: '♠'
         };
 
         const symbol = suitSymbols[suit] || '?';
@@ -760,7 +1070,26 @@ export class UIManager {
      */
     smoothRemoveOpponentCard(playerId, newCardCount) {
         const position = this.getPlayerPosition(playerId);
-        const handElement = this.elements[`player${position}Hand`];
+        
+        // Map position to correct element property name
+        let handElement;
+        switch (position) {
+            case 'Top':
+                handElement = this.elements.playerTopHand;
+                break;
+            case 'Left':
+                handElement = this.elements.playerLeftHand;
+                break;
+            case 'Right':
+                handElement = this.elements.playerRightHand;
+                break;
+            case 'Bottom':
+                handElement = this.elements.playerHand;
+                break;
+            default:
+                console.warn(`[UIManager] Unknown position: ${position}`);
+                return;
+        }
         
         if (!handElement) {
             console.warn(`[UIManager] Hand element not found for position: ${position}`);
@@ -792,7 +1121,26 @@ export class UIManager {
      */
     updatePlayerCardCount(playerId, cardCount) {
         const position = this.getPlayerPosition(playerId);
-        const cardsElement = this.elements[`player${position}Cards`];
+        
+        // Map position to correct element property name
+        let cardsElement;
+        switch (position) {
+            case 'Top':
+                cardsElement = this.elements.playerTopCards;
+                break;
+            case 'Left':
+                cardsElement = this.elements.playerLeftCards;
+                break;
+            case 'Right':
+                cardsElement = this.elements.playerRightCards;
+                break;
+            case 'Bottom':
+                cardsElement = this.elements.playerBottomCards;
+                break;
+            default:
+                console.warn(`[UIManager] Unknown position: ${position}`);
+                return;
+        }
         
         if (cardsElement) {
             cardsElement.textContent = `${cardCount} card${cardCount !== 1 ? 's' : ''}`;
@@ -837,40 +1185,62 @@ export class UIManager {
             return;
         }
 
-        // Update winner information
+        // Get current user's team perspective
+        const currentUserId = this.getCurrentUserId();
+        const currentUserTeam = this.getPlayerTeam(currentUserId);
+        const winnerTeamNumber = parseInt(roundWinner.teamKey.replace('team', ''));
+        const isMyTeamWinner = winnerTeamNumber === currentUserTeam;
+
+        // Update winner information from player's perspective
         if (winnerTeam) {
-            winnerTeam.textContent = `${roundWinner.teamName} Wins!`;
+            const teamLabel = isMyTeamWinner ? 'My Team' : 'Opponent Team';
+            winnerTeam.textContent = `${teamLabel} Wins!`;
         }
         if (winnerReason) {
             winnerReason.textContent = roundWinner.reason;
         }
 
-        // Update trick counts
+        // Update trick counts and points from player's perspective
+        const myTeamTricks = scores[`team${currentUserTeam}`] || 0;
+        const opponentTeamTricks = scores[`team${currentUserTeam === 1 ? 2 : 1}`] || 0;
+        const myTeamPointsAwarded = isMyTeamWinner ? myTeamTricks : 0;
+        const opponentTeamPointsAwarded = !isMyTeamWinner ? opponentTeamTricks : 0;
+
         if (team1Tricks) {
-            team1Tricks.textContent = `${scores.team1} tricks`;
+            team1Tricks.textContent = `${myTeamTricks} tricks`;
         }
         if (team2Tricks) {
-            team2Tricks.textContent = `${scores.team2} tricks`;
+            team2Tricks.textContent = `${opponentTeamTricks} tricks`;
         }
-
-        // Calculate points awarded (winning team gets their trick count as points)
-        const team1PointsAwarded = roundWinner.teamKey === 'team1' ? scores.team1 : 0;
-        const team2PointsAwarded = roundWinner.teamKey === 'team2' ? scores.team2 : 0;
 
         if (team1Points) {
-            team1Points.textContent = team1PointsAwarded > 0 ? `+${team1PointsAwarded} points` : '+0 points';
+            team1Points.textContent = myTeamPointsAwarded > 0 ? `+${myTeamPointsAwarded} points` : '+0 points';
         }
         if (team2Points) {
-            team2Points.textContent = team2PointsAwarded > 0 ? `+${team2PointsAwarded} points` : '+0 points';
+            team2Points.textContent = opponentTeamPointsAwarded > 0 ? `+${opponentTeamPointsAwarded} points` : '+0 points';
         }
 
-        // Update total game scores
+        // Update total game scores from player's perspective
+        const myTeamTotalScore = roundScores[`team${currentUserTeam}`] || 0;
+        const opponentTeamTotalScore = roundScores[`team${currentUserTeam === 1 ? 2 : 1}`] || 0;
+
         if (totalTeam1Score) {
-            totalTeam1Score.textContent = roundScores.team1.toString();
+            totalTeam1Score.textContent = myTeamTotalScore.toString();
         }
         if (totalTeam2Score) {
-            totalTeam2Score.textContent = roundScores.team2.toString();
+            totalTeam2Score.textContent = opponentTeamTotalScore.toString();
         }
+
+        // Update team labels in the modal
+        const team1Label = modal.querySelector('.team-breakdown .team-info:first-child .team-name');
+        const team2Label = modal.querySelector('.team-breakdown .team-info:last-child .team-name');
+        const scoreTeam1Label = modal.querySelector('.total-scores .score-display:first-child .score-team');
+        const scoreTeam2Label = modal.querySelector('.total-scores .score-display:last-child .score-team');
+
+        if (team1Label) team1Label.textContent = 'My Team';
+        if (team2Label) team2Label.textContent = 'Opponent Team';
+        if (scoreTeam1Label) scoreTeam1Label.textContent = 'My Team';
+        if (scoreTeam2Label) scoreTeam2Label.textContent = 'Opponent Team';
 
         // Hide continue button
         if (continueBtn) {

@@ -205,9 +205,17 @@ class GameStateManager {
         this.socketManager.broadcastGameStateUpdate(gameId, publicState);
 
         // Send player-specific states (with hand visibility)
-        for (const playerId of Object.keys(gameState.players)) {
-            const playerState = this.filterStateForPlayer(gameState, playerId);
-            this.socketManager.sendPlayerGameState(gameId, playerId, playerState);
+        if (gameState.players && typeof gameState.players === 'object') {
+            for (const playerId of Object.keys(gameState.players)) {
+                const playerState = this.filterStateForPlayer(gameState, playerId);
+                console.log(`[GameStateManager] Sending player-specific state to ${playerId}:`, {
+                    playerId,
+                    hasHand: !!playerState.players?.[playerId]?.hand,
+                    handLength: playerState.players?.[playerId]?.hand?.length || 0,
+                    trumpDeclarer: playerState.trumpDeclarer
+                });
+                this.socketManager.sendPlayerGameState(gameId, playerId, playerState);
+            }
         }
 
         console.log(`[GameStateManager] Broadcasted state update for game ${gameId} from ${updateSource}`);

@@ -14,16 +14,16 @@ class DatabaseInitializer {
   async initialize() {
     try {
       console.log('[Database] Starting database initialization...');
-      
+
       // Initialize connection pool
       await dbConnection.initialize();
-      
+
       // Read and execute schema
       await this.executeSchema();
-      
+
       // Verify tables were created
       await this.verifyTables();
-      
+
       console.log('[Database] Database initialization completed successfully');
       return true;
     } catch (error) {
@@ -35,13 +35,13 @@ class DatabaseInitializer {
   async executeSchema() {
     try {
       const schemaSQL = await fs.readFile(this.schemaPath, 'utf8');
-      
+
       // Remove comments and split by semicolon
       const cleanSQL = schemaSQL
         .split('\n')
         .filter(line => !line.trim().startsWith('--'))
         .join('\n');
-      
+
       const statements = cleanSQL
         .split(';')
         .map(stmt => stmt.trim())
@@ -73,7 +73,7 @@ class DatabaseInitializer {
     try {
       const tables = await dbConnection.query('SHOW TABLES');
       const tableNames = tables.map(row => Object.values(row)[0]);
-      
+
       const expectedTables = [
         'users',
         'games',
@@ -87,7 +87,7 @@ class DatabaseInitializer {
       console.log('[Database] Found tables:', tableNames);
 
       const missingTables = expectedTables.filter(table => !tableNames.includes(table));
-      
+
       if (missingTables.length > 0) {
         throw new Error(`Missing tables: ${missingTables.join(', ')}`);
       }
@@ -103,10 +103,10 @@ class DatabaseInitializer {
   async reset() {
     try {
       console.log('[Database] Resetting database...');
-      
+
       // Initialize connection pool first
       await dbConnection.initialize();
-      
+
       const tables = [
         'game_tricks',
         'game_rounds',
@@ -139,10 +139,75 @@ class DatabaseInitializer {
     }
   }
 
+  async migrateRoomCodes() {
+    try {
+      console.log('[Database] Migrating room codes...');
+
+      // Check if version column exists, add if not
+      try {
+        await dbConnection.query('SELECT version FROM rooms LIMIT 1');
+        console.log('[Database] Version column already exists');
+      } catch (error) {
+        console.log('[Database] Adding version column to rooms table...');
+        await dbConnection.query('ALTER TABLE rooms ADD COLUMN version INT DEFAULT 1');
+        console.log('[Database] Version column added successfully');
+      }
+
+      // Update invite_code column to be 5 characters if it's longer
+      try {
+        await dbConnection.query('ALTER TABLE rooms MODIFY COLUMN invite_code VARCHAR(5)');
+        console.log('[Database] Updated invite_code column to VARCHAR(5)');
+      } catch (error) {
+        console.warn('[Database] Could not modify invite_code column:', error.message);
+      }
+
+      // Update existing rooms to have version = 1 if NULL
+      const result = await dbConnection.query('UPDATE rooms SET version = 1 WHERE version IS NULL');
+      if (result.affectedRows > 0) {
+        console.log(`[Database] Updated ${result.affectedRows} rooms with version = 1`);
+      }
+
+      // Generate 5-digit codes for existing rooms that have longer codes or no codes
+      const roomsNeedingCodes = await dbConnection.query(`
+        SELECT room_id, invite_code FROM rooms 
+        WHERE invite_code IS NULL OR LENGTH(invite_code) != 5
+      `);
+
+      if (roomsNeedingCodes.length > 0) {
+        console.log(`[Database] Generating 5-digit codes for ${roomsNeedingCodes.length} rooms...`);
+
+        for (const room of roomsNeedingCodes) {
+          const newCode = this.generateRoomCode();
+          await dbConnection.query(
+            'UPDATE rooms SET invite_code = ? WHERE room_id = ?',
+            [newCode, room.room_id]
+          );
+          console.log(`[Database] Updated room ${room.room_id} with code ${newCode}`);
+        }
+      }
+
+      console.log('[Database] Room code migration completed successfully');
+      return true;
+    } catch (error) {
+      console.error('[Database] Room code migration failed:', error.message);
+      throw error;
+    }
+  }
+
+  generateRoomCode() {
+    // Generate a 5-digit code using numbers and uppercase letters (excluding confusing characters)
+    const chars = '0123456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // Excluded I, O for clarity
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
   async seedTestData() {
     try {
       console.log('[Database] Seeding test data...');
-      
+
       // Create test user
       const testUserId = 'test-user-uuid-1234';
       await dbConnection.query(`
@@ -184,13 +249,18 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         await initializer.initialize();
         await initializer.seedTestData();
         break;
+      case 'migrate-rooms':
+        await initializer.initialize();
+        await initializer.migrateRoomCodes();
+        break;
       default:
-        console.log('Usage: node init.js [init|reset|seed]');
-        console.log('  init  - Initialize database with schema');
-        console.log('  reset - Drop all tables and recreate');
-        console.log('  seed  - Initialize and add test data');
+        console.log('Usage: node init.js [init|reset|seed|migrate-rooms]');
+        console.log('  init         - Initialize database with schema');
+        console.log('  reset        - Drop all tables and recreate');
+        console.log('  seed         - Initialize and add test data');
+        console.log('  migrate-rooms - Migrate existing rooms to use 5-digit codes');
     }
-    
+
     await dbConnection.close();
     process.exit(0);
   } catch (error) {

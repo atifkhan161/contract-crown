@@ -88,6 +88,33 @@ export class RoomManager {
     }
 
     /**
+     * Join a room by room code
+     */
+    async joinRoomByCode(roomCode) {
+        try {
+            const response = await fetch(`${this.apiBase}/rooms/join-by-code`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.authManager ? this.authManager.getToken() : localStorage.getItem('auth_token')}`
+                },
+                body: JSON.stringify({ roomCode })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to join room');
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error joining room by code:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Leave a room
      */
     async leaveRoom(roomId) {

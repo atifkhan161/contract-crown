@@ -1484,6 +1484,19 @@ class GameEngine {
                 `, [player.user_id]);
             }
 
+            // Reset room status back to waiting for potential next game
+            try {
+                const Room = (await import('../models/Room.js')).default;
+                const room = await Room.findById(gameId);
+                if (room && room.status === 'playing') {
+                    await room.updateStatus('waiting');
+                    await room.resetAllPlayerReadyStatus();
+                    console.log(`[GameEngine] Room ${gameId} status reset to waiting after game completion`);
+                }
+            } catch (roomError) {
+                console.warn('[GameEngine] Failed to reset room status after game completion:', roomError.message);
+            }
+
             console.log(`[GameEngine] Game ${gameId} completed, winner: team ${winningTeamId}`);
         } catch (error) {
             console.error('[GameEngine] Complete game error:', error.message);

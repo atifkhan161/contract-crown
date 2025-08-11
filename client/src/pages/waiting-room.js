@@ -59,6 +59,8 @@ class WaitingRoomManager {
         this.elements.hostControls = document.getElementById('host-controls');
         this.elements.startGameBtn = document.getElementById('start-game-btn');
         this.elements.startSpinner = document.getElementById('start-spinner');
+        this.elements.resetToWaitingBtn = document.getElementById('reset-to-waiting-btn');
+        this.elements.resetSpinner = document.getElementById('reset-spinner');
 
         // Messages and modals
         this.elements.gameMessages = document.getElementById('game-messages');
@@ -80,6 +82,9 @@ class WaitingRoomManager {
 
         // Start game button (host only)
         this.elements.startGameBtn.addEventListener('click', () => this.handleStartGame());
+
+        // Reset to waiting button (host only)
+        this.elements.resetToWaitingBtn.addEventListener('click', () => this.handleResetToWaiting());
 
         // Error modal close buttons
         this.elements.closeErrorBtn.addEventListener('click', () => this.hideErrorModal());
@@ -190,14 +195,43 @@ class WaitingRoomManager {
                 }
             }
 
-            this.roomData = await response.json();
+            const roomResponse = await response.json();
+            this.roomData = roomResponse.room || roomResponse;
             console.log('[WaitingRoom] Room data loaded:', this.roomData);
+
+            // Check if user is in the room, if not try to join
+            const currentUserId = this.currentUser.user_id || this.currentUser.id;
+            const isUserInRoom = this.roomData.players && this.roomData.players.some(p => 
+                (p.id === currentUserId || p.user_id === currentUserId)
+            );
+
+            if (!isUserInRoom) {
+                console.log('[WaitingRoom] User not in room, attempting to join...');
+                try {
+                    const joinResponse = await fetch(`/api/rooms/${this.roomId}/join`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (joinResponse.ok) {
+                        const joinData = await joinResponse.json();
+                        this.roomData = joinData.room || this.roomData;
+                        console.log('[WaitingRoom] Successfully joined room on refresh');
+                    } else {
+                        console.warn('[WaitingRoom] Failed to join room on refresh, continuing with current data');
+                    }
+                } catch (joinError) {
+                    console.warn('[WaitingRoom] Error joining room on refresh:', joinError);
+                }
+            }
 
             // Update UI with room data
             this.updateRoomDisplay();
 
             // Check if current user is the host
-            const currentUserId = this.currentUser.user_id || this.currentUser.id;
             const roomOwnerId = this.roomData.owner;
 
             console.log('[WaitingRoom] Host detection debug:', {
@@ -219,10 +253,10 @@ class WaitingRoomManager {
             if (String(currentUserId) === String(roomOwnerId)) {
                 console.log('[WaitingRoom] User is host (IDs match), showing host controls');
                 this.isHost = true;
-                this.uiManager.showHostControls(true, false);
+                this.uiManager.showHostControls(true, false, this.roomData?.status || 'waiting');
             } else {
                 console.log('[WaitingRoom] User is not host, host controls will remain hidden');
-                this.uiManager.showHostControls(false, false);
+                this.uiManager.showHostControls(false, false, this.roomData?.status || 'waiting');
             }
 
         } catch (error) {
@@ -352,6 +386,24 @@ class WaitingRoomManager {
                 this.roomData = data.room;
                 this.updateRoomDisplay();
                 this.markSuccessfulUpdate();
+            }
+        });
+
+        this.socketManager.on('room-status-changed', (data) => {
+            console.log('[WaitingRoom] Room status changed:', data);
+            if (data.status) {
+                // Update room data with new status
+                if (this.roomData) {
+                    this.roomData.status = data.status;
+                }
+                // Refresh the UI to show/hide buttons based on new status
+                this.updateRoomDisplay();
+                this.markSuccessfulUpdate();
+                
+                // Show a message to users
+                if (data.message) {
+                    this.uiManager.addMessage(data.message, 'success');
+                }
             }
         });
 
@@ -584,8 +636,9 @@ class WaitingRoomManager {
     updateRoomDisplay() {
         if (!this.roomData) return;
 
-        // Update room code display
-        this.uiManager.setRoomCode(this.roomData.id || this.roomId);
+        // Update room code display - use the 5-digit room code if available
+        const displayCode = this.roomData.roomCode || this.roomData.code || this.roomData.inviteCode || this.roomData.id || this.roomId;
+        this.uiManager.setRoomCode(displayCode);
 
         // Update players list
         this.players = this.roomData.players || [];
@@ -666,13 +719,13 @@ class WaitingRoomManager {
         if (this.isHost) {
             console.log('[WaitingRoom] Showing host controls');
             const canStartGame = this.calculateGameStartEligibility();
-            this.uiManager.showHostControls(true, canStartGame.canStart);
+            this.uiManager.showHostControls(true, canStartGame.canStart, this.roomData?.status || 'waiting');
 
             // Update host info text with more detailed status
             this.updateHostInfoText(canStartGame);
         } else {
             console.log('[WaitingRoom] Not host, hiding host controls');
-            this.uiManager.showHostControls(false, false);
+            this.uiManager.showHostControls(false, false, this.roomData?.status || 'waiting');
         }
     }
 
@@ -999,7 +1052,7 @@ class WaitingRoomManager {
 
             // Disable start button to prevent double-clicks
             this.setStartGameLoading(true);
-            this.uiManager.showHostControls(true, false);
+            this.uiManager.showHostControls(true, false, this.roomData?.status || 'waiting');
 
             console.log(`[WaitingRoom] Starting game with ${connectedPlayers.length} connected players, ${readyPlayers.length} ready`);
 
@@ -1025,7 +1078,7 @@ class WaitingRoomManager {
             const connectedPlayers = this.players.filter(player => player.isConnected !== false);
             const readyPlayers = connectedPlayers.filter(player => player.isReady);
             const canStart = connectedPlayers.length >= 2 && readyPlayers.length === connectedPlayers.length;
-            this.uiManager.showHostControls(this.isHost, canStart);
+            this.uiManager.showHostControls(this.isHost, canStart, this.roomData?.status || 'waiting');
         }
     }
 
@@ -1077,6 +1130,65 @@ class WaitingRoomManager {
             throw error;
         }
     }
+
+    /**
+     * Handle reset to waiting room button click
+     */
+    async handleResetToWaiting() {
+        try {
+            // Validate host privileges
+            if (!this.isHost) {
+                this.showError('Only the host can reset the room to waiting status.');
+                return;
+            }
+
+            // Validate room status - only allow reset if room is in 'playing' status
+            if (this.roomData && this.roomData.status !== 'playing') {
+                this.showError('Room is already in waiting status.');
+                return;
+            }
+
+            // Show loading state
+            this.setResetToWaitingLoading(true);
+
+            console.log('[WaitingRoom] Resetting room to waiting status');
+
+            // Make API call to reset room status
+            const token = this.authManager.getToken();
+            const response = await fetch(`/api/rooms/${this.roomId}/reset-to-waiting`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to reset room to waiting status');
+            }
+
+            const result = await response.json();
+            console.log('[WaitingRoom] Room reset to waiting status successfully:', result);
+
+            // Update local room data
+            if (result.room) {
+                this.roomData = result.room;
+                this.updateRoomDisplay();
+            }
+
+            // Show success message
+            this.uiManager.addMessage('Room has been reset to waiting status. Players can now get ready for another game!', 'success');
+
+        } catch (error) {
+            console.error('[WaitingRoom] Error resetting room to waiting:', error);
+            this.showError('Failed to reset room to waiting status. Please try again.');
+        } finally {
+            // Hide loading state
+            this.setResetToWaitingLoading(false);
+        }
+    }
+
     // Player join/leave event handling
     handlePlayerJoin(playerData) {
         console.log('[WaitingRoom] Player joined:', playerData);
@@ -1151,7 +1263,7 @@ class WaitingRoomManager {
 
             // Show/hide host controls based on new status
             const gameStartInfo = this.calculateGameStartEligibility();
-            this.uiManager.showHostControls(this.isHost, gameStartInfo.canStart);
+            this.uiManager.showHostControls(this.isHost, gameStartInfo.canStart, this.roomData?.status || 'waiting');
 
             // Add appropriate message
             if (data.wasHost) {
@@ -1197,7 +1309,7 @@ class WaitingRoomManager {
 
         // Show/hide host controls
         const gameStartInfo = this.calculateGameStartEligibility();
-        this.uiManager.showHostControls(this.isHost, gameStartInfo.canStart);
+        this.uiManager.showHostControls(this.isHost, gameStartInfo.canStart, this.roomData?.status || 'waiting');
 
         // Add appropriate message
         if (this.isHost && !wasHost) {
@@ -1465,6 +1577,16 @@ class WaitingRoomManager {
             this.uiManager.showStartGameLoading();
         } else {
             this.uiManager.hideStartGameLoading();
+        }
+    }
+
+    setResetToWaitingLoading(loading) {
+        if (loading) {
+            this.elements.resetToWaitingBtn.disabled = true;
+            this.elements.resetSpinner.classList.remove('hidden');
+        } else {
+            this.elements.resetToWaitingBtn.disabled = false;
+            this.elements.resetSpinner.classList.add('hidden');
         }
     }
 

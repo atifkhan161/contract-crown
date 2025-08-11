@@ -18,7 +18,7 @@
     gap: var(--waiting-spacing-md);
     margin-bottom: var(--waiting-spacing-xl);
   }
-  
+
   .player-slot {
     flex-direction: row;
     text-align: left;
@@ -28,12 +28,12 @@
     gap: var(--waiting-spacing-md);
     min-height: var(--waiting-player-slot-height);
   }
-  
+
   .player-avatar {
     margin: 0;
     flex-shrink: 0;
   }
-  
+
   .player-info {
     flex: 1;
     display: flex;
@@ -42,24 +42,24 @@
     gap: var(--waiting-spacing-xs);
     min-width: 0;
   }
-  
+
   .player-name {
     font-size: var(--waiting-font-size-sm);
     margin-bottom: 0;
     line-height: 1.3;
     text-align: left;
   }
-  
+
   .player-status {
     justify-content: flex-start;
   }
-  
+
   .player-badges {
     align-items: flex-end;
     justify-content: center;
     margin-top: 0;
   }
-  
+
   .host-badge {
     font-size: var(--waiting-font-size-xs);
     padding: var(--waiting-spacing-xs) var(--waiting-spacing-sm);
@@ -74,7 +74,7 @@
     gap: var(--waiting-spacing-sm);
     margin-bottom: var(--waiting-spacing-lg);
   }
-  
+
   .player-slot {
     flex-direction: column;
     text-align: center;
@@ -84,11 +84,11 @@
     gap: var(--waiting-spacing-xs);
     min-height: var(--waiting-player-slot-height);
   }
-  
+
   .player-avatar {
     margin: 0 auto var(--waiting-spacing-xs);
   }
-  
+
   .player-info {
     display: flex;
     flex-direction: column;
@@ -96,23 +96,23 @@
     gap: var(--waiting-spacing-xs);
     min-width: auto;
   }
-  
+
   .player-name {
     font-size: var(--waiting-font-size-xs);
     margin-bottom: 0;
     line-height: 1.2;
     text-align: center;
   }
-  
+
   .player-status {
     justify-content: center;
   }
-  
+
   .player-badges {
     align-items: center;
     margin-top: var(--waiting-spacing-xs);
   }
-  
+
   .host-badge {
     font-size: 0.5rem;
     padding: 1px var(--waiting-spacing-xs);
