@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import createApp from './app.js';
-import DatabaseInitializer from '../database/init.js';
+import rxdbConnection from '../database/rxdb-connection.js';
 import SocketManager from '../websocket/socketManager.js';
 import ConnectionStatusManager from '../websocket/connectionStatus.js';
 import PeriodicStateReconciliationService from './services/PeriodicStateReconciliationService.js';
@@ -80,9 +80,10 @@ class GameServer {
 
   async start() {
     try {
-      // Initialize database
-      const dbInitializer = new DatabaseInitializer();
-      await dbInitializer.initialize();
+      // Initialize RxDB database
+      console.log('[Server] Initializing RxDB database...');
+      await rxdbConnection.initialize();
+      console.log('[Server] RxDB database initialized successfully');
       
       this.server.listen(this.port, () => {
         console.log(`[Server] Contract Crown server running on port ${this.port}`);

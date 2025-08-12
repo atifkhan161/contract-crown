@@ -460,6 +460,8 @@ export const roomsSchema = {
     version: {
       type: 'number',
       minimum: 1,
+      maximum: 999999,
+      multipleOf: 1,
       default: 1
     },
     created_at: {
@@ -484,7 +486,7 @@ export const roomsSchema = {
     }
   },
   required: ['room_id', 'name', 'owner_id'],
-  indexes: ['status', 'owner_id', 'created_at', 'version', 'invite_code'],
+  indexes: ['status', 'owner_id', 'created_at', 'version'],
   additionalProperties: false
 };
 
