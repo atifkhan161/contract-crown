@@ -100,7 +100,10 @@
 
 
 
-  - [ ] 4.4 Refactor Room model to use RxDB
+  - [x] 4.4 Refactor Room model to use RxDB
+
+
+
     - Convert room operations to RxDB collections
 
 

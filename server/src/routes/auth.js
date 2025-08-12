@@ -80,12 +80,41 @@ router.post('/register',
                 password
             });
 
+            // Generate JWT token for immediate login after registration
+            const payload = {
+                id: user.user_id,
+                username: user.username,
+                email: user.email
+            };
+
+            const token = jwt.sign(
+                payload,
+                process.env.JWT_SECRET || 'your-secret-key',
+                { expiresIn: '24h' }
+            );
+
+            // Create user session in RxDB
+            try {
+                const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+                await UserSession.create({
+                    user_id: user.user_id,
+                    token: token,
+                    expires_at: expiresAt,
+                    user_agent: req.get('User-Agent'),
+                    ip_address: req.ip || req.connection.remoteAddress
+                });
+            } catch (sessionError) {
+                console.error('[Auth] Failed to create session during registration:', sessionError.message);
+                // Continue with registration even if session creation fails
+            }
+
             console.log(`[Auth] User registered successfully: ${username}`);
 
             res.status(201).json({
                 success: true,
                 message: 'User registered successfully',
-                user: user
+                user: user,
+                token: token
             });
 
         } catch (error) {
@@ -119,9 +148,11 @@ router.post('/login',
     authLimiter,
     [
         body('username')
-            .notEmpty()
-            .trim()
-            .withMessage('Username or email is required'),
+            .optional()
+            .trim(),
+        body('email')
+            .optional()
+            .trim(),
         body('password')
             .notEmpty()
             .withMessage('Password is required')
@@ -143,25 +174,26 @@ router.post('/login',
                 });
             }
 
-            const { username, password } = req.body;
+            const { username, email, password } = req.body;
+            const loginIdentifier = username || email;
 
-            if (!username || !password) {
+            if (!loginIdentifier || !password) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Username and password are required'
+                    message: 'Username/email and password are required'
                 });
             }
 
-            console.log('[Auth] Login attempt for:', username);
+            console.log('[Auth] Login attempt for:', loginIdentifier);
 
             // Find user by email or username
             let user;
-            if (User.validateEmail(username)) {
+            if (User.validateEmail(loginIdentifier)) {
                 console.log('[Auth] Looking up user by email');
-                user = await User.findByEmail(username);
+                user = await User.findByEmail(loginIdentifier);
             } else {
                 console.log('[Auth] Looking up user by username');
-                user = await User.findByUsername(username);
+                user = await User.findByUsername(loginIdentifier);
             }
 
             if (!user) {

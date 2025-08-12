@@ -88,7 +88,11 @@ class BaseRxDBModel {
   async find(query = {}, options = {}) {
     try {
       const collection = this.getCollection();
-      let rxQuery = collection.find(query);
+      
+      // Format query for RxDB - wrap in selector if not already wrapped
+      const rxdbQuery = query.selector ? query : { selector: query };
+      
+      let rxQuery = collection.find(rxdbQuery);
 
       // Apply options
       if (options.sort) {
@@ -117,7 +121,11 @@ class BaseRxDBModel {
   async findOne(query) {
     try {
       const collection = this.getCollection();
-      const doc = await collection.findOne(query).exec();
+      
+      // Format query for RxDB - wrap in selector if not already wrapped
+      const rxdbQuery = query.selector ? query : { selector: query };
+      
+      const doc = await collection.findOne(rxdbQuery).exec();
       
       if (!doc) {
         return null;
@@ -172,7 +180,11 @@ class BaseRxDBModel {
   async updateMany(query, updateData) {
     try {
       const collection = this.getCollection();
-      const docs = await collection.find(query).exec();
+      
+      // Format query for RxDB - wrap in selector if not already wrapped
+      const rxdbQuery = query.selector ? query : { selector: query };
+      
+      const docs = await collection.find(rxdbQuery).exec();
       
       if (docs.length === 0) {
         return [];
@@ -231,7 +243,11 @@ class BaseRxDBModel {
   async deleteMany(query) {
     try {
       const collection = this.getCollection();
-      const docs = await collection.find(query).exec();
+      
+      // Format query for RxDB - wrap in selector if not already wrapped
+      const rxdbQuery = query.selector ? query : { selector: query };
+      
+      const docs = await collection.find(rxdbQuery).exec();
       
       let deletedCount = 0;
       for (const doc of docs) {
@@ -255,7 +271,11 @@ class BaseRxDBModel {
   async count(query = {}) {
     try {
       const collection = this.getCollection();
-      const docs = await collection.find(query).exec();
+      
+      // Format query for RxDB - wrap in selector if not already wrapped
+      const rxdbQuery = query.selector ? query : { selector: query };
+      
+      const docs = await collection.find(rxdbQuery).exec();
       return docs.length;
     } catch (error) {
       console.error(`[BaseRxDBModel] Count error in ${this.collectionName}:`, error.message);
@@ -277,7 +297,10 @@ class BaseRxDBModel {
       // Unsubscribe existing subscription with same ID
       this.unsubscribe(subscriptionId);
 
-      const subscription = collection.find(query).$.subscribe({
+      // Format query for RxDB - wrap in selector if not already wrapped
+      const rxdbQuery = query.selector ? query : { selector: query };
+
+      const subscription = collection.find(rxdbQuery).$.subscribe({
         next: (docs) => {
           const jsonDocs = docs.map(doc => doc.toJSON());
           callback(null, jsonDocs);

@@ -57,15 +57,14 @@ class Room extends BaseRxDBModel {
             const code = Room.generateRoomCode();
             console.log(`[Room] Generated room code attempt ${attempts + 1}: ${code}`);
             
-            // Check if code already exists (using existing invite_code column)
+            // Check if code already exists using RxDB
             try {
-                const existing = await dbConnection.query(`
-                    SELECT room_id FROM rooms WHERE invite_code = ?
-                `, [code]);
+                const roomModel = new Room();
+                const existing = await roomModel.findOne({ invite_code: code });
                 
-                console.log(`[Room] Code ${code} uniqueness check: ${existing.length === 0 ? 'unique' : 'exists'}`);
+                console.log(`[Room] Code ${code} uniqueness check: ${existing ? 'exists' : 'unique'}`);
                 
-                if (existing.length === 0) {
+                if (!existing) {
                     console.log(`[Room] Using unique code: ${code}`);
                     return code;
                 }
