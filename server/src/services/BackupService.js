@@ -16,7 +16,7 @@ class BackupService {
     constructor(rxdbConnection) {
         this.rxdbConnection = rxdbConnection;
         this.backupPath = process.env.RXDB_BACKUP_PATH || path.join(__dirname, '../../data/backups');
-        this.maxBackups = parseInt(process.env.RXDB_MAX_BACKUPS) || 10;
+        this.maxBackups = parseInt(process.env.RXDB_MAX_BACKUPS) || 2;
         this.compressionEnabled = process.env.RXDB_BACKUP_COMPRESSION !== 'false';
         this.backupPrefix = 'rxdb_backup';
     }
@@ -198,11 +198,17 @@ class BackupService {
 
     /**
      * Clean up old backup files based on retention policy
+     * @param {string} type - Optional backup type to clean up specifically
      * @returns {Promise<number>} Number of files deleted
      */
-    async cleanupOldBackups() {
+    async cleanupOldBackups(type = null) {
         try {
-            const backupFiles = await this.listBackupFiles();
+            let backupFiles = await this.listBackupFiles();
+            
+            // Filter by type if specified
+            if (type) {
+                backupFiles = backupFiles.filter(file => file.name.includes(`_${type}_`));
+            }
             
             if (backupFiles.length <= this.maxBackups) {
                 return 0;
@@ -228,6 +234,43 @@ class BackupService {
 
         } catch (error) {
             console.error('[BackupService] Backup cleanup failed:', error.message);
+            return 0;
+        }
+    }
+
+    /**
+     * Clean up shutdown backups specifically (more aggressive cleanup)
+     * @returns {Promise<number>} Number of files deleted
+     */
+    async cleanupShutdownBackups() {
+        try {
+            const shutdownBackups = (await this.listBackupFiles())
+                .filter(file => file.name.includes('_shutdown_'))
+                .sort((a, b) => b.created - a.created); // Newest first
+
+            if (shutdownBackups.length <= 2) {
+                return 0;
+            }
+
+            // Keep only the latest 2 shutdown backups
+            const filesToDelete = shutdownBackups.slice(2);
+            let deletedCount = 0;
+
+            for (const file of filesToDelete) {
+                try {
+                    await fs.unlink(file.path);
+                    console.log(`[BackupService] Deleted old shutdown backup: ${file.name}`);
+                    deletedCount++;
+                } catch (deleteError) {
+                    console.warn(`[BackupService] Failed to delete shutdown backup ${file.name}:`, deleteError.message);
+                }
+            }
+
+            console.log(`[BackupService] Shutdown backup cleanup completed: ${deletedCount} files deleted`);
+            return deletedCount;
+
+        } catch (error) {
+            console.error('[BackupService] Shutdown backup cleanup failed:', error.message);
             return 0;
         }
     }

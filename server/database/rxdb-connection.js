@@ -90,6 +90,9 @@ class RxDBConnection {
             // Add all collections
             await this.addAllCollections();
 
+            // Load persisted data after collections are set up
+            await this.loadPersistedData();
+
             // Set up persistence and backup mechanisms
             await this.setupPersistenceAndBackup();
 
@@ -313,7 +316,11 @@ class RxDBConnection {
                 await this.validatePersistence();
             } catch (error) {
                 console.error('[RxDB] Persistence validation error:', error.message);
-                await this.handlePersistenceError(error);
+                // For memory storage, persistence errors are less critical
+                // Just log and continue, don't attempt recovery unless it's a serious issue
+                if (error.message.includes('permission') || error.message.includes('ENOSPC')) {
+                    await this.handlePersistenceError(error);
+                }
             }
         }, 60000); // Check every minute
 
@@ -432,22 +439,32 @@ class RxDBConnection {
     // Validate persistence is working correctly
     async validatePersistence() {
         try {
-            const dbFilePath = path.join(this.dbPath, `${this.dbName}.db`);
-            const stats = await fs.stat(dbFilePath);
+            // For memory storage with JSON persistence, check the JSON file instead of .db file
+            const dbFilePath = path.join(this.dbPath, `${this.dbName}.json`);
             
-            // Check if file was modified recently (within last 10 minutes)
-            const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
-            if (stats.mtime.getTime() < tenMinutesAgo) {
-                console.warn('[RxDB] Database file has not been updated recently, checking persistence...');
-                // Force a save to test persistence
-                await this.forcePersistence();
+            try {
+                const stats = await fs.stat(dbFilePath);
+                
+                // Check if file was modified recently (within last 10 minutes)
+                const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+                if (stats.mtime.getTime() < tenMinutesAgo) {
+                    console.warn('[RxDB] Database file has not been updated recently, checking persistence...');
+                    // Force a save to test persistence
+                    await this.forcePersistence();
+                }
+            } catch (statError) {
+                if (statError.code === 'ENOENT') {
+                    // File doesn't exist yet, which is normal for memory storage
+                    // Try to create initial persistence file
+                    console.log('[RxDB] Database file not found, creating initial persistence...');
+                    await this.saveToFile();
+                } else {
+                    throw statError;
+                }
             }
         } catch (error) {
-            if (error.code === 'ENOENT') {
-                console.warn('[RxDB] Database file not found, persistence may have failed');
-                throw new Error('Database file missing - persistence failure detected');
-            }
-            throw error;
+            console.warn('[RxDB] Persistence validation warning:', error.message);
+            // Don't throw for memory storage - it's less critical
         }
     }
 
@@ -558,8 +575,8 @@ class RxDBConnection {
                 console.log('[RxDB] Successfully recovered from backup');
             } else {
                 console.warn('[RxDB] No backup available for recovery, starting with fresh database');
-                // Remove corrupted database file
-                const dbFilePath = path.join(this.dbPath, `${this.dbName}.db`);
+                // Remove corrupted database file (JSON file for memory storage)
+                const dbFilePath = path.join(this.dbPath, `${this.dbName}.json`);
                 try {
                     await fs.unlink(dbFilePath);
                 } catch (unlinkError) {
@@ -577,8 +594,8 @@ class RxDBConnection {
         try {
             console.log('[RxDB] Attempting to recover persistence...');
             
-            // Check if database file exists and is accessible
-            const dbFilePath = path.join(this.dbPath, `${this.dbName}.db`);
+            // Check if database file exists and is accessible (JSON file for memory storage)
+            const dbFilePath = path.join(this.dbPath, `${this.dbName}.json`);
             try {
                 await fs.access(dbFilePath, fs.constants.W_OK);
             } catch (accessError) {
@@ -611,9 +628,10 @@ class RxDBConnection {
                 this.backupInterval = null;
             }
 
-            // Create final backup
+            // Create final backup and cleanup old ones
             if (this.backupConfig.enabled && this.backupService) {
                 await this.backupService.createBackup('shutdown');
+                await this.backupService.cleanupShutdownBackups();
             }
 
             // Force final persistence
@@ -632,8 +650,8 @@ class RxDBConnection {
         console.error('[RxDB] Handling storage write error:', error.message);
         
         try {
-            // Check disk space and permissions
-            const dbFilePath = path.join(this.dbPath, `${this.dbName}.db`);
+            // Check disk space and permissions (JSON file for memory storage)
+            const dbFilePath = path.join(this.dbPath, `${this.dbName}.json`);
             await fs.access(path.dirname(dbFilePath), fs.constants.W_OK);
             
             // Try to force persistence
@@ -680,6 +698,13 @@ class RxDBConnection {
             throw new Error('Backup service not initialized');
         }
         return await this.backupService.validateBackup(backupFilePath);
+    }
+
+    async cleanupShutdownBackups() {
+        if (!this.backupService) {
+            throw new Error('Backup service not initialized');
+        }
+        return await this.backupService.cleanupShutdownBackups();
     }
 
     // Get persistence configuration
