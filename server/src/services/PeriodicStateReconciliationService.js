@@ -6,7 +6,8 @@
 
 import StateReconciliationEngine from './StateReconciliationEngine.js';
 import Room from '../models/Room.js';
-import dbConnection from '../../database/connection.js';
+// Legacy MariaDB connection removed - now using RxDB
+// import dbConnection from '../../database/connection.js';
 
 class PeriodicStateReconciliationService {
     constructor(socketManager) {

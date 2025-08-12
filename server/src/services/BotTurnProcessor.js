@@ -1,6 +1,7 @@
 import BotManager from './BotManager.js';
 import GameEngine from './GameEngine.js';
-import dbConnection from '../../database/connection.js';
+// Legacy MariaDB connection removed - now using RxDB
+// import dbConnection from '../../database/connection.js';
 
 /**
  * BotTurnProcessor handles automatic bot turn processing and action execution

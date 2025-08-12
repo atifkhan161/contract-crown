@@ -271,7 +271,8 @@ class BackupService {
 
     async writeCompressedBackup(filePath, data) {
         const jsonString = JSON.stringify(data, null, 2);
-        const readStream = require('stream').Readable.from([jsonString]);
+        const { Readable } = await import('stream');
+        const readStream = Readable.from([jsonString]);
         const writeStream = createWriteStream(filePath);
         const gzipStream = createGzip();
 

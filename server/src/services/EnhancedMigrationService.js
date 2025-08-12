@@ -1,9 +1,22 @@
+/**
+ * LEGACY ENHANCED MIGRATION SERVICE - DEPRECATED
+ * 
+ * This service was used for the one-time migration from MariaDB to RxDB.
+ * The migration has been completed and this service is no longer actively used.
+ * 
+ * Kept for reference and potential future migrations.
+ * 
+ * @deprecated This service is no longer used after successful migration to RxDB
+ */
+
 import MigrationService from './MigrationService.js';
 import MigrationErrorHandler from './MigrationErrorHandler.js';
 
 /**
  * Enhanced Migration Service with comprehensive error handling
  * Wraps the existing MigrationService with robust error handling and retry logic
+ * 
+ * @deprecated This service is no longer used after successful migration to RxDB
  */
 class EnhancedMigrationService extends MigrationService {
     constructor() {

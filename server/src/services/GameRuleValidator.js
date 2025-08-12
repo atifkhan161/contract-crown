@@ -1,5 +1,6 @@
 import GameEngine from './GameEngine.js';
-import dbConnection from '../../database/connection.js';
+// Legacy MariaDB connection removed - now using RxDB
+// import dbConnection from '../../database/connection.js';
 
 /**
  * GameRuleValidator ensures that all game actions comply with Contract Crown rules

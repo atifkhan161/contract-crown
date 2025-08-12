@@ -1,7 +1,8 @@
 import Room from '../models/Room.js';
 import Game from '../models/Game.js';
 import BotManager from '../services/BotManager.js';
-import dbConnection from '../../database/connection.js';
+// Legacy MariaDB connection removed - now using RxDB
+// import dbConnection from '../../database/connection.js';
 
 /**
  * Waiting Room WebSocket Handler

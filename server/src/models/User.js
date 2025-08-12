@@ -57,7 +57,7 @@ class User extends BaseRxDBModel {
 
       // Create user data
       const userModel = new User();
-      const userData = {
+      const newUserData = {
         user_id: uuidv4(),
         username: username.trim(),
         email: email.trim().toLowerCase(),
@@ -69,7 +69,7 @@ class User extends BaseRxDBModel {
       };
 
       // Insert into RxDB
-      const createdDoc = await userModel.create(userData);
+      const createdDoc = await userModel.create(newUserData);
 
       console.log(`[User] Created new user: ${createdDoc.username} (${createdDoc.user_id})`);
 

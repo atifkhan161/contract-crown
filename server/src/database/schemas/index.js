@@ -46,11 +46,13 @@ export const usersSchema = {
     },
     created_at: {
       type: 'string',
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     last_login: {
       type: ['string', 'null'],
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     total_games_played: {
       type: 'number',
@@ -96,7 +98,8 @@ export const gamesSchema = {
     status: {
       type: 'string',
       enum: ['waiting', 'in_progress', 'completed', 'cancelled'],
-      default: 'waiting'
+      default: 'waiting',
+      maxLength: 15
     },
     host_id: {
       type: 'string',
@@ -105,15 +108,18 @@ export const gamesSchema = {
     },
     created_at: {
       type: 'string',
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     started_at: {
       type: ['string', 'null'],
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     completed_at: {
       type: ['string', 'null'],
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     winning_team_id: {
       type: ['string', 'null'],
@@ -154,7 +160,10 @@ export const teamsSchema = {
     },
     team_number: {
       type: 'number',
-      enum: [1, 2]
+      enum: [1, 2],
+      multipleOf: 1,
+      minimum: 1,
+      maximum: 2
     },
     current_score: {
       type: 'number',
@@ -207,7 +216,8 @@ export const gamePlayersSchema = {
     seat_position: {
       type: 'number',
       minimum: 1,
-      maximum: 4
+      maximum: 4,
+      multipleOf: 1
     },
     is_ready: {
       type: 'boolean',
@@ -228,7 +238,8 @@ export const gamePlayersSchema = {
     },
     joined_at: {
       type: 'string',
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     }
   },
   required: ['game_player_id', 'game_id', 'user_id', 'seat_position'],
@@ -255,7 +266,8 @@ export const gameRoundsSchema = {
     round_number: {
       type: 'number',
       minimum: 1,
-      maximum: 100
+      maximum: 100,
+      multipleOf: 1
     },
     dealer_user_id: {
       type: 'string',
@@ -290,11 +302,13 @@ export const gameRoundsSchema = {
     },
     round_completed_at: {
       type: ['string', 'null'],
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     created_at: {
       type: 'string',
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     }
   },
   required: ['round_id', 'game_id', 'round_number', 'dealer_user_id', 'first_player_user_id'],
@@ -321,7 +335,8 @@ export const gameTricksSchema = {
     trick_number: {
       type: 'number',
       minimum: 1,
-      maximum: 8
+      maximum: 8,
+      multipleOf: 1
     },
     leading_player_id: {
       type: 'string',
@@ -353,11 +368,13 @@ export const gameTricksSchema = {
     },
     completed_at: {
       type: ['string', 'null'],
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     created_at: {
       type: 'string',
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     }
   },
   required: ['trick_id', 'round_id', 'trick_number', 'leading_player_id', 'cards_played'],
@@ -395,7 +412,8 @@ export const roomsSchema = {
     status: {
       type: 'string',
       enum: ['waiting', 'playing', 'finished'],
-      default: 'waiting'
+      default: 'waiting',
+      maxLength: 10
     },
     is_private: {
       type: 'boolean',
@@ -446,19 +464,23 @@ export const roomsSchema = {
     },
     created_at: {
       type: 'string',
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     updated_at: {
       type: 'string',
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     started_at: {
       type: ['string', 'null'],
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     finished_at: {
       type: ['string', 'null'],
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     }
   },
   required: ['room_id', 'name', 'owner_id'],
@@ -497,7 +519,8 @@ export const roomPlayersSchema = {
     },
     joined_at: {
       type: 'string',
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     }
   },
   required: ['id', 'room_id', 'user_id'],
@@ -528,15 +551,18 @@ export const userSessionsSchema = {
     },
     expires_at: {
       type: 'string',
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     created_at: {
       type: 'string',
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     last_used_at: {
       type: 'string',
-      format: 'date-time'
+      format: 'date-time',
+      maxLength: 30
     },
     user_agent: {
       type: ['string', 'null'],

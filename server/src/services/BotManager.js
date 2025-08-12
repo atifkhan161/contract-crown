@@ -1,5 +1,6 @@
 import BotPlayer from './BotPlayer.js';
-import dbConnection from '../../database/connection.js';
+// Legacy MariaDB connection removed - now using RxDB
+// import dbConnection from '../../database/connection.js';
 
 /**
  * BotManager handles creation, storage, and management of bot players

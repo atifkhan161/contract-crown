@@ -1,4 +1,16 @@
-import dbConnection from '../database/connection.js';
+/**
+ * LEGACY MIGRATION SERVICE - DEPRECATED
+ * 
+ * This service was used for the one-time migration from MariaDB to RxDB.
+ * The migration has been completed and this service is no longer actively used.
+ * 
+ * Kept for reference and potential future migrations.
+ * 
+ * @deprecated This service is no longer used after successful migration to RxDB
+ */
+
+// Legacy MariaDB connection - no longer used after migration to RxDB
+// import dbConnection from '../database/connection.js';
 import fs from 'fs/promises';
 import path from 'path';
 import DataTransformationService from './DataTransformationService.js';
@@ -7,6 +19,8 @@ import RxDBImportService from './RxDBImportService.js';
 /**
  * Migration Service for exporting data from MariaDB and importing to RxDB
  * Handles the complete migration process with validation and rollback capabilities
+ * 
+ * @deprecated This service is no longer used after successful migration to RxDB
  */
 class MigrationService {
     constructor() {

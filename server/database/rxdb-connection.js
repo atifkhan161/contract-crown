@@ -87,6 +87,9 @@ class RxDBConnection {
             // Initialize backup service
             this.backupService = new BackupService(this);
 
+            // Add all collections
+            await this.addAllCollections();
+
             // Set up persistence and backup mechanisms
             await this.setupPersistenceAndBackup();
 
@@ -123,6 +126,35 @@ class RxDBConnection {
             return this.collections[name];
         } catch (error) {
             console.error(`[RxDB] Failed to add collection '${name}':`, error.message);
+            throw error;
+        }
+    }
+
+    async addAllCollections() {
+        try {
+            console.log('[RxDB] Adding all collections...');
+            
+            // Import schemas
+            const { allSchemas } = await import('../src/database/schemas/index.js');
+            
+            // Add all collections at once for better performance
+            const collectionsToAdd = {};
+            for (const [name, schema] of Object.entries(allSchemas)) {
+                collectionsToAdd[name] = { schema };
+            }
+
+            const collections = await this.database.addCollections(collectionsToAdd);
+            
+            // Store collection references
+            for (const [name, collection] of Object.entries(collections)) {
+                this.collections[name] = collection;
+                console.log(`[RxDB] Collection '${name}' added successfully`);
+            }
+
+            console.log(`[RxDB] Added ${Object.keys(collections).length} collections successfully`);
+            return collections;
+        } catch (error) {
+            console.error('[RxDB] Failed to add collections:', error.message);
             throw error;
         }
     }

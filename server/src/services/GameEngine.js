@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import dbConnection from '../../database/connection.js';
+// Legacy MariaDB connection removed - now using RxDB
+// import dbConnection from '../../database/connection.js';
 
 /**
  * GameEngine class handles core game logic for Contract Crown
