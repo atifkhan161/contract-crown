@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import UserSession from '../models/UserSession.js';
 
 const router = express.Router();
 
@@ -198,6 +199,21 @@ router.post('/login',
                 { expiresIn: '24h' }
             );
 
+            // Create user session in RxDB
+            try {
+                const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+                await UserSession.create({
+                    user_id: user.user_id,
+                    token: token,
+                    expires_at: expiresAt,
+                    user_agent: req.get('User-Agent'),
+                    ip_address: req.ip || req.connection.remoteAddress
+                });
+            } catch (sessionError) {
+                console.error('[Auth] Failed to create session:', sessionError.message);
+                // Continue with login even if session creation fails
+            }
+
             console.log(`[Auth] User logged in successfully: ${user.username}`);
 
             res.status(200).json({
@@ -262,6 +278,15 @@ router.post('/validate', async (req, res) => {
         // Verify token
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
         
+        // Check if session exists and is valid
+        const session = await UserSession.findByToken(token);
+        if (!session || !session.isValid()) {
+            return res.status(401).json({
+                valid: false,
+                message: 'Session expired or invalid'
+            });
+        }
+
         // Check if user still exists
         const user = await User.findById(decoded.id);
         if (!user) {
@@ -271,9 +296,13 @@ router.post('/validate', async (req, res) => {
             });
         }
 
+        // Update session last used time
+        await session.updateLastUsed();
+
         res.json({
             valid: true,
-            user: user.toSafeObject()
+            user: user.toSafeObject(),
+            session: session.toSafeObject()
         });
     } catch (error) {
         console.error('Token validation error:', error);
@@ -312,13 +341,115 @@ router.post('/refresh', async (req, res) => {
 });
 
 // Logout endpoint
-router.post('/logout', (req, res) => {
-    // For JWT tokens, logout is handled client-side by removing the token
-    // In a production app, you might want to maintain a blacklist of tokens
-    res.json({
-        success: true,
-        message: 'Logged out successfully'
-    });
+router.post('/logout', async (req, res) => {
+    try {
+        const authHeader = req.header('Authorization');
+        
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            
+            try {
+                // Find and revoke the session
+                const session = await UserSession.findByToken(token);
+                if (session) {
+                    await session.revoke();
+                    console.log(`[Auth] Session revoked for logout: ${session.session_id}`);
+                }
+            } catch (sessionError) {
+                console.error('[Auth] Error revoking session during logout:', sessionError.message);
+                // Continue with logout even if session revocation fails
+            }
+        }
+
+        res.json({
+            success: true,
+            message: 'Logged out successfully'
+        });
+    } catch (error) {
+        console.error('[Auth] Logout error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Logout failed'
+        });
+    }
+});
+
+// Get user sessions endpoint
+router.get('/sessions', async (req, res) => {
+    try {
+        const authHeader = req.header('Authorization');
+        
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({
+                success: false,
+                message: 'No token provided'
+            });
+        }
+
+        const token = authHeader.substring(7);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        
+        const sessions = await UserSession.findByUserId(decoded.id);
+        
+        res.json({
+            success: true,
+            sessions: sessions.map(session => session.toSafeObject())
+        });
+    } catch (error) {
+        console.error('[Auth] Get sessions error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve sessions'
+        });
+    }
+});
+
+// Revoke all sessions endpoint
+router.post('/revoke-all-sessions', async (req, res) => {
+    try {
+        const authHeader = req.header('Authorization');
+        
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({
+                success: false,
+                message: 'No token provided'
+            });
+        }
+
+        const token = authHeader.substring(7);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        
+        await UserSession.revokeAllForUser(decoded.id);
+        
+        res.json({
+            success: true,
+            message: 'All sessions revoked successfully'
+        });
+    } catch (error) {
+        console.error('[Auth] Revoke all sessions error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to revoke sessions'
+        });
+    }
+});
+
+// Cleanup expired sessions endpoint (admin only)
+router.post('/cleanup-sessions', async (req, res) => {
+    try {
+        const cleanedCount = await UserSession.cleanupExpired();
+        
+        res.json({
+            success: true,
+            message: `Cleaned up ${cleanedCount} expired sessions`
+        });
+    } catch (error) {
+        console.error('[Auth] Cleanup sessions error:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to cleanup sessions'
+        });
+    }
 });
 
 // Health check for auth routes

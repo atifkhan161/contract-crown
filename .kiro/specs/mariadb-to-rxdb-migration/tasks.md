@@ -126,20 +126,29 @@
     - Add version-based resolution for room state changes
     - _Requirements: 3.1, 3.2, 3.4_
 
-- [ ] 6. Update API endpoints to use RxDB
-  - [ ] 6.1 Update authentication endpoints
+- [-] 6. Update API endpoints to use RxDB
+
+
+
+  - [x] 6.1 Update authentication endpoints
+
+
     - Modify login/register endpoints to use RxDB User model
     - Update session management to use RxDB UserSessions collection
     - Maintain existing JWT token functionality
     - _Requirements: 6.2, 6.3_
 
-  - [ ] 6.2 Update room management endpoints
+
+
+  - [x] 6.2 Update room management endpoints
+
     - Modify room creation, joining, and management endpoints
     - Update real-time room state synchronization
     - Maintain existing room code generation and validation
     - _Requirements: 6.1, 6.2_
 
-  - [ ] 6.3 Update game management endpoints
+  - [-] 6.3 Update game management endpoints
+
     - Modify game creation and state management endpoints
     - Update game progression and scoring logic
     - Maintain existing game rules and validation

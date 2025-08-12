@@ -1,11 +1,11 @@
 import express from 'express';
 import Room from '../models/Room.js';
-import auth from '../middlewares/auth.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // Get all available rooms
-router.get('/', auth, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
     try {
         const rooms = await Room.findAll(['waiting', 'playing']);
 
@@ -23,10 +23,10 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Create a new room
-router.post('/', auth, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
     try {
         const { name, maxPlayers, isPrivate } = req.body;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
 
         // Validate input
         if (!Room.validateName(name)) {
@@ -107,10 +107,10 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Join a room by code
-router.post('/join-by-code', auth, async (req, res) => {
+router.post('/join-by-code', authenticateToken, async (req, res) => {
     try {
         const { roomCode } = req.body;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
 
         if (!roomCode || roomCode.trim().length === 0) {
             return res.status(400).json({
@@ -185,10 +185,10 @@ router.post('/join-by-code', auth, async (req, res) => {
 });
 
 // Join a room
-router.post('/:roomId/join', auth, async (req, res) => {
+router.post('/:roomId/join', authenticateToken, async (req, res) => {
     try {
         const { roomId } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
 
         const room = await Room.findById(roomId);
 
@@ -255,10 +255,10 @@ router.post('/:roomId/join', auth, async (req, res) => {
 });
 
 // Leave a room
-router.post('/:roomId/leave', auth, async (req, res) => {
+router.post('/:roomId/leave', authenticateToken, async (req, res) => {
     try {
         const { roomId } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
 
         const room = await Room.findById(roomId);
 
@@ -306,10 +306,10 @@ router.post('/:roomId/leave', auth, async (req, res) => {
 });
 
 // Delete a room (owner only)
-router.delete('/:roomId', auth, async (req, res) => {
+router.delete('/:roomId', authenticateToken, async (req, res) => {
     try {
         const { roomId } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
 
         const room = await Room.findById(roomId);
 
@@ -352,7 +352,7 @@ router.delete('/:roomId', auth, async (req, res) => {
 });
 
 // Get room details
-router.get('/:roomId', auth, async (req, res) => {
+router.get('/:roomId', authenticateToken, async (req, res) => {
     try {
         const { roomId } = req.params;
 
@@ -379,11 +379,11 @@ router.get('/:roomId', auth, async (req, res) => {
 });
 
 // Set player ready status
-router.post('/:roomId/ready', auth, async (req, res) => {
+router.post('/:roomId/ready', authenticateToken, async (req, res) => {
     try {
         const { roomId } = req.params;
         const { isReady } = req.body;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
 
         const room = await Room.findById(roomId);
 
@@ -503,10 +503,10 @@ router.post('/:roomId/ready', auth, async (req, res) => {
 });
 
 // Form teams (host only)
-router.post('/:roomId/form-teams', auth, async (req, res) => {
+router.post('/:roomId/form-teams', authenticateToken, async (req, res) => {
     try {
         const { roomId } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
 
         const room = await Room.findById(roomId);
 
@@ -578,10 +578,10 @@ router.post('/:roomId/form-teams', auth, async (req, res) => {
 });
 
 // Start game (host only)
-router.post('/:roomId/start', auth, async (req, res) => {
+router.post('/:roomId/start', authenticateToken, async (req, res) => {
     try {
         const { roomId } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
 
         const room = await Room.findById(roomId);
 

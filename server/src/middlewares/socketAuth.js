@@ -1,17 +1,14 @@
 import jwt from 'jsonwebtoken';
-import JWTValidator from '../utils/jwtValidator.js';
-import UserIdNormalizer from '../utils/userIdNormalizer.js';
+import User from '../models/User.js';
+import UserSession from '../models/UserSession.js';
 
 /**
  * Enhanced WebSocket Authentication Middleware
- * Handles JWT token verification with database user validation for Socket.IO connections
+ * Handles JWT token verification with RxDB user and session validation for Socket.IO connections
  */
 
-// Create JWT validator instance
-const jwtValidator = new JWTValidator();
-
 /**
- * Enhanced middleware to authenticate Socket.IO connections with database verification
+ * Enhanced middleware to authenticate Socket.IO connections with RxDB verification
  * @param {Object} socket - Socket.IO socket instance
  * @param {Function} next - Next middleware function
  */
@@ -27,54 +24,66 @@ export const authenticateSocket = async (socket, next) => {
       return next(error);
     }
 
-    // Validate token with database user verification
-    const validatedUser = await jwtValidator.validateWebsocketToken(token);
+    // Verify JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
 
-    console.log('[SocketAuth] DEBUG - Validated user:', {
-      userId: validatedUser.userId,
-      username: validatedUser.username,
-      email: validatedUser.email
-    });
-
-    // Create normalized user data
-    const normalizedUser = UserIdNormalizer.createNormalizedUserData(validatedUser);
-
-    if (!normalizedUser || !normalizedUser.userId || !normalizedUser.username) {
-      console.error('[SocketAuth] Failed to normalize user data:', validatedUser);
-      const error = new Error('Invalid user data after normalization');
-      error.data = { code: 'NORMALIZATION_FAILED' };
+    // Check if session exists and is valid
+    const session = await UserSession.findByToken(token);
+    if (!session || !session.isValid()) {
+      console.error('[SocketAuth] Session expired or invalid');
+      const error = new Error('Session expired or invalid');
+      error.data = { code: 'SESSION_INVALID' };
       return next(error);
     }
 
-    // Validate user ID format
-    const userIdValidation = UserIdNormalizer.validateUserIdFormat(normalizedUser.userId);
-    if (!userIdValidation.isValid) {
-      console.error('[SocketAuth] Invalid user ID format:', userIdValidation.error);
-      const error = new Error(`Invalid user ID format: ${userIdValidation.error}`);
-      error.data = { code: 'INVALID_USER_ID_FORMAT' };
+    // Check if user still exists and is active
+    const user = await User.findById(decoded.id);
+    if (!user || !user.is_active) {
+      console.error('[SocketAuth] User not found or inactive');
+      const error = new Error('User not found or inactive');
+      error.data = { code: 'USER_NOT_FOUND' };
       return next(error);
     }
 
-    // Attach validated and normalized user information to socket
-    socket.userId = normalizedUser.userId;
-    socket.username = normalizedUser.username;
-    socket.email = normalizedUser.email;
+    // Update session last used time
+    await session.updateLastUsed();
 
-    // Create authentication context for debugging and monitoring
-    socket.authContext = jwtValidator.createAuthContext(validatedUser);
+    // Attach user information to socket
+    socket.userId = user.user_id;
+    socket.username = user.username;
+    socket.email = user.email;
+    socket.user = user;
+    socket.session = session;
 
-    // Log successful authentication with enhanced details
-    console.log(`[SocketAuth] User authenticated and verified: ${socket.username} (${socket.userId}) - Format: ${userIdValidation.format}`);
+    // Log successful authentication
+    console.log(`[SocketAuth] User authenticated: ${socket.username} (${socket.userId})`);
 
     next();
   } catch (error) {
     console.error('[SocketAuth] Authentication failed:', error.message);
 
     // Create enhanced error with specific codes for better error handling
-    const authError = new Error(error.message || 'Invalid authentication token');
+    let errorCode = 'INVALID_TOKEN';
+    let errorMessage = 'Invalid authentication token';
+
+    if (error.name === 'JsonWebTokenError') {
+      errorCode = 'INVALID_TOKEN';
+      errorMessage = 'Invalid token format';
+    } else if (error.name === 'TokenExpiredError') {
+      errorCode = 'TOKEN_EXPIRED';
+      errorMessage = 'Token has expired';
+    } else if (error.message.includes('Session')) {
+      errorCode = 'SESSION_INVALID';
+      errorMessage = error.message;
+    } else if (error.message.includes('User')) {
+      errorCode = 'USER_NOT_FOUND';
+      errorMessage = error.message;
+    }
+
+    const authError = new Error(errorMessage);
     authError.data = {
-      code: error.code || 'INVALID_TOKEN',
-      message: error.message,
+      code: errorCode,
+      message: errorMessage,
       timestamp: new Date().toISOString()
     };
 
@@ -107,87 +116,7 @@ function extractToken(socket) {
   return null;
 }
 
-/**
- * Verify JWT token
- * @param {string} token - JWT token to verify
- * @returns {Object} Decoded token payload
- * @throws {Error} If token is invalid
- */
-function verifyToken(token) {
-  const secret = process.env.JWT_SECRET || 'your-secret-key';
 
-  try {
-    // First try to verify as a real JWT token
-    const decoded = jwt.verify(token, secret);
-
-    // Validate required fields (handle both 'id' and 'userId')
-    // JWT tokens use 'id' field, normalize to string for consistency
-    const userId = String(decoded.id || decoded.userId || '');
-    if (!userId || !decoded.username) {
-      throw new Error('Token missing required user information');
-    }
-
-    // Check token expiration (jwt.verify already does this, but we can add custom logic)
-    const now = Math.floor(Date.now() / 1000);
-    if (decoded.exp && decoded.exp < now) {
-      throw new Error('Token has expired');
-    }
-
-    return decoded;
-  } catch (error) {
-    // If JWT verification fails, try to parse as a test token for development
-    if (process.env.NODE_ENV === 'development' || process.env.ALLOW_TEST_TOKENS === 'true') {
-      try {
-        console.log('[SocketAuth] JWT verification failed, trying test token parsing...');
-        const decoded = parseTestToken(token);
-        const userId = decoded.userId || decoded.id;
-        if (decoded && userId && decoded.username) {
-          console.log('[SocketAuth] Test token accepted for development');
-          return decoded;
-        }
-      } catch (testError) {
-        console.log('[SocketAuth] Test token parsing also failed');
-      }
-    }
-
-    // If both real JWT and test token parsing fail, throw the original error
-    if (error.name === 'JsonWebTokenError') {
-      throw new Error('Invalid token format');
-    } else if (error.name === 'TokenExpiredError') {
-      throw new Error('Token has expired');
-    } else if (error.name === 'NotBeforeError') {
-      throw new Error('Token not active yet');
-    } else {
-      throw error;
-    }
-  }
-}
-
-/**
- * Parse test token for development purposes
- * @param {string} token - Test token to parse
- * @returns {Object} Decoded token payload
- */
-function parseTestToken(token) {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid token format');
-    }
-
-    const payload = JSON.parse(atob(parts[1]));
-
-    // Check if token is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (payload.exp && payload.exp < now) {
-      throw new Error('Test token has expired');
-    }
-
-    return payload;
-  } catch (error) {
-    throw new Error('Invalid test token format');
-  }
-}
 
 /**
  * Middleware to authorize specific socket events

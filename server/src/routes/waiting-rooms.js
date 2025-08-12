@@ -1,7 +1,7 @@
 import express from 'express';
 import Room from '../models/Room.js';
 import Game from '../models/Game.js';
-import auth from '../middlewares/auth.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -11,10 +11,10 @@ const router = express.Router();
  */
 
 // Get waiting room data
-router.get('/:roomId', auth, async (req, res) => {
+router.get('/:roomId', authenticateToken, async (req, res) => {
     try {
         const { roomId } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
 
         const room = await Room.findById(roomId);
 
@@ -93,10 +93,10 @@ router.get('/:roomId', auth, async (req, res) => {
 });
 
 // Join waiting room (HTTP fallback)
-router.post('/:roomId/join', auth, async (req, res) => {
+router.post('/:roomId/join', authenticateToken, async (req, res) => {
     try {
         const { roomId } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
         const username = req.user.username;
 
         const room = await Room.findById(roomId);
@@ -170,10 +170,10 @@ router.post('/:roomId/join', auth, async (req, res) => {
 });
 
 // Leave waiting room (HTTP fallback)
-router.post('/:roomId/leave', auth, async (req, res) => {
+router.post('/:roomId/leave', authenticateToken, async (req, res) => {
     try {
         const { roomId } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
 
         const room = await Room.findById(roomId);
 
@@ -280,11 +280,11 @@ router.post('/:roomId/leave', auth, async (req, res) => {
 });
 
 // Toggle ready status (HTTP fallback)
-router.post('/:roomId/ready', auth, async (req, res) => {
+router.post('/:roomId/ready', authenticateToken, async (req, res) => {
     try {
         const { roomId } = req.params;
         const { isReady } = req.body;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
         const username = req.user.username;
 
         if (typeof isReady !== 'boolean') {
@@ -370,10 +370,10 @@ router.post('/:roomId/ready', auth, async (req, res) => {
 });
 
 // Start game (HTTP fallback)
-router.post('/:roomId/start', auth, async (req, res) => {
+router.post('/:roomId/start', authenticateToken, async (req, res) => {
     try {
         const { roomId } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
         const username = req.user.username;
 
         const room = await Room.findById(roomId);
