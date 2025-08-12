@@ -11,7 +11,13 @@
     "rxdb:init": "node database/rxdb-init.js init",
     "rxdb:reset": "node database/rxdb-init.js reset",
     "rxdb:status": "node database/rxdb-init.js status",
-    "rxdb:check": "node scripts/check-rxdb-setup.js"
+    "rxdb:check": "node scripts/check-rxdb-setup.js",
+    "backup:create": "node scripts/backup-manager.js create",
+    "backup:list": "node scripts/backup-manager.js list",
+    "backup:restore": "node scripts/backup-manager.js restore",
+    "backup:validate": "node scripts/backup-manager.js validate",
+    "backup:cleanup": "node scripts/backup-manager.js cleanup",
+    "backup:help": "node scripts/backup-manager.js help"
   },
   "dependencies": {
     "ajv": "^8.17.1",
