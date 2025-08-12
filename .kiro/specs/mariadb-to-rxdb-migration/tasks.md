@@ -126,7 +126,9 @@
     - Add version-based resolution for room state changes
     - _Requirements: 3.1, 3.2, 3.4_
 
-- [-] 6. Update API endpoints to use RxDB
+- [x] 6. Update API endpoints to use RxDB
+
+
 
 
 
@@ -147,14 +149,17 @@
     - Maintain existing room code generation and validation
     - _Requirements: 6.1, 6.2_
 
-  - [-] 6.3 Update game management endpoints
+  - [x] 6.3 Update game management endpoints
+
 
     - Modify game creation and state management endpoints
     - Update game progression and scoring logic
     - Maintain existing game rules and validation
     - _Requirements: 6.1, 6.2_
 
-- [ ] 7. Implement data persistence and backup mechanisms
+- [-] 7. Implement data persistence and backup mechanisms
+
+
   - [ ] 7.1 Configure LokiJS persistence settings
     - Set up automatic file-based persistence with appropriate intervals
     - Configure backup file rotation and cleanup

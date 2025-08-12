@@ -1,13 +1,13 @@
 import express from 'express';
 import User from '../models/User.js';
-import auth from '../middlewares/auth.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // Get user statistics
-router.get('/stats', auth, async (req, res) => {
+router.get('/stats', authenticateToken, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user.user_id;
         
         // Get user with stats
         const user = await User.findById(userId);
@@ -44,9 +44,9 @@ router.get('/stats', auth, async (req, res) => {
 });
 
 // Update user profile
-router.put('/profile', auth, async (req, res) => {
+router.put('/profile', authenticateToken, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user.user_id;
         const { username, email } = req.body;
         
         // Validate input

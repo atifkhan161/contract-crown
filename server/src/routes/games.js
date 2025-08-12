@@ -1,13 +1,13 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import auth from '../middlewares/auth.js';
+import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // Create a demo game session
-router.post('/demo', auth, async (req, res) => {
+router.post('/demo', authenticateToken, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user.user_id;
         const username = req.user.username;
 
         // Generate unique demo game ID
@@ -82,10 +82,10 @@ router.post('/demo', auth, async (req, res) => {
 });
 
 // Get demo game details
-router.get('/demo/:gameId', auth, async (req, res) => {
+router.get('/demo/:gameId', authenticateToken, async (req, res) => {
     try {
         const { gameId } = req.params;
-        const userId = req.user.id;
+        const userId = req.user.user_id;
 
         if (!global.demoGames || !global.demoGames.has(gameId)) {
             return res.status(404).json({
