@@ -12,6 +12,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
 import BackupService from '../src/services/BackupService.js';
+import SeedDataService from '../src/services/SeedDataService.js';
 
 dotenv.config();
 
@@ -99,6 +100,15 @@ class RxDBConnection {
             this.isInitialized = true;
             console.log('[RxDB] RxDB initialization completed successfully');
 
+            // Seed default data after database is fully initialized
+            const seedResult = await this.seedDefaultData();
+            
+            // Force persistence if new users were created
+            if (seedResult && !seedResult.skipped && seedResult.totalSeeded > 0) {
+                await this.saveToFile();
+                console.log('[RxDB] Forced persistence after seeding default data');
+            }
+
             return this.database;
         } catch (error) {
             console.error('[RxDB] Initialization failed:', error.message);
@@ -183,6 +193,23 @@ class RxDBConnection {
         } catch (error) {
             console.error('[RxDB] Failed to load persisted data:', error.message);
             return false;
+        }
+    }
+
+    // Seed default data into the database
+    async seedDefaultData() {
+        try {
+            console.log('[RxDB] Seeding default data...');
+            
+            const seedService = new SeedDataService();
+            const summary = await seedService.seedAllData();
+            
+            console.log('[RxDB] Default data seeding completed:', summary);
+            return summary;
+        } catch (error) {
+            console.error('[RxDB] Failed to seed default data:', error.message);
+            // Don't throw error - seeding failure shouldn't prevent database initialization
+            return null;
         }
     }
 
