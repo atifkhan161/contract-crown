@@ -1,7 +1,7 @@
 // Theme Initializer - Ensures theme is applied on page load
 class ThemeInitializer {
   static init() {
-    const savedTheme = localStorage.getItem('theme') || 'earth';
+    const savedTheme = localStorage.getItem('theme') || 'forest';
     document.documentElement.setAttribute('data-theme', savedTheme);
   }
 }
