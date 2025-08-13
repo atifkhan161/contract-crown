@@ -8,16 +8,15 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "vitest --run",
-    "rxdb:init": "node database/rxdb-init.js init",
-    "rxdb:reset": "node database/rxdb-init.js reset",
-    "rxdb:status": "node database/rxdb-init.js status",
-    "rxdb:check": "node scripts/check-rxdb-setup.js",
-    "backup:create": "node scripts/backup-manager.js create",
-    "backup:list": "node scripts/backup-manager.js list",
-    "backup:restore": "node scripts/backup-manager.js restore",
-    "backup:validate": "node scripts/backup-manager.js validate",
-    "backup:cleanup": "node scripts/backup-manager.js cleanup",
-    "backup:help": "node scripts/backup-manager.js help"
+    "db:init": "node database/loki-init.js init",
+    "db:reset": "node database/loki-init.js reset",
+    "db:status": "node database/loki-init.js status",
+    "lokijs:init": "node database/loki-init.js init",
+    "lokijs:reset": "node database/loki-init.js reset",
+    "lokijs:status": "node database/loki-init.js status",
+    "seed:users": "node scripts/seed-users.js",
+    "backup:create": "node -e 'import(\"./database/loki-db.js\").then(m => m.default.createBackup(\"manual\")).then(console.log).catch(console.error)'",
+    "migrate:lokijs": "node scripts/migrate-to-lokijs.js"
   },
   "dependencies": {
     "ajv": "^8.17.1",
@@ -33,8 +32,6 @@
     "http-proxy-middleware": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
     "lokijs": "^1.5.12",
-
-    "rxdb": "^16.16.0",
     "socket.io": "^4.7.4",
     "uuid": "^9.0.1"
   },

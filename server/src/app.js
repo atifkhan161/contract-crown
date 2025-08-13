@@ -7,6 +7,7 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
+import fs from 'fs';
 import authRoutes from './routes/auth.js';
 import roomsRoutes from './routes/rooms.js';
 import waitingRoomsRoutes from './routes/waiting-rooms.js';
@@ -20,7 +21,7 @@ const __dirname = path.dirname(__filename);
 
 // Ensure data directories exist
 const dataDir = path.join(process.cwd(), 'data');
-const rxdbDir = path.join(dataDir, 'rxdb');
+const lokiDir = path.join(dataDir, 'lokijs');
 
 /**
  * Create and configure Express application
@@ -36,13 +37,7 @@ const rxdbDir = path.join(dataDir, 'rxdb');
 export function createApp(io, socketManager, connectionStatusManager, periodicReconciliationService, monitoringService, diagnosticTools, performanceMonitor) {
   const app = express();
 
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-
-  if (!fs.existsSync(rxdbDir)) {
-    fs.mkdirSync(rxdbDir, { recursive: true });
-  }
+  // Directory creation is handled by LokiJS connection
 
   // Setup middleware
   setupMiddleware(app);

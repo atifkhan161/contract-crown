@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
-import BaseRxDBModel from './BaseRxDBModel.js';
+import BaseLokiModel from './BaseLokiModel.js';
 import User from './User.js';
 import Game from './Game.js';
 
-class Room extends BaseRxDBModel {
+class Room extends BaseLokiModel {
     constructor(roomData = {}) {
         super('rooms', roomData);
         this.room_id = roomData.room_id || uuidv4();
@@ -57,7 +57,7 @@ class Room extends BaseRxDBModel {
             const code = Room.generateRoomCode();
             console.log(`[Room] Generated room code attempt ${attempts + 1}: ${code}`);
             
-            // Check if code already exists using RxDB
+            // Check if code already exists using LokiJS
             try {
                 const roomModel = new Room();
                 const existing = await roomModel.findOne({ invite_code: code });
@@ -136,7 +136,7 @@ class Room extends BaseRxDBModel {
                 invite_code: roomDataToCreate.invite_code
             });
 
-            // Insert room into RxDB
+            // Insert room into LokiJS
             const createdRoom = await roomModel.create(roomDataToCreate);
 
             // Add owner as first player

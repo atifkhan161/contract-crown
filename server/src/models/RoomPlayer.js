@@ -1,10 +1,10 @@
-import BaseRxDBModel from './BaseRxDBModel.js';
+import BaseLokiModel from './BaseLokiModel.js';
 
 /**
  * RoomPlayer Model
- * Handles room player relationships using RxDB
+ * Handles room player relationships using LokiJS
  */
-class RoomPlayer extends BaseRxDBModel {
+class RoomPlayer extends BaseLokiModel {
     constructor(roomPlayerData = {}) {
         super('roomPlayers', roomPlayerData);
         this.id = roomPlayerData.id; // Composite key: room_id_user_id

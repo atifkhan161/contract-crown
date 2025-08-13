@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
-import BaseRxDBModel from './BaseRxDBModel.js';
+import BaseLokiModel from './BaseLokiModel.js';
 
-class UserSession extends BaseRxDBModel {
+class UserSession extends BaseLokiModel {
   constructor(sessionData = {}) {
     super('userSessions', sessionData);
     this.session_id = sessionData.session_id || uuidv4();

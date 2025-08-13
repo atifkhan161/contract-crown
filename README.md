@@ -170,14 +170,14 @@ trump-crown/
 ```
 
 ### Database Architecture
-The project uses **RxDB** (Reactive Database) for real-time data synchronization:
+The project uses **LokiJS** for fast, reliable data storage:
 
-- **Local-first Architecture**: RxDB provides offline-first capabilities with automatic synchronization
-- **Reactive Queries**: Real-time updates across all connected clients
-- **Schema Validation**: Comprehensive data validation with AJV
-- **Backup System**: Automated backup and restore functionality
-- **Migration Support**: Database schema migration with rollback capabilities
-- **Performance Monitoring**: Built-in performance tracking and optimization
+- **Simple Architecture**: LokiJS provides fast, in-memory database with file persistence
+- **High Performance**: Optimized for speed and low memory usage
+- **Schemaless**: Flexible document storage with application-level validation
+- **Backup System**: Simple backup and restore functionality
+- **File-based Storage**: JSON file persistence with automatic saving
+- **Easy Maintenance**: Simple, debuggable database operations
 
 ## Getting Started
 
@@ -251,16 +251,18 @@ The project uses RxDB for reactive, real-time data management:
 #### Database Commands
 ```bash
 # Initialize database
-npm run rxdb:init
+npm run db:init
 
 # Reset database (clears all data)
-npm run rxdb:reset
+npm run db:reset
 
 # Check database status
-npm run rxdb:status
+npm run db:status
 
-# Validate database setup
-npm run rxdb:check
+# Legacy commands (still work)
+npm run lokijs:init
+npm run lokijs:reset
+npm run lokijs:status
 ```
 
 #### Backup Management
@@ -309,11 +311,11 @@ node examples/websocketReliabilityDemo.js
 
 **Database Connection Issues:**
 ```bash
-# Check RxDB status
-npm run rxdb:status
+# Check LokiJS status
+npm run db:status
 
 # Reinitialize database
-npm run rxdb:reset && npm run rxdb:init
+npm run db:reset && npm run db:init
 ```
 
 **WebSocket Connection Issues:**
@@ -524,9 +526,9 @@ PORT=3030
 NODE_ENV=development
 VITE_DEV_SERVER_URL=http://localhost:5173
 
-# RxDB Configuration
-RXDB_PATH=./data/rxdb
-RXDB_NAME=trump_crown_rxdb
+# LokiJS Configuration
+LOKIJS_PATH=./data/lokijs
+LOKIJS_NAME=trump_crown_db.json
 
 # JWT Configuration
 JWT_SECRET=your_super_secret_jwt_key_here
@@ -537,8 +539,8 @@ BCRYPT_ROUNDS=12
 ```
 
 **Key Configuration Notes:**
-- `RXDB_PATH` - Path to RxDB database files
-- `RXDB_NAME` - Database name for RxDB
+- `LOKIJS_PATH` - Path to LokiJS database files
+- `LOKIJS_NAME` - Database filename for LokiJS
 - `JWT_SECRET` - Must be secure for production
 - `VITE_DEV_SERVER_URL` - Frontend development server URL
 
@@ -551,7 +553,7 @@ The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) f
 **Overall Progress**: ~75% Complete
 
 ### Completed Features ✅
-- **RxDB Database Integration**: Complete migration from MariaDB to RxDB with reactive queries, backup system, and schema validation
+- **LokiJS Database Integration**: Complete migration from RxDB to LokiJS with improved performance, stability, and simplified maintenance
 - **Authentication System**: JWT-based authentication with session management and security middleware
 - **Dashboard & Room Management**: Full room creation, joining, and management with real-time updates
 - **Waiting Room**: Complete player management with ready status, team formation, and WebSocket integration
@@ -564,7 +566,7 @@ The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) f
 - **Development Tools**: Comprehensive debugging tools, state monitoring, and diagnostic utilities
 
 ### Recent Updates 🔄
-- **RxDB Migration Complete**: Successfully migrated from MariaDB to RxDB with full data preservation and enhanced real-time capabilities
+- **LokiJS Migration Complete**: Successfully migrated from RxDB to LokiJS with improved stability, performance, and simplified architecture
 - **Game Interface Implementation**: Complete game page with card display, trump declaration, and trick management
 - **Bot AI Integration**: Intelligent bot players with strategic decision-making and realistic gameplay
 - **State Synchronization**: Advanced state reconciliation engine for handling conflicts and ensuring data consistency

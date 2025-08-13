@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import createApp from './app.js';
-import rxdbConnection from '../database/rxdb-connection.js';
+import lokiConnection from '../database/loki-db.js';
 import SocketManager from '../websocket/socketManager.js';
 import ConnectionStatusManager from '../websocket/connectionStatus.js';
 import PeriodicStateReconciliationService from './services/PeriodicStateReconciliationService.js';
@@ -22,10 +22,10 @@ class GameServer {
   }
 
   async initialize() {
-    // Initialize RxDB database FIRST before setting up Socket.IO
-    console.log('[Server] Initializing RxDB database...');
-    await rxdbConnection.initialize();
-    console.log('[Server] RxDB database initialized successfully');
+    // Initialize LokiJS database FIRST before setting up Socket.IO
+    console.log('[Server] Initializing LokiJS database...');
+    await lokiConnection.initialize();
+    console.log('[Server] LokiJS database initialized successfully');
     
     // Now setup Socket.IO with authentication (database is ready)
     this.setupSocketIO();

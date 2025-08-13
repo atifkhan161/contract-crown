@@ -9,16 +9,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * BackupService - Handles backup and restore operations for RxDB
+ * BackupService - Handles backup and restore operations for LokiJS
  * Provides automated backup creation, validation, and restoration capabilities
  */
 class BackupService {
-    constructor(rxdbConnection) {
-        this.rxdbConnection = rxdbConnection;
-        this.backupPath = process.env.RXDB_BACKUP_PATH || path.join(__dirname, '../../data/backups');
-        this.maxBackups = parseInt(process.env.RXDB_MAX_BACKUPS) || 2;
-        this.compressionEnabled = process.env.RXDB_BACKUP_COMPRESSION !== 'false';
-        this.backupPrefix = 'rxdb_backup';
+    constructor(lokiConnection) {
+        this.lokiConnection = lokiConnection;
+        this.backupPath = process.env.LOKIJS_BACKUP_PATH || path.join(__dirname, '../../data/backups');
+        this.maxBackups = parseInt(process.env.LOKIJS_MAX_BACKUPS) || 2;
+        this.compressionEnabled = process.env.LOKIJS_BACKUP_COMPRESSION !== 'false';
+        this.backupPrefix = 'lokijs_backup';
     }
 
     /**
@@ -40,8 +40,8 @@ class BackupService {
             const backupFilePath = path.join(this.backupPath, backupFile);
 
             // Export database to JSON
-            const database = this.rxdbConnection.getDatabase();
-            const exportData = await database.exportJSON();
+            const database = this.lokiConnection.getDatabase();
+            const exportData = database.serialize();
 
             // Add metadata to backup
             const backupData = {
@@ -49,7 +49,7 @@ class BackupService {
                     version: '1.0',
                     type: type,
                     timestamp: new Date().toISOString(),
-                    collections: Object.keys(this.rxdbConnection.getCollections()),
+                    collections: Object.keys(this.lokiConnection.getCollections()),
                     totalDocuments: await this.getTotalDocumentCount()
                 },
                 data: exportData
@@ -87,8 +87,8 @@ class BackupService {
             const backupFilePath = path.join(this.backupPath, backupName);
 
             // Quick export without compression
-            const database = this.rxdbConnection.getDatabase();
-            const exportData = await database.exportJSON();
+            const database = this.lokiConnection.getDatabase();
+            const exportData = database.serialize();
 
             await fs.writeFile(backupFilePath, JSON.stringify(exportData, null, 2));
 
@@ -123,10 +123,10 @@ class BackupService {
             await this.clearDatabase();
 
             // Import backup data
-            const database = this.rxdbConnection.getDatabase();
+            const database = this.lokiConnection.getDatabase();
             const importData = backupData.data || backupData; // Handle both formats
 
-            await database.importJSON(importData);
+            database.loadJSON(importData);
 
             // Verify restoration
             await this.verifyRestoration(backupData);
@@ -395,11 +395,10 @@ class BackupService {
     async getTotalDocumentCount() {
         try {
             let totalCount = 0;
-            const collections = this.rxdbConnection.getCollections();
+            const collections = this.lokiConnection.getCollections();
             
             for (const [name, collection] of Object.entries(collections)) {
-                const count = await collection.count().exec();
-                totalCount += count;
+                totalCount += collection.count();
             }
             
             return totalCount;
@@ -411,10 +410,10 @@ class BackupService {
 
     async clearDatabase() {
         try {
-            const collections = this.rxdbConnection.getCollections();
+            const collections = this.lokiConnection.getCollections();
             
             for (const [name, collection] of Object.entries(collections)) {
-                await collection.remove();
+                collection.clear();
             }
             
             console.log('[BackupService] Database cleared for restoration');
@@ -426,7 +425,7 @@ class BackupService {
     async verifyRestoration(backupData) {
         try {
             const expectedCollections = backupData.metadata?.collections || [];
-            const currentCollections = Object.keys(this.rxdbConnection.getCollections());
+            const currentCollections = Object.keys(this.lokiConnection.getCollections());
             
             // Verify all expected collections exist
             for (const collectionName of expectedCollections) {

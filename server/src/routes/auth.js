@@ -93,7 +93,7 @@ router.post('/register',
                 { expiresIn: '24h' }
             );
 
-            // Create user session in RxDB
+            // Create user session in LokiJS
             try {
                 const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
                 await UserSession.create({
@@ -231,7 +231,7 @@ router.post('/login',
                 { expiresIn: '24h' }
             );
 
-            // Create user session in RxDB
+            // Create user session in LokiJS
             try {
                 const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
                 await UserSession.create({

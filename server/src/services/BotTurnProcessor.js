@@ -1,12 +1,12 @@
 import BotManager from './BotManager.js';
 import GameEngine from './GameEngine.js';
-// Legacy MariaDB connection removed - now using RxDB
+// Legacy MariaDB connection removed - now using LokiJS
 // import dbConnection from '../../database/connection.js';
 
-// Temporary compatibility layer - this needs to be replaced with RxDB queries
+// Temporary compatibility layer - this needs to be replaced with LokiJS queries
 const dbConnection = {
     query: () => {
-        throw new Error('dbConnection is not defined - BotTurnProcessor needs to be migrated to RxDB');
+        throw new Error('dbConnection is not defined - BotTurnProcessor needs to be migrated to LokiJS');
     }
 };
 

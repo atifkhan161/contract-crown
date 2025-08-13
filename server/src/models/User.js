@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt';
-import BaseRxDBModel from './BaseRxDBModel.js';
+import BaseLokiModel from './BaseLokiModel.js';
 
-class User extends BaseRxDBModel {
+class User extends BaseLokiModel {
   constructor(userData = {}) {
     super('users', userData);
     this.user_id = userData.user_id || uuidv4();
@@ -68,7 +68,7 @@ class User extends BaseRxDBModel {
         is_bot: false
       };
 
-      // Insert into RxDB
+      // Insert into LokiJS
       const createdDoc = await userModel.create(newUserData);
 
       console.log(`[User] Created new user: ${createdDoc.username} (${createdDoc.user_id})`);
@@ -143,7 +143,7 @@ class User extends BaseRxDBModel {
     try {
       const userModel = new User();
 
-      // RxDB doesn't support OR queries directly, so we need to check both separately
+      // LokiJS doesn't support OR queries directly, so we need to check both separately
       const emailUser = await userModel.findOne({
         email: email.trim().toLowerCase(),
         is_active: true

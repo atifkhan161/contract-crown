@@ -438,20 +438,20 @@ class DiagnosticTools {
      */
     async testDatabaseSynchronization(gameId) {
         const test = {
-            name: 'RxDB Synchronization',
+            name: 'LokiJS Synchronization',
             status: 'running',
             startTime: Date.now()
         };
 
         try {
-            // Test RxDB connectivity
-            const rxdbConnection = (await import('../../database/rxdb-connection.js')).default;
+            // Test LokiJS connectivity
+            const LokiJSConnection = (await import('../../database/LokiJS-connection.js')).default;
             
             // Test basic connectivity
-            const isHealthy = await rxdbConnection.healthCheck();
+            const isHealthy = await LokiJSConnection.healthCheck();
             if (!isHealthy) {
                 test.status = 'failed';
-                test.error = 'RxDB connectivity test failed';
+                test.error = 'LokiJS connectivity test failed';
                 test.severity = 'critical';
                 test.endTime = Date.now();
                 test.duration = test.endTime - test.startTime;
@@ -464,7 +464,7 @@ class DiagnosticTools {
 
             if (!room) {
                 test.status = 'failed';
-                test.error = 'Room not found in RxDB';
+                test.error = 'Room not found in LokiJS';
                 test.severity = 'high';
                 test.endTime = Date.now();
                 test.duration = test.endTime - test.startTime;
@@ -498,7 +498,7 @@ class DiagnosticTools {
             // Check for performance issues
             if (updateDuration > 1000) {
                 test.severity = 'medium';
-                test.data.issues = [`RxDB update latency is high: ${updateDuration}ms`];
+                test.data.issues = [`LokiJS update latency is high: ${updateDuration}ms`];
             }
 
         } catch (error) {

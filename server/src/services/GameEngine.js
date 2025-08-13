@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
-// Legacy MariaDB connection removed - now using RxDB
+// Legacy MariaDB connection removed - now using LokiJS
 // import dbConnection from '../../database/connection.js';
 
-// All database operations now use RxDB models
+// All database operations now use LokiJS models
 
 /**
  * GameEngine class handles core game logic for Contract Crown
@@ -371,7 +371,7 @@ class GameEngine {
             const dealResult = this.dealCardsWithValidation(shuffledDeck, players, 4);
             const { playerHands, remainingDeck, attempts } = dealResult;
 
-            // Update player hands in database using RxDB
+            // Update player hands in database using LokiJS
             const { default: GamePlayer } = await import('../models/GamePlayer.js');
             const gamePlayerModel = new GamePlayer();
 
@@ -417,7 +417,7 @@ class GameEngine {
             const players = await this.getGamePlayers(gameId);
             const currentHands = {};
 
-            // Load current hands from database using RxDB
+            // Load current hands from database using LokiJS
             const { default: GamePlayer } = await import('../models/GamePlayer.js');
             const gamePlayerModel = new GamePlayer();
 
@@ -445,7 +445,7 @@ class GameEngine {
 
                 updatedHands[player.user_id] = fullHand;
 
-                // Update database with full hand using RxDB
+                // Update database with full hand using LokiJS
                 await gamePlayerModel.updateMany(
                     { game_id: gameId, user_id: player.user_id },
                     { current_hand: fullHand }
@@ -615,7 +615,7 @@ class GameEngine {
                 console.log(`[GameEngine] Trump declaration in demo game ${gameId} by ${isBot ? 'bot' : 'human'} player ${playerId}: ${trumpSuit}`);
             }
 
-            // Get round info to verify it's the correct player's turn using RxDB
+            // Get round info to verify it's the correct player's turn using LokiJS
             const { default: GameRound } = await import('../models/GameRound.js');
             const gameRoundModel = new GameRound();
 
@@ -640,7 +640,7 @@ class GameEngine {
                 throw new Error('Only the first player can declare trump');
             }
 
-            // Get player's team using RxDB
+            // Get player's team using LokiJS
             const { default: GamePlayer } = await import('../models/GamePlayer.js');
             const gamePlayerModel = new GamePlayer();
 
@@ -657,7 +657,7 @@ class GameEngine {
 
             const declaringTeamId = gamePlayer.team_id;
 
-            // Update round with trump declaration using RxDB
+            // Update round with trump declaration using LokiJS
             await gameRoundModel.updateMany(
                 { round_id: roundId },
                 {
@@ -1629,7 +1629,7 @@ class GameEngine {
      */
     async getGameState(gameId) {
         try {
-            // Get game info using RxDB
+            // Get game info using LokiJS
             const { default: Game } = await import('../models/Game.js');
             const gameModel = new Game();
 
@@ -1650,7 +1650,7 @@ class GameEngine {
             // Get players
             const players = await this.getGamePlayers(gameId);
 
-            // Get current trick if in progress using RxDB
+            // Get current trick if in progress using LokiJS
             let currentTrick = null;
             if (currentRound) {
                 const { default: GameTrick } = await import('../models/GameTrick.js');
@@ -1717,7 +1717,7 @@ class GameEngine {
                 dealResult.firstPlayerUserId
             );
 
-            // Update game status using RxDB
+            // Update game status using LokiJS
             const { default: Game } = await import('../models/Game.js');
             const gameModel = new Game();
             

@@ -1,5 +1,5 @@
 import GameEngine from './GameEngine.js';
-// Legacy MariaDB connection removed - now using RxDB
+// Legacy MariaDB connection removed - now using LokiJS
 // import dbConnection from '../../database/connection.js';
 
 /**

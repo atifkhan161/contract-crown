@@ -1,10 +1,10 @@
-import BaseRxDBModel from './BaseRxDBModel.js';
+import BaseLokiModel from './BaseLokiModel.js';
 
 /**
  * Team Model
- * Handles team data using RxDB
+ * Handles team data using LokiJS
  */
-class Team extends BaseRxDBModel {
+class Team extends BaseLokiModel {
     constructor(teamData = {}) {
         super('teams', teamData);
         this.team_id = teamData.team_id;

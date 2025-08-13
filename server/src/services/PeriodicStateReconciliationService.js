@@ -6,7 +6,7 @@
 
 import StateReconciliationEngine from './StateReconciliationEngine.js';
 import Room from '../models/Room.js';
-// Legacy MariaDB connection removed - now using RxDB
+// Legacy MariaDB connection removed - now using LokiJS
 // import dbConnection from '../../database/connection.js';
 
 class PeriodicStateReconciliationService {

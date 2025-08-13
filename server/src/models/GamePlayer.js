@@ -1,10 +1,10 @@
-import BaseRxDBModel from './BaseRxDBModel.js';
+import BaseLokiModel from './BaseLokiModel.js';
 
 /**
  * GamePlayer Model
- * Handles game player relationships using RxDB
+ * Handles game player relationships using LokiJS
  */
-class GamePlayer extends BaseRxDBModel {
+class GamePlayer extends BaseLokiModel {
     constructor(gamePlayerData = {}) {
         super('gamePlayers', gamePlayerData);
         this.game_player_id = gamePlayerData.game_player_id;

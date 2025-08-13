@@ -1,11 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
-import BaseRxDBModel from './BaseRxDBModel.js';
+import BaseLokiModel from './BaseLokiModel.js';
 
 /**
  * Game Model
- * Handles game creation and management in the database using RxDB
+ * Handles game creation and management in the database using LokiJS
  */
-class Game extends BaseRxDBModel {
+class Game extends BaseLokiModel {
     constructor(gameData = {}) {
         super('games', gameData);
         this.game_id = gameData.game_id || uuidv4();

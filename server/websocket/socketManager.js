@@ -7,8 +7,7 @@ import ConnectionDiagnostics from './connectionDiagnostics.js';
 import WaitingRoomSocketHandler from '../src/websocket/WaitingRoomSocketHandler.js';
 // Room model will be imported dynamically to avoid initialization issues
 import { authenticateSocket } from '../src/middlewares/socketAuth.js';
-import ReactiveQueryManager from '../src/services/ReactiveQueryManager.js';
-import ConflictResolutionService from '../src/services/ConflictResolutionService.js';
+
 
 /**
  * WebSocket Manager for Contract Crown game
@@ -36,12 +35,9 @@ class SocketManager {
     // Initialize waiting room handler
     this.waitingRoomHandler = new WaitingRoomSocketHandler(this);
 
-    // Initialize reactive query manager (singleton)
-    this.reactiveQueryManager = ReactiveQueryManager;
-    this.reactiveQueryManager.initialize(this);
+    // Note: ReactiveQueryManager removed during LokiJS migration
 
-    // Initialize conflict resolution service (static methods)
-    this.conflictResolutionService = ConflictResolutionService;
+    // Note: ConflictResolutionService removed during LokiJS migration
 
     this.setupSocketIO();
 
@@ -214,22 +210,7 @@ class SocketManager {
       }
     });
 
-    // Reactive subscription events
-    socket.on('subscribe', (data) => {
-      this.handleSubscriptionRequest(socket, data);
-    });
-
-    socket.on('unsubscribe', (data) => {
-      this.handleUnsubscriptionRequest(socket, data);
-    });
-
-    socket.on('get-subscription-stats', () => {
-      const stats = this.getReactiveStats();
-      socket.emit('subscription-stats', {
-        stats,
-        timestamp: new Date().toISOString()
-      });
-    });
+    // Note: Reactive subscription events removed during LokiJS migration
   }
 
   /**
@@ -2793,11 +2774,7 @@ class SocketManager {
         this.userSockets.delete(userId);
         this.socketUsers.delete(socket.id);
 
-        // Clean up reactive subscriptions for this socket
-        const unsubscribedCount = this.reactiveQueryManager.unsubscribeSocket(socket.id);
-        if (unsubscribedCount > 0) {
-          console.log(`[WebSocket] Cleaned up ${unsubscribedCount} reactive subscriptions for disconnected socket ${socket.id}`);
-        }
+        // Note: Reactive subscriptions cleanup removed during LokiJS migration
 
         // Handle disconnection through enhanced connection status manager
         // This will update connection status and broadcast to all rooms
@@ -2941,136 +2918,9 @@ class SocketManager {
         };
       }
 
-  /**
-   * Set up reactive subscriptions for a socket
-   * @param {Object} socket - Socket.IO socket instance
-   * @param {Object} subscriptionData - Subscription configuration
-   */
-  setupReactiveSubscriptions(socket, subscriptionData) {
-    try {
-      const { userId } = socket;
-      const { rooms = [], games = [], users = [] } = subscriptionData;
+  // Note: Reactive subscription methods removed during LokiJS migration
 
-      // Subscribe to room updates
-      for (const roomId of rooms) {
-        this.reactiveQueryManager.subscribeToRoom(roomId, socket.id, { broadcast: true });
-        this.reactiveQueryManager.subscribeToRoomPlayers(roomId, socket.id, { broadcast: true });
-      }
-
-      // Subscribe to game updates
-      for (const gameId of games) {
-        this.reactiveQueryManager.subscribeToGame(gameId, socket.id, { broadcast: true });
-        this.reactiveQueryManager.subscribeToGamePlayers(gameId, socket.id, { broadcast: true });
-      }
-
-      // Subscribe to user updates
-      for (const userIdToWatch of users) {
-        this.reactiveQueryManager.subscribeToUser(userIdToWatch, socket.id);
-      }
-
-      console.log(`[WebSocket] Set up reactive subscriptions for socket ${socket.id}`);
-    } catch (error) {
-      console.error(`[WebSocket] Error setting up reactive subscriptions:`, error.message);
-    }
-  }
-
-  /**
-   * Handle reactive subscription requests from clients
-   * @param {Object} socket - Socket.IO socket instance
-   * @param {Object} data - Subscription request data
-   */
-  handleSubscriptionRequest(socket, data) {
-    try {
-      const { type, resourceId, options = {} } = data;
-
-      let subscriptionId;
-      switch (type) {
-        case 'room':
-          subscriptionId = this.reactiveQueryManager.subscribeToRoom(resourceId, socket.id, options);
-          break;
-        case 'room_players':
-          subscriptionId = this.reactiveQueryManager.subscribeToRoomPlayers(resourceId, socket.id, options);
-          break;
-        case 'game':
-          subscriptionId = this.reactiveQueryManager.subscribeToGame(resourceId, socket.id, options);
-          break;
-        case 'game_players':
-          subscriptionId = this.reactiveQueryManager.subscribeToGamePlayers(resourceId, socket.id, options);
-          break;
-        case 'user':
-          subscriptionId = this.reactiveQueryManager.subscribeToUser(resourceId, socket.id, options);
-          break;
-        default:
-          socket.emit('subscription:error', {
-            error: `Unknown subscription type: ${type}`,
-            timestamp: new Date().toISOString()
-          });
-          return;
-      }
-
-      socket.emit('subscription:created', {
-        subscriptionId,
-        type,
-        resourceId,
-        timestamp: new Date().toISOString()
-      });
-
-      console.log(`[WebSocket] Created ${type} subscription ${subscriptionId} for socket ${socket.id}`);
-    } catch (error) {
-      console.error(`[WebSocket] Error handling subscription request:`, error.message);
-      socket.emit('subscription:error', {
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-
-  /**
-   * Handle unsubscription requests from clients
-   * @param {Object} socket - Socket.IO socket instance
-   * @param {Object} data - Unsubscription request data
-   */
-  handleUnsubscriptionRequest(socket, data) {
-    try {
-      const { subscriptionId } = data;
-
-      const success = this.reactiveQueryManager.unsubscribe(subscriptionId);
-
-      socket.emit('subscription:removed', {
-        subscriptionId,
-        success,
-        timestamp: new Date().toISOString()
-      });
-
-      console.log(`[WebSocket] ${success ? 'Removed' : 'Failed to remove'} subscription ${subscriptionId} for socket ${socket.id}`);
-    } catch (error) {
-      console.error(`[WebSocket] Error handling unsubscription request:`, error.message);
-      socket.emit('subscription:error', {
-        error: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  }
-
-  /**
-   * Get reactive query manager statistics
-   * @returns {Object} Statistics object
-   */
-  getReactiveStats() {
-    return this.reactiveQueryManager.getStats();
-  }
-
-  /**
-   * Resolve document conflicts using the conflict resolution service
-   * @param {Object} localDoc - Local document version
-   * @param {Object} remoteDoc - Remote document version
-   * @param {string} strategy - Conflict resolution strategy
-   * @param {Object} context - Additional context
-   * @returns {Object} Resolved document
-   */
-  resolveConflict(localDoc, remoteDoc, strategy, context = {}) {
-    return this.conflictResolutionService.resolveConflict(localDoc, remoteDoc, strategy, context);
-  }
+  // Note: Conflict resolution methods removed during LokiJS migration
     }
 
 export default SocketManager;

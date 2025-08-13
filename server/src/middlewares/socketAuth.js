@@ -4,19 +4,19 @@ import UserSession from '../models/UserSession.js';
 
 /**
  * Enhanced WebSocket Authentication Middleware
- * Handles JWT token verification with RxDB user and session validation for Socket.IO connections
+ * Handles JWT token verification with LokiJS user and session validation for Socket.IO connections
  */
 
 /**
- * Enhanced middleware to authenticate Socket.IO connections with RxDB verification
+ * Enhanced middleware to authenticate Socket.IO connections with LokiJS verification
  * @param {Object} socket - Socket.IO socket instance
  * @param {Function} next - Next middleware function
  */
 export const authenticateSocket = async (socket, next) => {
   try {
     // Check if database is ready
-    const rxdbConnection = (await import('../../database/rxdb-connection.js')).default;
-    if (!rxdbConnection.isReady()) {
+    const lokiConnection = (await import('../../database/loki-db.js')).default;
+    if (!lokiConnection.isReady()) {
       console.error('[SocketAuth] Database not ready');
       const error = new Error('Database not ready');
       error.data = { code: 'DATABASE_NOT_READY' };

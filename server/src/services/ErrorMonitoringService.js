@@ -1,5 +1,5 @@
 import MigrationErrorHandler from './MigrationErrorHandler.js';
-import RxDBErrorHandler from './RxDBErrorHandler.js';
+import SimpleErrorHandler from './SimpleErrorHandler.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -10,7 +10,7 @@ import path from 'path';
 class ErrorMonitoringService {
     constructor() {
         this.migrationErrorHandler = new MigrationErrorHandler();
-        this.rxdbErrorHandler = new RxDBErrorHandler();
+        this.errorHandler = new SimpleErrorHandler();
         this.logPath = path.join(process.cwd(), 'server', 'data', 'logs');
         
         // Monitoring configuration
@@ -139,7 +139,7 @@ class ErrorMonitoringService {
             });
             
             // Reset error counts for rate calculations
-            this.rxdbErrorHandler.resetErrorCounts();
+            this.errorHandler.resetErrorCounts();
             
         } catch (error) {
             console.error('[Error Monitoring] Error during monitoring check:', error.message);
@@ -165,7 +165,7 @@ class ErrorMonitoringService {
      */
     async getRuntimeErrorStats() {
         try {
-            return await this.rxdbErrorHandler.getRuntimeErrorStatistics();
+            return this.errorHandler.getErrorStats();
         } catch (error) {
             console.warn('[Error Monitoring] Error getting runtime stats:', error.message);
             return { totalErrors: 0, message: 'Stats unavailable' };
@@ -237,28 +237,28 @@ class ErrorMonitoringService {
             });
         }
         
-        // Check RxDB alert thresholds
-        const rxdbAlerts = this.rxdbErrorHandler.checkAlertThresholds();
+        // Check LokiJS alert thresholds
+        const LokiJSAlerts = this.LokiJSErrorHandler.checkAlertThresholds();
         
-        if (rxdbAlerts.errorRateExceeded) {
+        if (LokiJSAlerts.errorRateExceeded) {
             alerts.push({
                 type: 'high_error_rate',
                 severity: 'MEDIUM',
-                message: 'High error rate detected in RxDB operations',
+                message: 'High error rate detected in LokiJS operations',
                 category: 'runtime'
             });
         }
         
-        if (rxdbAlerts.conflictRateExceeded) {
+        if (LokiJSAlerts.conflictRateExceeded) {
             alerts.push({
                 type: 'high_conflict_rate',
                 severity: 'MEDIUM',
-                message: 'High conflict rate detected in RxDB operations',
+                message: 'High conflict rate detected in LokiJS operations',
                 category: 'conflicts'
             });
         }
         
-        if (rxdbAlerts.storageFailuresExceeded) {
+        if (LokiJSAlerts.storageFailuresExceeded) {
             alerts.push({
                 type: 'storage_threshold_exceeded',
                 severity: 'HIGH',
@@ -524,7 +524,7 @@ class ErrorMonitoringService {
             const targetDate = date || new Date().toISOString().split('T')[0];
             
             const migrationStats = await this.migrationErrorHandler.getErrorStatistics(targetDate);
-            const runtimeStats = await this.rxdbErrorHandler.getRuntimeErrorStatistics(targetDate);
+            const runtimeStats = await this.LokiJSErrorHandler.getRuntimeErrorStatistics(targetDate);
             
             // Get alerts for the date
             const alertsForDate = this.alertState.alertHistory.filter(alert => 
@@ -684,7 +684,7 @@ class ErrorMonitoringService {
             },
             handlers: {
                 migration: !!this.migrationErrorHandler,
-                runtime: !!this.rxdbErrorHandler
+                runtime: !!this.LokiJSErrorHandler
             }
         };
     }
