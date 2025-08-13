@@ -74,7 +74,9 @@ class RxDBConnection {
             // Create RxDB database with memory storage (no persistence in production)
             this.database = await createRxDatabase({
                 name: uniqueDbName,
-                storage: storageAdapter,
+                storage: process.env.NODE_ENV === 'production' 
+                    ? storageAdapter  // Raw storage in production
+                    : wrappedValidateAjvStorage({ storage: storageAdapter }), // Validated storage in dev
                 eventReduce: true,
                 ignoreDuplicate: true
             });
