@@ -2,12 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Legacy MariaDB connection removed - now using RxDB
 // import dbConnection from '../../database/connection.js';
 
-// Temporary compatibility layer - this needs to be replaced with RxDB queries
-const dbConnection = {
-    query: () => {
-        throw new Error('dbConnection is not defined - GameEngine needs to be migrated to RxDB');
-    }
-};
+// All database operations now use RxDB models
 
 /**
  * GameEngine class handles core game logic for Contract Crown
@@ -240,7 +235,7 @@ class GameEngine {
      */
     shuffleDeck(deck) {
         const shuffled = [...deck];
-        
+
         // Multiple shuffle passes for better randomization
         for (let pass = 0; pass < 3; pass++) {
             for (let i = shuffled.length - 1; i > 0; i--) {
@@ -248,7 +243,7 @@ class GameEngine {
                 [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
             }
         }
-        
+
         return shuffled;
     }
 
@@ -261,7 +256,7 @@ class GameEngine {
         for (const [playerId, hand] of Object.entries(playerHands)) {
             const aces = hand.filter(card => card.rank === 'A').length;
             const sevens = hand.filter(card => card.rank === '7').length;
-            
+
             if (aces >= 3 || sevens >= 3) {
                 console.log(`[GameEngine] Invalid hand for player ${playerId}: ${aces} Aces, ${sevens} 7s - reshuffling required`);
                 return false;
@@ -277,7 +272,7 @@ class GameEngine {
      */
     validateUniqueCards(playerHands) {
         const allDealtCards = [];
-        
+
         for (const [playerId, hand] of Object.entries(playerHands)) {
             for (const card of hand) {
                 const cardId = `${card.suit}-${card.rank}`;
@@ -288,7 +283,7 @@ class GameEngine {
                 allDealtCards.push(cardId);
             }
         }
-        
+
         return true;
     }
 
@@ -302,44 +297,44 @@ class GameEngine {
      */
     dealCardsWithValidation(shuffledDeck, players, cardsPerPlayer, maxAttempts = 10) {
         let attempts = 0;
-        
+
         while (attempts < maxAttempts) {
             attempts++;
-            
+
             // Deal cards to players
             const playerHands = {};
             let cardIndex = 0;
-            
+
             for (const player of players) {
                 playerHands[player.user_id] = shuffledDeck.slice(cardIndex, cardIndex + cardsPerPlayer);
                 cardIndex += cardsPerPlayer;
             }
-            
+
             // Validate unique cards
             if (!this.validateUniqueCards(playerHands)) {
                 console.log(`[GameEngine] Attempt ${attempts}: Duplicate cards detected, reshuffling...`);
                 shuffledDeck = this.shuffleDeck(shuffledDeck);
                 continue;
             }
-            
+
             // Validate hand distribution (no 3+ Aces or 7s)
             if (!this.validateHandDistribution(playerHands)) {
                 console.log(`[GameEngine] Attempt ${attempts}: Invalid hand distribution, reshuffling...`);
                 shuffledDeck = this.shuffleDeck(shuffledDeck);
                 continue;
             }
-            
+
             // Valid deal found
             console.log(`[GameEngine] Valid card distribution found after ${attempts} attempt(s)`);
             const remainingDeck = shuffledDeck.slice(cardIndex);
-            
+
             return {
                 playerHands,
                 remainingDeck,
                 attempts
             };
         }
-        
+
         throw new Error(`Failed to find valid card distribution after ${maxAttempts} attempts`);
     }
 
@@ -379,7 +374,7 @@ class GameEngine {
             // Update player hands in database using RxDB
             const { default: GamePlayer } = await import('../models/GamePlayer.js');
             const gamePlayerModel = new GamePlayer();
-            
+
             for (const player of players) {
                 await gamePlayerModel.updateMany(
                     { game_id: gameId, user_id: player.user_id },
@@ -421,15 +416,20 @@ class GameEngine {
             // Get current player hands and players
             const players = await this.getGamePlayers(gameId);
             const currentHands = {};
-            
-            // Load current hands from database
-            for (const player of players) {
-                const currentHandResult = await dbConnection.query(`
-                    SELECT current_hand FROM game_players 
-                    WHERE game_id = ? AND user_id = ?
-                `, [gameId, player.user_id]);
 
-                currentHands[player.user_id] = JSON.parse(currentHandResult[0].current_hand || '[]');
+            // Load current hands from database using RxDB
+            const { default: GamePlayer } = await import('../models/GamePlayer.js');
+            const gamePlayerModel = new GamePlayer();
+
+            for (const player of players) {
+                const gamePlayer = await gamePlayerModel.findOne({
+                    selector: {
+                        game_id: gameId,
+                        user_id: player.user_id
+                    }
+                });
+
+                currentHands[player.user_id] = gamePlayer?.current_hand || [];
             }
 
             // Deal additional 4 cards with validation
@@ -442,15 +442,14 @@ class GameEngine {
                 const currentHand = currentHands[player.user_id];
                 const newCards = additionalCards[player.user_id];
                 const fullHand = [...currentHand, ...newCards];
-                
+
                 updatedHands[player.user_id] = fullHand;
 
-                // Update database with full hand
-                await dbConnection.query(`
-                    UPDATE game_players 
-                    SET current_hand = ? 
-                    WHERE game_id = ? AND user_id = ?
-                `, [JSON.stringify(fullHand), gameId, player.user_id]);
+                // Update database with full hand using RxDB
+                await gamePlayerModel.updateMany(
+                    { game_id: gameId, user_id: player.user_id },
+                    { current_hand: fullHand }
+                );
             }
 
             // Validate final hands (8 cards each)
@@ -521,12 +520,12 @@ class GameEngine {
         try {
             const { default: GamePlayer } = await import('../models/GamePlayer.js');
             const { default: User } = await import('../models/User.js');
-            
+
             const gamePlayerModel = new GamePlayer();
             const userModel = new User();
-            
+
             const gamePlayers = await gamePlayerModel.find({ game_id: gameId });
-            
+
             // Get user data for each player
             const players = [];
             for (const gamePlayer of gamePlayers) {
@@ -540,7 +539,7 @@ class GameEngine {
                     });
                 }
             }
-            
+
             // Sort by seat position
             players.sort((a, b) => (a.seat_position || 0) - (b.seat_position || 0));
 
@@ -565,7 +564,7 @@ class GameEngine {
 
             const { default: GameRound } = await import('../models/GameRound.js');
             const gameRoundModel = new GameRound();
-            
+
             await gameRoundModel.create({
                 round_id: roundId,
                 game_id: gameId,
@@ -616,18 +615,20 @@ class GameEngine {
                 console.log(`[GameEngine] Trump declaration in demo game ${gameId} by ${isBot ? 'bot' : 'human'} player ${playerId}: ${trumpSuit}`);
             }
 
-            // Get round info to verify it's the correct player's turn
-            const roundResult = await dbConnection.query(`
-                SELECT first_player_user_id, trump_suit, declaring_team_id
-                FROM game_rounds 
-                WHERE round_id = ? AND game_id = ?
-            `, [roundId, gameId]);
+            // Get round info to verify it's the correct player's turn using RxDB
+            const { default: GameRound } = await import('../models/GameRound.js');
+            const gameRoundModel = new GameRound();
 
-            if (roundResult.length === 0) {
+            const round = await gameRoundModel.findOne({
+                selector: {
+                    round_id: roundId,
+                    game_id: gameId
+                }
+            });
+
+            if (!round) {
                 throw new Error('Round not found');
             }
-
-            const round = roundResult[0];
 
             // Check if trump has already been declared
             if (round.trump_suit) {
@@ -639,24 +640,31 @@ class GameEngine {
                 throw new Error('Only the first player can declare trump');
             }
 
-            // Get player's team
-            const playerTeamResult = await dbConnection.query(`
-                SELECT team_id FROM game_players 
-                WHERE game_id = ? AND user_id = ?
-            `, [gameId, playerId]);
+            // Get player's team using RxDB
+            const { default: GamePlayer } = await import('../models/GamePlayer.js');
+            const gamePlayerModel = new GamePlayer();
 
-            if (playerTeamResult.length === 0) {
+            const gamePlayer = await gamePlayerModel.findOne({
+                selector: {
+                    game_id: gameId,
+                    user_id: playerId
+                }
+            });
+
+            if (!gamePlayer) {
                 throw new Error('Player not found in game');
             }
 
-            const declaringTeamId = playerTeamResult[0].team_id;
+            const declaringTeamId = gamePlayer.team_id;
 
-            // Update round with trump declaration
-            await dbConnection.query(`
-                UPDATE game_rounds 
-                SET trump_suit = ?, declaring_team_id = ?
-                WHERE round_id = ?
-            `, [trumpSuit, declaringTeamId, roundId]);
+            // Update round with trump declaration using RxDB
+            await gameRoundModel.updateMany(
+                { round_id: roundId },
+                {
+                    trump_suit: trumpSuit,
+                    declaring_team_id: declaringTeamId
+                }
+            );
 
             // Get team information
             const teams = await this.getGameTeams(gameId);
@@ -695,7 +703,7 @@ class GameEngine {
      */
     async validateTrumpTimeout(roundId, timeoutSeconds = 30) {
         try {
-            const roundResult = await dbConnection.query(`
+            const roundResult = dbConnection.query(`
                 SELECT created_at FROM game_rounds WHERE round_id = ?
             `, [roundId]);
 
@@ -753,14 +761,13 @@ class GameEngine {
      */
     async getGameTeams(gameId) {
         try {
-            const teams = await dbConnection.query(`
-                SELECT team_id, team_number, current_score, player1_id, player2_id
-                FROM teams 
-                WHERE game_id = ?
-                ORDER BY team_number ASC
-            `, [gameId]);
+            const { default: Team } = await import('../models/Team.js');
+            const teamModel = new Team();
 
-            return teams;
+            const teams = await teamModel.find({ game_id: gameId });
+
+            // Sort by team_number
+            return teams.sort((a, b) => a.team_number - b.team_number);
         } catch (error) {
             console.error('[GameEngine] Get game teams error:', error.message);
             throw error;
@@ -774,18 +781,20 @@ class GameEngine {
      */
     async getCurrentRound(gameId) {
         try {
-            const roundResult = await dbConnection.query(`
-                SELECT * FROM game_rounds 
-                WHERE game_id = ? 
-                ORDER BY round_number DESC 
-                LIMIT 1
-            `, [gameId]);
+            const { default: GameRound } = await import('../models/GameRound.js');
+            const gameRoundModel = new GameRound();
 
-            if (roundResult.length === 0) {
+            const rounds = await gameRoundModel.find({
+                selector: { game_id: gameId }
+            });
+
+            if (rounds.length === 0) {
                 return null;
             }
 
-            return roundResult[0];
+            // Sort by round_number descending and return the latest
+            rounds.sort((a, b) => (b.round_number || 0) - (a.round_number || 0));
+            return rounds[0];
         } catch (error) {
             console.error('[GameEngine] Get current round error:', error.message);
             throw error;
@@ -1620,16 +1629,17 @@ class GameEngine {
      */
     async getGameState(gameId) {
         try {
-            // Get game info
-            const gameResult = await dbConnection.query(`
-                SELECT * FROM games WHERE game_id = ?
-            `, [gameId]);
+            // Get game info using RxDB
+            const { default: Game } = await import('../models/Game.js');
+            const gameModel = new Game();
 
-            if (gameResult.length === 0) {
+            const game = await gameModel.findOne({
+                selector: { game_id: gameId }
+            });
+
+            if (!game) {
                 throw new Error('Game not found');
             }
-
-            const game = gameResult[0];
 
             // Get current round
             const currentRound = await this.getCurrentRound(gameId);
@@ -1640,21 +1650,29 @@ class GameEngine {
             // Get players
             const players = await this.getGamePlayers(gameId);
 
-            // Get current trick if in progress
+            // Get current trick if in progress using RxDB
             let currentTrick = null;
             if (currentRound) {
-                const trickResult = await dbConnection.query(`
-                    SELECT * FROM game_tricks 
-                    WHERE round_id = ? AND completed_at IS NULL
-                    ORDER BY trick_number DESC LIMIT 1
-                `, [currentRound.round_id]);
+                const { default: GameTrick } = await import('../models/GameTrick.js');
+                const gameTrickModel = new GameTrick();
 
-                if (trickResult.length > 0) {
+                const tricks = await gameTrickModel.find({
+                    selector: { 
+                        round_id: currentRound.round_id,
+                        completed_at: null
+                    }
+                });
+
+                if (tricks.length > 0) {
+                    // Sort by trick_number descending and get the latest
+                    tricks.sort((a, b) => (b.trick_number || 0) - (a.trick_number || 0));
+                    const latestTrick = tricks[0];
+                    
                     currentTrick = {
-                        trickId: trickResult[0].trick_id,
-                        trickNumber: trickResult[0].trick_number,
-                        leadingPlayerId: trickResult[0].leading_player_id,
-                        cardsPlayed: JSON.parse(trickResult[0].cards_played || '[]')
+                        trickId: latestTrick.trick_id,
+                        trickNumber: latestTrick.trick_number,
+                        leadingPlayerId: latestTrick.leading_player_id,
+                        cardsPlayed: latestTrick.cards_played || []
                     };
                 }
             }
@@ -1699,12 +1717,17 @@ class GameEngine {
                 dealResult.firstPlayerUserId
             );
 
-            // Update game status
-            await dbConnection.query(`
-                UPDATE games 
-                SET status = 'in_progress', started_at = NOW() 
-                WHERE game_id = ?
-            `, [gameId]);
+            // Update game status using RxDB
+            const { default: Game } = await import('../models/Game.js');
+            const gameModel = new Game();
+            
+            await gameModel.updateMany(
+                { game_id: gameId },
+                { 
+                    status: 'in_progress', 
+                    started_at: new Date().toISOString() 
+                }
+            );
 
             if (isDemoMode) {
                 console.log(`[GameEngine] Started new demo game ${gameId}`);

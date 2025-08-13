@@ -1,13 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
-import rxdbConnection from '../../database/rxdb-connection.js';
+import BaseRxDBModel from './BaseRxDBModel.js';
 
 /**
  * GameRound Model
  * Handles game round creation and management in the database using RxDB
  */
-class GameRound {
+class GameRound extends BaseRxDBModel {
     constructor(roundData = {}) {
-        this.collectionName = 'gameRounds';
+        super('gameRounds', roundData);
         this.round_id = roundData.round_id || uuidv4();
         this.game_id = roundData.game_id;
         this.round_number = roundData.round_number;
@@ -22,66 +22,6 @@ class GameRound {
     }
 
     /**
-     * Get the RxDB collection instance
-     * @returns {RxCollection} RxDB collection
-     */
-    getCollection() {
-        if (!rxdbConnection.isReady()) {
-            throw new Error('RxDB connection not ready. Ensure database is initialized.');
-        }
-        return rxdbConnection.getCollection(this.collectionName);
-    }
-
-    /**
-     * Create a new document
-     * @param {Object} data - Document data
-     * @returns {Promise<Object>} Created document
-     */
-    async create(data) {
-        try {
-            const collection = this.getCollection();
-            const doc = await collection.insert(data);
-            console.log(`[BaseRxDBModel] Created ${this.collectionName} document:`, doc.primary);
-            return doc.toJSON();
-        } catch (error) {
-            console.error(`[BaseRxDBModel] Create error in ${this.collectionName}:`, error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * Find documents by query
-     * @param {Object} query - Query object
-     * @returns {Promise<Array>} Array of documents
-     */
-    async find(query = {}) {
-        try {
-            const collection = this.getCollection();
-            const docs = await collection.find(query).exec();
-            return docs.map(doc => doc.toJSON());
-        } catch (error) {
-            console.error(`[BaseRxDBModel] Find error in ${this.collectionName}:`, error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * Find one document by query
-     * @param {Object} query - Query object
-     * @returns {Promise<Object|null>} Document or null if not found
-     */
-    async findOne(query) {
-        try {
-            const collection = this.getCollection();
-            const doc = await collection.findOne(query).exec();
-            return doc ? doc.toJSON() : null;
-        } catch (error) {
-            console.error(`[BaseRxDBModel] FindOne error in ${this.collectionName}:`, error.message);
-            throw error;
-        }
-    }
-
-    /**
      * Find round by ID
      * @param {string} roundId - Round ID
      * @returns {Promise<GameRound|null>} GameRound instance or null if not found
@@ -89,7 +29,9 @@ class GameRound {
     static async findById(roundId) {
         try {
             const roundModel = new GameRound();
-            const roundData = await roundModel.findOne({ round_id: roundId });
+            const roundData = await roundModel.findOne({ 
+                selector: { round_id: roundId }
+            });
 
             if (!roundData) {
                 return null;
@@ -97,7 +39,7 @@ class GameRound {
 
             return new GameRound(roundData);
         } catch (error) {
-            console.error('[GameRound] FindById error:', error);
+            console.error('[GameRound] FindById error:', error.message);
             throw error;
         }
     }
@@ -111,8 +53,10 @@ class GameRound {
         try {
             const roundModel = new GameRound();
             const rounds = await roundModel.find({ 
-                game_id: gameId,
-                round_completed_at: null
+                selector: {
+                    game_id: gameId,
+                    round_completed_at: null
+                }
             });
 
             if (rounds.length === 0) {
