@@ -344,10 +344,15 @@ class PeriodicStateReconciliationService {
                     
                     // Update database to reflect removal
                     try {
-                        await dbConnection.query(
-                            'DELETE FROM room_players WHERE room_id = ? AND user_id = ?',
-                            [gameId, playerId]
-                        );
+                        const { default: RoomPlayer } = await import('../models/RoomPlayer.js');
+                        const roomPlayerModel = new RoomPlayer();
+                        const roomPlayer = await roomPlayerModel.findOne({
+                            room_id: gameId,
+                            user_id: playerId
+                        });
+                        if (roomPlayer) {
+                            await roomPlayerModel.deleteById(roomPlayer.id);
+                        }
                     } catch (dbError) {
                         console.error(`[PeriodicReconciliation] Failed to remove stale player ${playerId} from database:`, dbError);
                     }
@@ -362,10 +367,11 @@ class PeriodicStateReconciliationService {
                     
                     // Update database room status
                     try {
-                        await dbConnection.query(
-                            'UPDATE rooms SET status = ?, updated_at = NOW() WHERE room_id = ?',
-                            ['abandoned', gameId]
-                        );
+                        const { default: Room } = await import('../models/Room.js');
+                        const room = await Room.findById(gameId);
+                        if (room) {
+                            await room.updateStatus('abandoned');
+                        }
                     } catch (dbError) {
                         console.error(`[PeriodicReconciliation] Failed to update abandoned room ${gameId} in database:`, dbError);
                     }
@@ -400,27 +406,43 @@ class PeriodicStateReconciliationService {
             const placeholders = activeGameIds.map(() => '?').join(',');
             
             // Find rooms in database that are not active in websocket manager
-            const orphanedRooms = await dbConnection.query(`
-                SELECT DISTINCT room_id FROM room_players 
-                WHERE room_id NOT IN (${placeholders})
-                AND created_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)
-            `, activeGameIds);
+            const { default: RoomPlayer } = await import('../models/RoomPlayer.js');
+            const roomPlayerModel = new RoomPlayer();
+            
+            // Get all room players from database
+            const allRoomPlayers = await roomPlayerModel.find({});
+            
+            // Filter for orphaned rooms (not in active games and older than 1 hour)
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+            const orphanedRoomIds = new Set();
+            
+            for (const roomPlayer of allRoomPlayers) {
+                if (!activeGameIds.includes(roomPlayer.room_id) && 
+                    roomPlayer.joined_at < oneHourAgo) {
+                    orphanedRoomIds.add(roomPlayer.room_id);
+                }
+            }
+            
+            const orphanedRooms = Array.from(orphanedRoomIds).map(room_id => ({ room_id }));
             
             for (const row of orphanedRooms) {
                 const roomId = row.room_id;
                 console.log(`[PeriodicReconciliation] Cleaning up orphaned room ${roomId}`);
                 
                 // Remove room players
-                await dbConnection.query(
-                    'DELETE FROM room_players WHERE room_id = ?',
-                    [roomId]
-                );
+                const { default: RoomPlayer } = await import('../models/RoomPlayer.js');
+                const roomPlayerModel = new RoomPlayer();
+                const roomPlayersToDelete = await roomPlayerModel.find({ room_id: roomId });
+                for (const roomPlayer of roomPlayersToDelete) {
+                    await roomPlayerModel.deleteById(roomPlayer.id);
+                }
                 
                 // Update room status
-                await dbConnection.query(
-                    'UPDATE rooms SET status = ?, updated_at = NOW() WHERE room_id = ?',
-                    ['abandoned', roomId]
-                );
+                const { default: Room } = await import('../models/Room.js');
+                const room = await Room.findById(roomId);
+                if (room) {
+                    await room.updateStatus('abandoned');
+                }
             }
             
             if (orphanedRooms.length > 0) {

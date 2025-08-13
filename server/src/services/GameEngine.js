@@ -376,13 +376,15 @@ class GameEngine {
             const dealResult = this.dealCardsWithValidation(shuffledDeck, players, 4);
             const { playerHands, remainingDeck, attempts } = dealResult;
 
-            // Update player hands in database
+            // Update player hands in database using RxDB
+            const { default: GamePlayer } = await import('../models/GamePlayer.js');
+            const gamePlayerModel = new GamePlayer();
+            
             for (const player of players) {
-                await dbConnection.query(`
-                    UPDATE game_players 
-                    SET current_hand = ? 
-                    WHERE game_id = ? AND user_id = ?
-                `, [JSON.stringify(playerHands[player.user_id]), gameId, player.user_id]);
+                await gamePlayerModel.updateOne(
+                    { game_id: gameId, user_id: player.user_id },
+                    { current_hand: JSON.stringify(playerHands[player.user_id]) }
+                );
             }
 
             console.log(`[GameEngine] Dealt initial 4 cards to each player in game ${gameId} (${attempts} shuffle attempts)`);

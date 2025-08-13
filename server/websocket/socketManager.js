@@ -511,12 +511,13 @@ class SocketManager {
 
       // Check if all expected players have joined
       const connectedPlayers = Array.from(room.players.values()).filter(p => p.isConnected);
+      const totalPlayers = Array.from(room.players.values());
 
       console.log(`[WebSocket] Connected players for game ${gameId}: ${connectedPlayers.length}`, connectedPlayers.map(p => p.username));
+      console.log(`[WebSocket] Total players for game ${gameId}: ${totalPlayers.length}`);
 
-      // For now, initialize when we have at least 2 connected players
-      // In a full implementation, you might want to wait for all 4 players
-      if (connectedPlayers.length >= 2) {
+      // Only initialize when we have 2+ connected players and no more than 4 total players
+      if (connectedPlayers.length >= 2 && totalPlayers.length <= 4) {
         // Prevent concurrent initialization attempts
         if (this.initializingGames?.has(gameId)) {
           console.log(`[WebSocket] Game ${gameId} is already being initialized`);
@@ -529,11 +530,34 @@ class SocketManager {
         }
         this.initializingGames.add(gameId);
 
-        console.log(`[WebSocket] Initializing game ${gameId} with ${connectedPlayers.length} players`);
+        console.log(`[WebSocket] Initializing game ${gameId} with ${connectedPlayers.length} connected players`);
 
-        // Add bots if we have fewer than 4 players
-        if (connectedPlayers.length < 4) {
-          const botsNeeded = 4 - connectedPlayers.length;
+        // Check total players (including disconnected ones) to avoid adding too many bots
+        const totalPlayers = Array.from(room.players.values());
+        const humanPlayers = totalPlayers.filter(p => !p.isBot);
+        const botPlayers = totalPlayers.filter(p => p.isBot);
+        
+        console.log(`[WebSocket] Current player distribution - Humans: ${humanPlayers.length}, Bots: ${botPlayers.length}, Total: ${totalPlayers.length}`);
+
+        // If we have more than 4 players, remove excess bots first
+        if (totalPlayers.length > 4) {
+          const excessCount = totalPlayers.length - 4;
+          console.log(`[WebSocket] Removing ${excessCount} excess bots from game ${gameId}`);
+          
+          // Remove excess bots (prioritize removing bots over humans)
+          const botsToRemove = botPlayers.slice(0, excessCount);
+          for (const bot of botsToRemove) {
+            room.players.delete(bot.userId);
+            console.log(`[WebSocket] Removed excess bot ${bot.username} (${bot.userId}) from game ${gameId}`);
+          }
+        }
+
+        // Recalculate after cleanup
+        const updatedTotalPlayers = Array.from(room.players.values());
+        
+        // Add bots only if we have fewer than 4 total players
+        if (updatedTotalPlayers.length < 4) {
+          const botsNeeded = 4 - updatedTotalPlayers.length;
           console.log(`[WebSocket] Adding ${botsNeeded} bots to game ${gameId}`);
 
           try {
@@ -659,41 +683,51 @@ class SocketManager {
           throw gameError;
         }
 
-        // Create GamePlayer records for all players (human and bots)
+        // Create GamePlayer records for all players (human and bots) - but only once
         console.log(`[WebSocket] Creating GamePlayer records for game ${gameId}`);
         try {
           const { default: GamePlayer } = await import('../src/models/GamePlayer.js');
           const gamePlayerModel = new GamePlayer();
           
-          let seatPosition = 1;
+          // Check existing GamePlayer records to avoid duplicates
+          const existingGamePlayers = await gamePlayerModel.find({ game_id: gameId });
+          const existingUserIds = new Set(existingGamePlayers.map(gp => gp.user_id));
+          
+          console.log(`[WebSocket] Found ${existingGamePlayers.length} existing GamePlayer records for game ${gameId}`);
+          
+          // Clean up GamePlayer records for players no longer in the room
+          const currentPlayerIds = new Set(Array.from(room.players.keys()));
+          const gamePlayersToRemove = existingGamePlayers.filter(gp => !currentPlayerIds.has(gp.user_id));
+          
+          for (const gamePlayerToRemove of gamePlayersToRemove) {
+            await gamePlayerModel.deleteOne({ game_player_id: gamePlayerToRemove.game_player_id });
+            console.log(`[WebSocket] Removed GamePlayer record for user ${gamePlayerToRemove.user_id} no longer in room`);
+          }
+          
+          let seatPosition = existingGamePlayers.length + 1;
           for (const [userId, player] of room.players.entries()) {
-            if (player.isConnected) {
-              // Check if GamePlayer record already exists (search by game_id and user_id)
-              const existingGamePlayer = await gamePlayerModel.findOne({ 
-                game_id: gameId, 
-                user_id: userId 
+            // Create GamePlayer record for all players (connected or not) if it doesn't exist
+            if (!existingUserIds.has(userId)) {
+              // Import uuidv4 for generating proper game_player_id
+              const { v4: uuidv4 } = await import('uuid');
+              
+              await gamePlayerModel.create({
+                game_player_id: uuidv4(), // Generate proper UUID
+                game_id: gameId,
+                user_id: userId,
+                team_id: null, // Will be set later when teams are formed
+                seat_position: seatPosition,
+                is_ready: player.isReady || false,
+                is_host: player.userId === room.hostId,
+                current_hand: null,
+                tricks_won_current_round: 0,
+                joined_at: player.joinedAt || new Date().toISOString()
               });
               
-              if (!existingGamePlayer) {
-                // Import uuidv4 for generating proper game_player_id
-                const { v4: uuidv4 } = await import('uuid');
-                
-                await gamePlayerModel.create({
-                  game_player_id: uuidv4(), // Generate proper UUID
-                  game_id: gameId,
-                  user_id: userId,
-                  team_id: null, // Will be set later when teams are formed
-                  seat_position: seatPosition,
-                  is_ready: player.isReady || false,
-                  is_host: player.userId === room.hostId,
-                  current_hand: null,
-                  tricks_won_current_round: 0,
-                  joined_at: player.joinedAt || new Date().toISOString()
-                });
-                
-                console.log(`[WebSocket] Created GamePlayer record for ${player.username} (${userId}) at seat ${seatPosition}`);
-                seatPosition++;
-              }
+              console.log(`[WebSocket] Created GamePlayer record for ${player.username} (${userId}) at seat ${seatPosition}`);
+              seatPosition++;
+            } else {
+              console.log(`[WebSocket] GamePlayer record already exists for ${player.username} (${userId})`);
             }
           }
         } catch (gamePlayerError) {
@@ -707,6 +741,20 @@ class SocketManager {
 
         // Deal initial 4 cards to each player
         console.log(`[WebSocket] Dealing initial cards for game ${gameId}`);
+        
+        // Debug: Check if GamePlayer records were created
+        try {
+          const { default: GamePlayer } = await import('../src/models/GamePlayer.js');
+          const debugGamePlayerModel = new GamePlayer();
+          const debugGamePlayers = await debugGamePlayerModel.find({ game_id: gameId });
+          console.log(`[WebSocket] Debug: Found ${debugGamePlayers.length} GamePlayer records for game ${gameId}`);
+          debugGamePlayers.forEach((gp, index) => {
+            console.log(`[WebSocket] Debug: GamePlayer ${index + 1}: ${gp.user_id} (seat: ${gp.seat_position})`);
+          });
+        } catch (debugError) {
+          console.error(`[WebSocket] Debug: Error checking GamePlayer records:`, debugError.message);
+        }
+        
         const dealResult = await gameEngine.dealInitialCards(gameId);
 
         // Create the first round
@@ -777,6 +825,8 @@ class SocketManager {
 
         // Remove from initialization tracking
         this.initializingGames?.delete(gameId);
+      } else if (totalPlayers.length > 4) {
+        console.log(`[WebSocket] Too many players for game ${gameId}: ${totalPlayers.length} > 4. Game supports maximum 4 players.`);
       } else {
         console.log(`[WebSocket] Not enough connected players for game ${gameId}: ${connectedPlayers.length} < 2`);
       }
