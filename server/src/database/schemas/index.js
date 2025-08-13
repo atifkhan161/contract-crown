@@ -71,6 +71,16 @@ export const usersSchema = {
     is_bot: {
       type: 'boolean',
       default: false
+    },
+    bot_personality: {
+      type: ['string', 'null'],
+      enum: ['aggressive', 'conservative', 'balanced', null],
+      maxLength: 20
+    },
+    bot_difficulty: {
+      type: ['string', 'null'],
+      enum: ['easy', 'medium', 'hard', null],
+      maxLength: 10
     }
   },
   required: ['user_id', 'username', 'email', 'password_hash'],

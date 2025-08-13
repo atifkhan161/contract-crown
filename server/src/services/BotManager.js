@@ -194,8 +194,8 @@ class BotManager {
                             email: uniqueEmail,
                             password_hash: 'BOT_NO_PASSWORD',
                             is_bot: true,
-                            bot_personality: botData.personality,
-                            bot_difficulty: botData.difficulty,
+                            bot_personality: botData.bot_personality,
+                            bot_difficulty: botData.bot_difficulty,
                             created_at: new Date().toISOString()
                         });
                     } else {
@@ -203,8 +203,8 @@ class BotManager {
                         await existingBot.update({
                             username: uniqueUsername,
                             email: uniqueEmail,
-                            bot_personality: botData.personality,
-                            bot_difficulty: botData.difficulty
+                            bot_personality: botData.bot_personality,
+                            bot_difficulty: botData.bot_difficulty
                         });
                     }
                 } catch (columnError) {
