@@ -121,20 +121,20 @@
   --border-color: rgba(169, 214, 229, 0.2);
 }
 
-[data-theme="earth"] {
-  --primary-color: var(--buff);
-  --primary-hover: var(--desert-sand);
-  --primary-light: var(--champagne-pink);
-  --secondary-color: var(--sage);
-  --secondary-light: var(--ash-gray);
-  --bg-primary: linear-gradient(135deg, var(--linen), var(--isabelline));
-  --bg-secondary: var(--champagne-pink);
-  --bg-card: rgba(203, 153, 126, 0.1);
-  --bg-input: rgba(203, 153, 126, 0.05);
-  --text-primary: var(--sage);
-  --text-secondary: var(--ash-gray);
-  --text-muted: var(--desert-sand);
-  --border-color: rgba(203, 153, 126, 0.2);
+[data-theme="tropical"] {
+  --primary-color: #69d1c5;
+  --primary-hover: #3ba99c;
+  --primary-light: #7ebce6;
+  --secondary-color: #21897e;
+  --secondary-light: #8980f5;
+  --bg-primary: linear-gradient(#21897eff, #3ba99cff, #69d1c5ff, #7ebce6ff, #8980f5ff);
+  --bg-secondary: #69d1c5;
+  --bg-card: rgba(105, 209, 197, 0.1);
+  --bg-input: rgba(105, 209, 197, 0.05);
+  --text-primary: #21897e;
+  --text-secondary: #3ba99c;
+  --text-muted: #7ebce6;
+  --border-color: rgba(105, 209, 197, 0.2);
 }
 
 [data-theme="forest"] {
@@ -153,20 +153,20 @@
   --border-color: rgba(88, 129, 87, 0.2);
 }
 
-[data-theme="pastel"] {
-  --primary-color: #ffa69e;
-  --primary-hover: #aed9e0;
-  --primary-light: #b8f2e6;
-  --secondary-color: #5e6472;
-  --secondary-light: #aed9e0;
-  --bg-primary: linear-gradient(135deg, #faf3dd, #b8f2e6);
-  --bg-secondary: #eggshell;
-  --bg-card: rgba(255, 166, 158, 0.1);
-  --bg-input: rgba(255, 166, 158, 0.05);
-  --text-primary: #5e6472;
-  --text-secondary: #aed9e0;
-  --text-muted: #ffa69e;
-  --border-color: rgba(255, 166, 158, 0.2);
+[data-theme="ocean"] {
+  --primary-color: #597d7c;
+  --primary-hover: #386775;
+  --primary-light: #777076;
+  --secondary-color: #20504e;
+  --secondary-light: #193d31;
+  --bg-primary: linear-gradient(35deg, #0d0e14, #252933, #404556, #386775, #20504e, #193d31, #17292b);
+  --bg-secondary: #252933;
+  --bg-card: rgba(89, 125, 124, 0.1);
+  --bg-input: rgba(89, 125, 124, 0.05);
+  --text-primary: #d3cdd2;
+  --text-secondary: #97c5c4;
+  --text-muted: #78949c;
+  --border-color: rgba(89, 125, 124, 0.2);
 }
 
 [data-theme="deepSea"] {
