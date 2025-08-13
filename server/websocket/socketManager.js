@@ -326,8 +326,8 @@ class SocketManager {
             user_id: effectiveUserId
           });
 
-          if (rows && rows.length > 0 && rows[0].team_assignment !== null) {
-            const dbTeamAssignment = rows[0].team_assignment;
+          if (roomPlayer && roomPlayer.team_assignment !== null) {
+            const dbTeamAssignment = roomPlayer.team_assignment;
             existingPlayer.teamAssignment = dbTeamAssignment;
 
             // Update room teams structure

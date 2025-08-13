@@ -22,7 +22,7 @@ class BotManager {
     createBotsForGame(gameId, count = 3, options = {}) {
         try {
             const bots = [];
-            
+
             // Ensure we don't have bots for this game already
             if (this.activeBots.has(gameId)) {
                 console.warn(`[BotManager] Bots already exist for game ${gameId}, clearing existing bots`);
@@ -46,7 +46,7 @@ class BotManager {
                 const bot = new BotPlayer(botOptions);
                 bots.push(bot);
                 gameBots.set(bot.id, bot);
-                
+
                 this.botCounter++;
             }
 
@@ -171,28 +171,42 @@ class BotManager {
             }
 
             const bots = Array.from(gameBots.values());
-            
+
             // Store each bot as a user record with bot flags
             for (const bot of bots) {
                 const botData = bot.toDatabaseFormat();
-                
+
                 // Insert bot as a temporary user with all required fields and unique identifiers
                 const uniqueUsername = `${botData.username}_${botData.user_id.slice(-8)}`;
                 const uniqueEmail = `${botData.user_id}@bot.local`;
-                
+
                 try {
-                    await dbConnection.query(`
-                        INSERT INTO users (user_id, username, email, password_hash, created_at)
-                        VALUES (?, ?, ?, ?, NOW())
-                        ON DUPLICATE KEY UPDATE
-                        username = VALUES(username),
-                        email = VALUES(email)
-                    `, [
-                        botData.user_id,
-                        uniqueUsername,
-                        uniqueEmail,
-                        'BOT_NO_PASSWORD'
-                    ]);
+                    const { default: User } = await import('../models/User.js');
+                    const userModel = new User();
+
+                    // Check if bot user already exists
+                    const existingBot = await userModel.findOne({ user_id: botData.user_id });
+
+                    if (!existingBot) {
+                        await userModel.create({
+                            user_id: botData.user_id,
+                            username: uniqueUsername,
+                            email: uniqueEmail,
+                            password_hash: 'BOT_NO_PASSWORD',
+                            is_bot: true,
+                            bot_personality: botData.personality,
+                            bot_difficulty: botData.difficulty,
+                            created_at: new Date().toISOString()
+                        });
+                    } else {
+                        // Update existing bot user
+                        await existingBot.update({
+                            username: uniqueUsername,
+                            email: uniqueEmail,
+                            bot_personality: botData.personality,
+                            bot_difficulty: botData.difficulty
+                        });
+                    }
                 } catch (columnError) {
                     console.error('[BotManager] Failed to insert bot user:', columnError);
                     throw columnError;
@@ -213,13 +227,31 @@ class BotManager {
      */
     async retrieveBotPlayersFromDatabase(gameId) {
         try {
-            const botPlayers = await dbConnection.query(`
-                SELECT gp.*, u.username, u.bot_personality, u.bot_difficulty
-                FROM game_players gp
-                JOIN users u ON gp.user_id = u.user_id
-                WHERE gp.game_id = ? AND u.is_bot = 1
-                ORDER BY gp.seat_position
-            `, [gameId]);
+            const { default: GamePlayer } = await import('../models/GamePlayer.js');
+            const { default: User } = await import('../models/User.js');
+
+            const gamePlayerModel = new GamePlayer();
+            const userModel = new User();
+
+            // Get all game players for this game
+            const gamePlayers = await gamePlayerModel.find({ game_id: gameId });
+
+            // Filter for bot players and get their user data
+            const botPlayers = [];
+            for (const gamePlayer of gamePlayers) {
+                const user = await userModel.findOne({ user_id: gamePlayer.user_id });
+                if (user && user.is_bot) {
+                    botPlayers.push({
+                        ...gamePlayer,
+                        username: user.username,
+                        bot_personality: user.bot_personality,
+                        bot_difficulty: user.bot_difficulty
+                    });
+                }
+            }
+
+            // Sort by seat position
+            botPlayers.sort((a, b) => (a.seat_position || 0) - (b.seat_position || 0));
 
             console.log(`[BotManager] Retrieved ${botPlayers.length} bot players from database for game ${gameId}`);
             return botPlayers;
@@ -239,7 +271,7 @@ class BotManager {
         try {
             // Clear existing bots for this game
             this.clearGameBots(gameId);
-            
+
             // Create bot map for this game
             this.activeBots.set(gameId, new Map());
             const gameBots = this.activeBots.get(gameId);
@@ -300,26 +332,37 @@ class BotManager {
      */
     async cleanupBotUsers(gameId) {
         try {
-            // Get bot user IDs for this game
-            const botUsers = await dbConnection.query(`
-                SELECT DISTINCT gp.user_id
-                FROM game_players gp
-                JOIN users u ON gp.user_id = u.user_id
-                WHERE gp.game_id = ? AND u.is_bot = 1
-            `, [gameId]);
+            const { default: GamePlayer } = await import('../models/GamePlayer.js');
+            const { default: User } = await import('../models/User.js');
 
-            if (botUsers.length === 0) {
+            const gamePlayerModel = new GamePlayer();
+            const userModel = new User();
+
+            // Get all game players for this game
+            const gamePlayers = await gamePlayerModel.find({ game_id: gameId });
+
+            // Find bot user IDs
+            const botUserIds = [];
+            for (const gamePlayer of gamePlayers) {
+                const user = await userModel.findOne({ user_id: gamePlayer.user_id });
+                if (user && user.is_bot) {
+                    botUserIds.push(user.user_id);
+                }
+            }
+
+            if (botUserIds.length === 0) {
                 return;
             }
 
-            const botUserIds = botUsers.map(bot => bot.user_id);
-
             // Remove bot users (they're temporary)
-            await dbConnection.query(`
-                DELETE FROM users WHERE user_id IN (${botUserIds.map(() => '?').join(',')}) AND is_bot = 1
-            `, botUserIds);
+            for (const botUserId of botUserIds) {
+                const botUser = await userModel.findOne({ user_id: botUserId });
+                if (botUser && botUser.is_bot) {
+                    await botUser.remove();
+                }
+            }
 
-            console.log(`[BotManager] Cleaned up ${botUsers.length} bot users for game ${gameId}`);
+            console.log(`[BotManager] Cleaned up ${botUserIds.length} bot users for game ${gameId}`);
         } catch (error) {
             console.error('[BotManager] Error cleaning up bot users:', error);
             // Don't throw - cleanup errors shouldn't break game flow

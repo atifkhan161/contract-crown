@@ -1,0 +1,17 @@
+{
+  "migrationId": "test-migration-001",
+  "timestamp": "2025-08-13T06:48:15.115Z",
+  "type": "pre-migration",
+  "version": "1.0",
+  "status": "completed",
+  "mariadbBackup": {
+    "available": false,
+    "reason": "No export data found"
+  },
+  "rxdbBackup": {
+    "available": true,
+    "path": "C:\\development\\trump-crown\\server\\data\\migration-backups\\migration_backup_test-migration-001_2025-08-13T06-48-15-115Z\\rxdb_export.json",
+    "timestamp": "2025-08-13T06:48:15.126Z"
+  },
+  "backupPath": "C:\\development\\trump-crown\\server\\data\\migration-backups\\migration_backup_test-migration-001_2025-08-13T06-48-15-115Z"
+}

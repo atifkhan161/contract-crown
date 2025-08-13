@@ -3,6 +3,13 @@ import GameEngine from './GameEngine.js';
 // Legacy MariaDB connection removed - now using RxDB
 // import dbConnection from '../../database/connection.js';
 
+// Temporary compatibility layer - this needs to be replaced with RxDB queries
+const dbConnection = {
+    query: () => {
+        throw new Error('dbConnection is not defined - BotTurnProcessor needs to be migrated to RxDB');
+    }
+};
+
 /**
  * BotTurnProcessor handles automatic bot turn processing and action execution
  * Manages bot decision-making timing and integration with game flow

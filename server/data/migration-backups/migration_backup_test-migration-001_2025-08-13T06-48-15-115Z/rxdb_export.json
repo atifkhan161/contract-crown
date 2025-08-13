@@ -1,0 +1,112 @@
+{
+  "name": "contract_crown_rxdb",
+  "instanceToken": "iprqjscwzm",
+  "collections": [
+    {
+      "name": "users",
+      "schemaHash": "2d74e76fb485ee90ed7749958602fcbdf894da6676b338beff2c4570ad91fe8a",
+      "docs": [
+        {
+          "user_id": "860af7a5-a470-471e-b553-c953ab038a99",
+          "username": "aasim",
+          "email": "aasim@contractcrown.com",
+          "password_hash": "$2b$12$2fhwvh6GcjF6aY7tryDK0eLH4vjd/x60IoVythZlWI3C1m1ZhEd/G",
+          "total_games_played": 0,
+          "total_games_won": 0,
+          "is_active": true,
+          "is_bot": false,
+          "created_at": "2025-08-12T07:42:03.179Z",
+          "_meta": {
+            "lwt": 1755067695109.05
+          },
+          "_deleted": false
+        },
+        {
+          "user_id": "ef463ab0-4a34-46d2-8cbb-2d73d2d7d788",
+          "username": "atif",
+          "email": "atif@contractcrown.com",
+          "password_hash": "$2b$12$6dLgSkkki0SB1MyMaEWwzO4vaJkwAdQTD.gwUbcEZCZ.Pcs4L31Ky",
+          "total_games_played": 0,
+          "total_games_won": 0,
+          "is_active": true,
+          "is_bot": false,
+          "created_at": "2025-08-12T07:42:03.636Z",
+          "_meta": {
+            "lwt": 1755067695109.05
+          },
+          "_deleted": false
+        },
+        {
+          "user_id": "a025a95f-c3ad-4d27-819f-e3d4e76e865e",
+          "username": "sohail",
+          "email": "sohail@contractcrown.com",
+          "password_hash": "$2b$12$ox7piDnp9YckuP3McsFXheH0222A6sNHDoXM24fapT6FeF.Xz3J26",
+          "total_games_played": 0,
+          "total_games_won": 0,
+          "is_active": true,
+          "is_bot": false,
+          "created_at": "2025-08-12T07:42:03.985Z",
+          "_meta": {
+            "lwt": 1755067695109.05
+          },
+          "_deleted": false
+        },
+        {
+          "user_id": "701f5c5f-fd6b-4832-b88f-f5a5d4882ad8",
+          "username": "usama",
+          "email": "usama@contractcrown.com",
+          "password_hash": "$2b$12$r.Vd4fst8xMOI7aGjcchEOJarGlP7r7qnucLJTq80SRatRealRxaC",
+          "total_games_played": 0,
+          "total_games_won": 0,
+          "is_active": true,
+          "is_bot": false,
+          "created_at": "2025-08-12T07:42:04.321Z",
+          "_meta": {
+            "lwt": 1755067695109.05
+          },
+          "_deleted": false
+        }
+      ]
+    },
+    {
+      "name": "games",
+      "schemaHash": "dd3a3129b10cc7d852292f3bf30aaf8ff03db822fd6f8108625386876739265e",
+      "docs": []
+    },
+    {
+      "name": "teams",
+      "schemaHash": "b87caa0f5a4cebac6f6d7de0be1b312dad6d7df2aae4080887d423e8668e8b5e",
+      "docs": []
+    },
+    {
+      "name": "gamePlayers",
+      "schemaHash": "0f433c2e1704b665410a82f4267f045990ebcfca7efa98bf1cb6d6826c4ac6c8",
+      "docs": []
+    },
+    {
+      "name": "gameRounds",
+      "schemaHash": "3234d0512734cde71756414f55955b97212e5fc02c5cbe71a600d4e5a4151fd8",
+      "docs": []
+    },
+    {
+      "name": "gameTricks",
+      "schemaHash": "78608ce194b96c32d96e5bd4eba927b3d19806e557e0ce7e2a6a4450b97bb20c",
+      "docs": []
+    },
+    {
+      "name": "rooms",
+      "schemaHash": "fbedff63da6e378cd36eaa43c14be3c9780b7198f1be37b3941aa002b301d273",
+      "docs": []
+    },
+    {
+      "name": "roomPlayers",
+      "schemaHash": "c5158c94983d1144f67b7928fa1c7e9a67831b3c5228a9af99a7c836612235da",
+      "docs": []
+    },
+    {
+      "name": "userSessions",
+      "schemaHash": "2cadcead3158a364fdf32057bcc11b41f9b22c3d47eb6fe7f0cd3208b04d24be",
+      "docs": []
+    }
+  ]
+}

@@ -2,6 +2,13 @@ import { v4 as uuidv4 } from 'uuid';
 // Legacy MariaDB connection removed - now using RxDB
 // import dbConnection from '../../database/connection.js';
 
+// Temporary compatibility layer - this needs to be replaced with RxDB queries
+const dbConnection = {
+    query: () => {
+        throw new Error('dbConnection is not defined - GameEngine needs to be migrated to RxDB');
+    }
+};
+
 /**
  * GameEngine class handles core game logic for Contract Crown
  * Implements 32-card deck, trump declaration, trick-taking, and scoring
@@ -26,15 +33,15 @@ class GameEngine {
      */
     async isDemoMode(gameId) {
         try {
-            const gameResult = await dbConnection.query(`
-                SELECT is_demo_mode FROM games WHERE game_id = ?
-            `, [gameId]);
+            const { default: Game } = await import('../models/Game.js');
+            const gameModel = new Game();
+            const game = await gameModel.findOne({ game_id: gameId });
 
-            if (gameResult.length === 0) {
+            if (!game) {
                 return false;
             }
 
-            return Boolean(gameResult[0].is_demo_mode);
+            return Boolean(game.is_demo_mode);
         } catch (error) {
             console.error('[GameEngine] Error checking demo mode:', error.message);
             return false;
@@ -58,9 +65,12 @@ class GameEngine {
             }
 
             // Mark game as demo mode
-            await dbConnection.query(`
-                UPDATE games SET is_demo_mode = 1 WHERE game_id = ?
-            `, [gameId]);
+            const { default: Game } = await import('../models/Game.js');
+            const gameModel = new Game();
+            const game = await gameModel.findOne({ game_id: gameId });
+            if (game) {
+                await game.update({ is_demo_mode: true });
+            }
 
             // Verify all players are properly set up in game_players table
             const allPlayers = await this.getGamePlayers(gameId);
@@ -162,11 +172,11 @@ class GameEngine {
      */
     async isPlayerBotInDatabase(playerId) {
         try {
-            const result = await dbConnection.query(`
-                SELECT is_bot FROM users WHERE user_id = ?
-            `, [playerId]);
+            const { default: User } = await import('../models/User.js');
+            const userModel = new User();
+            const user = await userModel.findOne({ user_id: playerId });
 
-            return result.length > 0 && Boolean(result[0].is_bot);
+            return user && Boolean(user.is_bot);
         } catch (error) {
             console.error('[GameEngine] Error checking if player is bot:', error.message);
             return false;
@@ -507,13 +517,30 @@ class GameEngine {
      */
     async getGamePlayers(gameId) {
         try {
-            const players = await dbConnection.query(`
-                SELECT gp.user_id, gp.seat_position, gp.team_id, u.username
-                FROM game_players gp
-                JOIN users u ON gp.user_id = u.user_id
-                WHERE gp.game_id = ?
-                ORDER BY gp.seat_position ASC
-            `, [gameId]);
+            const { default: GamePlayer } = await import('../models/GamePlayer.js');
+            const { default: User } = await import('../models/User.js');
+            
+            const gamePlayerModel = new GamePlayer();
+            const userModel = new User();
+            
+            const gamePlayers = await gamePlayerModel.find({ game_id: gameId });
+            
+            // Get user data for each player
+            const players = [];
+            for (const gamePlayer of gamePlayers) {
+                const user = await userModel.findOne({ user_id: gamePlayer.user_id });
+                if (user) {
+                    players.push({
+                        user_id: gamePlayer.user_id,
+                        seat_position: gamePlayer.seat_position,
+                        team_id: gamePlayer.team_id,
+                        username: user.username
+                    });
+                }
+            }
+            
+            // Sort by seat position
+            players.sort((a, b) => (a.seat_position || 0) - (b.seat_position || 0));
 
             return players;
         } catch (error) {

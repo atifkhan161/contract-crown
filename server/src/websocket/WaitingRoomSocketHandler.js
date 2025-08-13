@@ -3,6 +3,13 @@ import BotManager from '../services/BotManager.js';
 // Legacy MariaDB connection removed - now using RxDB
 // import dbConnection from '../../database/connection.js';
 
+// Temporary compatibility layer - this needs to be replaced with RxDB queries
+const dbConnection = {
+    query: () => {
+        throw new Error('dbConnection is not defined - WaitingRoomSocketHandler needs to be migrated to RxDB');
+    }
+};
+
 /**
  * Waiting Room WebSocket Handler
  * Handles WebSocket events specific to the waiting room functionality
