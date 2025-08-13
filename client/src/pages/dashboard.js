@@ -6,12 +6,14 @@
 import { AuthManager } from '../core/auth.js';
 import { SocketManager } from '../core/SocketManager.js';
 import { RoomManager } from '../core/RoomManager.js';
+import { getErrorHandler } from '../core/ErrorHandler.js';
 
 class DashboardManager {
     constructor() {
         this.authManager = new AuthManager();
         this.socketManager = new SocketManager(this.authManager);
         this.roomManager = new RoomManager(this.authManager);
+        this.errorHandler = getErrorHandler(this.authManager);
         
         this.elements = {};
         this.currentUser = null;
@@ -116,7 +118,8 @@ class DashboardManager {
         this.socketManager.on('auth_error', (error) => {
             console.warn('[Dashboard] WebSocket authentication failed:', error);
             this.updateConnectionStatus('disconnected');
-            // Don't redirect immediately - the dashboard can work without WebSocket
+            // Error handler will manage logout if it's a critical auth error
+            this.errorHandler?.handleAuthError(error);
         });
     }
 
@@ -139,7 +142,7 @@ class DashboardManager {
             
             if (!isAuthenticated) {
                 console.log('[Dashboard] User not authenticated, redirecting to login');
-                window.location.href = 'login.html';
+                this.errorHandler?.handleAuthError('User not authenticated');
                 return;
             }
 

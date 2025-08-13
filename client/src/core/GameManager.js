@@ -11,11 +11,13 @@ import { TrickManager } from '../components/TrickManager.js';
 import { DemoGameManager } from './DemoGameManager.js';
 import { WebSocketGameManager } from './WebSocketGameManager.js';
 import { AuthManager } from './auth.js';
+import { getErrorHandler } from './ErrorHandler.js';
 
 export class GameManager {
     constructor() {
         this.authManager = new AuthManager();
         this.gameState = new GameState();
+        this.errorHandler = getErrorHandler(this.authManager);
         
         // Initialize managers
         this.uiManager = new UIManager(this.gameState, this.authManager);
@@ -38,7 +40,7 @@ export class GameManager {
         try {
             // Check authentication
             if (!this.authManager.isAuthenticated()) {
-                window.location.href = '/login.html';
+                this.errorHandler?.handleAuthError('User not authenticated');
                 return;
             }
 

@@ -4,10 +4,12 @@
  */
 
 import { GameManager } from '../core/GameManager.js';
+import { getErrorHandler } from '../core/ErrorHandler.js';
 
 class GamePageController {
     constructor() {
         this.gameManager = new GameManager();
+        this.errorHandler = getErrorHandler(this.gameManager.authManager);
         this.init();
     }
 

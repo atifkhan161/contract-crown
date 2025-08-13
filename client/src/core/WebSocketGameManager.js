@@ -3,6 +3,8 @@
  * Manages WebSocket connections and multiplayer game events
  */
 
+import { getErrorHandler } from './ErrorHandler.js';
+
 export class WebSocketGameManager {
     constructor(gameState, uiManager, cardManager, trumpManager, trickManager, authManager) {
         this.gameState = gameState;
@@ -11,6 +13,7 @@ export class WebSocketGameManager {
         this.trumpManager = trumpManager;
         this.trickManager = trickManager;
         this.authManager = authManager;
+        this.errorHandler = getErrorHandler(authManager);
         
         this.socket = null;
         this.gameId = null;
@@ -99,10 +102,15 @@ export class WebSocketGameManager {
                 this.joinGameRoom();
             });
 
-            this.socket.on('disconnect', () => {
-                console.log('[WebSocketGameManager] Disconnected from server');
+            this.socket.on('disconnect', (reason) => {
+                console.log('[WebSocketGameManager] Disconnected from server:', reason);
                 this.uiManager.updateConnectionStatus('disconnected');
                 this.uiManager.addGameMessage('Disconnected from server', 'warning');
+                
+                // Handle critical disconnect reasons
+                if (reason === 'io server disconnect' || reason === 'transport error') {
+                    this.errorHandler?.handleWebSocketError(`Connection error: ${reason}`, this.socket);
+                }
             });
 
             this.socket.on('reconnecting', () => {
@@ -113,28 +121,20 @@ export class WebSocketGameManager {
 
             this.socket.on('connect_error', (error) => {
                 console.error('[WebSocketGameManager] Connection error:', error);
-                if (error.message.includes('Authentication') || error.message.includes('token')) {
-                    this.uiManager.showError('Authentication failed. Please log in again.');
-                    setTimeout(() => {
-                        window.location.href = '/login.html';
-                    }, 2000);
-                } else {
-                    this.uiManager.addGameMessage('Connection error occurred', 'error');
-                }
+                this.errorHandler?.handleWebSocketError(error, this.socket);
+                this.uiManager.addGameMessage('Connection error occurred', 'error');
                 reject(error);
             });
 
             this.socket.on('auth_error', (error) => {
                 console.error('[WebSocketGameManager] Authentication error:', error);
-                this.uiManager.showError('Authentication failed. Please log in again.');
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 2000);
+                this.errorHandler?.handleAuthError(error);
                 reject(new Error('Authentication failed'));
             });
 
             this.socket.on('error', (error) => {
                 console.error('[WebSocketGameManager] Socket error:', error);
+                this.errorHandler?.handleWebSocketError(error, this.socket);
                 this.uiManager.addGameMessage('Connection error occurred', 'error');
                 reject(error);
             });

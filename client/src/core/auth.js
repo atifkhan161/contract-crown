@@ -3,6 +3,8 @@
  * Handles JWT token management, user authentication, and session management
  */
 
+import { getErrorHandler } from './ErrorHandler.js';
+
 class AuthManager {
     constructor() {
         this.baseURL = this.getBaseURL();
@@ -15,6 +17,9 @@ class AuthManager {
         // Authentication state
         this.isAuthenticating = false;
         this.authStateListeners = [];
+        
+        // Initialize error handler
+        this.errorHandler = getErrorHandler(this);
         
         // Initialize token refresh timer
         this.refreshTimer = null;
@@ -440,7 +445,9 @@ class AuthManager {
     async authenticatedFetch(url, options = {}) {
         const token = this.getToken();
         if (!token) {
-            throw new Error('No authentication token available');
+            const error = 'No authentication token available';
+            this.errorHandler?.handleAuthError(error);
+            throw new Error(error);
         }
 
         const headers = {
@@ -449,30 +456,42 @@ class AuthManager {
             ...options.headers
         };
 
-        const response = await fetch(url, {
-            ...options,
-            headers
-        });
+        try {
+            const response = await fetch(url, {
+                ...options,
+                headers
+            });
 
-        // If token is expired, try to refresh
-        if (response.status === 401) {
-            const refreshed = await this.refreshToken();
-            if (refreshed) {
-                // Retry with new token
-                const newToken = this.getToken();
-                headers['Authorization'] = `Bearer ${newToken}`;
-                return fetch(url, {
-                    ...options,
-                    headers
-                });
-            } else {
-                // Refresh failed, redirect to login
-                window.location.href = 'login.html';
-                throw new Error('Authentication expired');
+            // Handle authentication errors
+            if (response.status === 401 || response.status === 403) {
+                this.errorHandler?.handleHttpAuthError(response, url);
+                
+                // Try to refresh token once
+                const refreshed = await this.refreshToken();
+                if (refreshed) {
+                    // Retry with new token
+                    const newToken = this.getToken();
+                    headers['Authorization'] = `Bearer ${newToken}`;
+                    return fetch(url, {
+                        ...options,
+                        headers
+                    });
+                } else {
+                    // Refresh failed, let error handler manage logout
+                    throw new Error('Authentication expired');
+                }
             }
-        }
 
-        return response;
+            return response;
+        } catch (error) {
+            // Handle network errors that might indicate session issues
+            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                console.warn('[AuthManager] Network error during authenticated request:', error);
+            } else {
+                this.errorHandler?.handleAuthError(error);
+            }
+            throw error;
+        }
     }
 
     /**

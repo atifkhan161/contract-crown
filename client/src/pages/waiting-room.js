@@ -6,12 +6,14 @@
 import { AuthManager } from '../core/auth.js';
 import { WaitingRoomSocketManager } from '../core/WaitingRoomSocketManager.js';
 import { WaitingRoomUI } from '../ui/WaitingRoomUI.js';
+import { getErrorHandler } from '../core/ErrorHandler.js';
 
 class WaitingRoomManager {
     constructor() {
         this.authManager = new AuthManager();
         this.socketManager = null;
         this.uiManager = new WaitingRoomUI();
+        this.errorHandler = getErrorHandler(this.authManager);
 
         this.elements = {};
         this.currentUser = null;
@@ -120,7 +122,7 @@ class WaitingRoomManager {
 
             if (!isAuthenticated || !user) {
                 console.log('[WaitingRoom] User not authenticated, redirecting to login');
-                window.location.href = 'login.html';
+                this.errorHandler?.handleAuthError('User not authenticated');
                 return;
             }
 
@@ -497,10 +499,7 @@ class WaitingRoomManager {
 
         this.socketManager.on('auth_error', (error) => {
             console.error('[WaitingRoom] Authentication error:', error);
-            this.showError('Authentication failed. Please log in again.');
-            setTimeout(() => {
-                window.location.href = 'login.html';
-            }, 2000);
+            this.errorHandler?.handleAuthError(error);
         });
     }
 

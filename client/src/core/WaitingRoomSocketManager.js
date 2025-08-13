@@ -4,12 +4,15 @@
  * Provides real-time updates for player joining, ready status, and game start coordination
  */
 
+import { getErrorHandler } from './ErrorHandler.js';
+
 export class WaitingRoomSocketManager {
     constructor(authManager, roomId) {
         this.authManager = authManager;
         this.roomId = roomId;
         this.socket = null;
         this.eventListeners = new Map();
+        this.errorHandler = getErrorHandler(authManager);
 
         // Connection state
         this.isConnected = false;
@@ -123,6 +126,11 @@ export class WaitingRoomSocketManager {
 
             this.emit('disconnect', { reason });
 
+            // Handle critical disconnect reasons
+            if (reason === 'io server disconnect' || reason === 'transport error' || reason === 'ping timeout') {
+                this.errorHandler?.handleWebSocketError(`Connection error: ${reason}`, this.socket);
+            }
+
             // Enable HTTP polling fallback for critical updates
             this.enableHttpFallback();
 
@@ -140,6 +148,9 @@ export class WaitingRoomSocketManager {
             this.isConnected = false;
             this.updateConnectionStatus('disconnected');
 
+            // Handle critical websocket errors
+            this.errorHandler?.handleWebSocketError(error, this.socket);
+
             // Enable HTTP polling fallback for critical updates
             this.enableHttpFallback();
 
@@ -155,6 +166,9 @@ export class WaitingRoomSocketManager {
         this.socket.on('auth_error', (error) => {
             console.error('[WaitingRoomSocketManager] Authentication error:', error);
             this.updateConnectionStatus('disconnected');
+            
+            // Handle authentication errors through error handler
+            this.errorHandler?.handleAuthError(error);
             this.emit('auth_error', error);
             reject(new Error('Authentication failed'));
         });

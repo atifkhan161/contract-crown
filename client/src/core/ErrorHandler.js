@@ -1,541 +1,297 @@
-import userFeedbackManager from './UserFeedbackManager.js';
-
 /**
- * Enhanced Error Handler
- * Provides comprehensive error handling with user-friendly messages,
- * retry mechanisms, and fallback workflows
- * 
- * Requirements: 6.1, 6.2, 6.4, 7.3
+ * Centralized Error Handler
+ * Handles websocket connection errors and session expiration
+ * Forces logout and redirect to login page when critical errors occur
  */
 
 export class ErrorHandler {
-    constructor() {
-        this.errorTypes = {
-            AUTHENTICATION: 'authentication',
-            CONNECTION: 'connection',
-            WEBSOCKET: 'websocket',
-            API: 'api',
-            VALIDATION: 'validation',
-            NETWORK: 'network',
-            TIMEOUT: 'timeout',
-            PERMISSION: 'permission'
-        };
-
-        this.retryConfig = {
-            maxRetries: 3,
-            baseDelay: 1000,
-            maxDelay: 10000,
-            backoffMultiplier: 2
-        };
-
-        this.errorListeners = new Map();
-        this.retryAttempts = new Map();
-        this.activeRetries = new Set();
-
-        this.setupRetryFeedback();
+    constructor(authManager) {
+        this.authManager = authManager;
+        this.isHandlingError = false;
+        this.criticalErrors = new Set([
+            'TransportError: websocket error',
+            'Connection error: TransportError: websocket error',
+            'Session expired or invalid',
+            'Connection error: Error: Session expired or invalid',
+            'Authentication failed',
+            'auth_error',
+            'Authentication expired',
+            'Token expired',
+            'Invalid token',
+            'Unauthorized'
+        ]);
     }
 
     /**
-     * Handle error with appropriate user feedback and recovery options
+     * Check if an error is critical and requires logout
+     * @param {string|Error} error - Error message or Error object
+     * @returns {boolean} True if error is critical
      */
-    handleError(error, context = {}) {
-        const errorInfo = this.categorizeError(error, context);
-        const userMessage = this.getUserFriendlyMessage(errorInfo);
-        const recoveryOptions = this.getRecoveryOptions(errorInfo);
+    isCriticalError(error) {
+        const errorMessage = typeof error === 'string' ? error : error?.message || '';
+        
+        // Check for exact matches
+        if (this.criticalErrors.has(errorMessage)) {
+            return true;
+        }
 
-        console.error('[ErrorHandler] Error occurred:', {
-            error,
-            context,
-            errorInfo,
-            userMessage,
-            recoveryOptions
-        });
-
-        // Show user-friendly error message
-        this.showUserFeedback(errorInfo, userMessage, recoveryOptions, context);
-
-        // Emit error event for UI components to handle
-        this.emit('error', {
-            ...errorInfo,
-            userMessage,
-            recoveryOptions,
-            originalError: error,
-            context
-        });
-
-        return {
-            errorInfo,
-            userMessage,
-            recoveryOptions
-        };
+        // Check for partial matches
+        const lowerError = errorMessage.toLowerCase();
+        return (
+            lowerError.includes('websocket error') ||
+            lowerError.includes('session expired') ||
+            lowerError.includes('session invalid') ||
+            lowerError.includes('authentication failed') ||
+            lowerError.includes('authentication expired') ||
+            lowerError.includes('token expired') ||
+            lowerError.includes('invalid token') ||
+            lowerError.includes('unauthorized') ||
+            lowerError.includes('auth_error')
+        );
     }
 
     /**
-     * Show user feedback based on error type and context
+     * Handle critical errors by forcing logout and redirect
+     * @param {string|Error} error - Error message or Error object
+     * @param {string} source - Source of the error (e.g., 'websocket', 'http', 'auth')
      */
-    showUserFeedback(errorInfo, userMessage, recoveryOptions, context) {
-        // Handle specific error types with appropriate feedback
-        switch (errorInfo.type) {
-            case this.errorTypes.AUTHENTICATION:
-                userFeedbackManager.handleAuthError(errorInfo, context.operation || '');
-                break;
-
-            case this.errorTypes.WEBSOCKET:
-                userFeedbackManager.handleWebsocketError(errorInfo, context.operation || '');
-                break;
-
-            case this.errorTypes.API:
-                userFeedbackManager.handleApiError(errorInfo, context.operation || '');
-                break;
-
-            case this.errorTypes.CONNECTION:
-                userFeedbackManager.showConnectionStatus(false, false);
-                break;
-
-            default:
-                // Show generic error message
-                const duration = errorInfo.severity === 'high' ? 0 : 8000;
-                userFeedbackManager.showError(userMessage.message, duration);
-                break;
+    handleCriticalError(error, source = 'unknown') {
+        // Prevent multiple simultaneous error handling
+        if (this.isHandlingError) {
+            console.log('[ErrorHandler] Already handling critical error, ignoring duplicate');
+            return;
         }
 
-        // Handle automatic recovery options
-        const automaticOption = recoveryOptions.find(option => option.automatic);
-        if (automaticOption) {
-            this.executeRecoveryOption(automaticOption, context);
+        const errorMessage = typeof error === 'string' ? error : error?.message || 'Unknown error';
+        
+        if (!this.isCriticalError(errorMessage)) {
+            console.log('[ErrorHandler] Error is not critical, not forcing logout:', errorMessage);
+            return;
         }
+
+        console.error(`[ErrorHandler] Critical error detected from ${source}:`, errorMessage);
+        
+        this.isHandlingError = true;
+        
+        // Show user-friendly message
+        this.showLogoutMessage(errorMessage, source);
+        
+        // Force logout and redirect after a short delay
+        setTimeout(() => {
+            this.forceLogoutAndRedirect();
+        }, 2000);
     }
 
     /**
-     * Categorize error based on type and context
+     * Show logout message to user
+     * @param {string} errorMessage - Error message
+     * @param {string} source - Source of the error
      */
-    categorizeError(error, context) {
-        const errorInfo = {
-            type: this.errorTypes.NETWORK,
-            severity: 'medium',
-            retryable: true,
-            fallbackAvailable: false,
-            code: null,
-            message: error.message || 'An unknown error occurred'
-        };
-
-        // Authentication errors
-        if (error.message?.includes('authentication') ||
-            error.message?.includes('token') ||
-            error.message?.includes('unauthorized') ||
-            context.type === 'auth') {
-            errorInfo.type = this.errorTypes.AUTHENTICATION;
-            errorInfo.severity = 'high';
-            errorInfo.retryable = false;
-            errorInfo.fallbackAvailable = true;
-        }
-
-        // Connection errors
-        else if (error.message?.includes('connection') ||
-            error.message?.includes('connect') ||
-            error.name === 'NetworkError' ||
-            context.type === 'connection') {
-            errorInfo.type = this.errorTypes.CONNECTION;
-            errorInfo.severity = 'high';
-            errorInfo.retryable = true;
-            errorInfo.fallbackAvailable = true;
-        }
-
-        // WebSocket specific errors
-        else if (error.message?.includes('websocket') ||
-            error.message?.includes('socket') ||
-            context.type === 'websocket') {
-            errorInfo.type = this.errorTypes.WEBSOCKET;
-            errorInfo.severity = 'medium';
-            errorInfo.retryable = true;
-            errorInfo.fallbackAvailable = true;
-        }
-
-        // API errors
-        else if (error.status || context.type === 'api') {
-            errorInfo.type = this.errorTypes.API;
-            errorInfo.code = error.status;
-            errorInfo.severity = error.status >= 500 ? 'high' : 'medium';
-            errorInfo.retryable = error.status >= 500 || error.status === 408;
-            errorInfo.fallbackAvailable = true;
-        }
-
-        // Timeout errors
-        else if (error.message?.includes('timeout') ||
-            error.name === 'TimeoutError' ||
-            context.type === 'timeout') {
-            errorInfo.type = this.errorTypes.TIMEOUT;
-            errorInfo.severity = 'medium';
-            errorInfo.retryable = true;
-            errorInfo.fallbackAvailable = true;
-        }
-
-        // Validation errors
-        else if (error.message?.includes('validation') ||
-            error.message?.includes('invalid') ||
-            context.type === 'validation') {
-            errorInfo.type = this.errorTypes.VALIDATION;
-            errorInfo.severity = 'low';
-            errorInfo.retryable = false;
-            errorInfo.fallbackAvailable = false;
-        }
-
-        // Permission errors
-        else if (error.message?.includes('permission') ||
-            error.message?.includes('forbidden') ||
-            error.status === 403) {
-            errorInfo.type = this.errorTypes.PERMISSION;
-            errorInfo.severity = 'medium';
-            errorInfo.retryable = false;
-            errorInfo.fallbackAvailable = false;
-        }
-
-        return errorInfo;
-    }
-
-    /**
-     * Get user-friendly error message
-     */
-    getUserFriendlyMessage(errorInfo) {
-        const messages = {
-            [this.errorTypes.AUTHENTICATION]: {
-                title: 'Authentication Error',
-                message: 'Your session has expired or is invalid. Please log in again.',
-                action: 'Redirecting to login...'
-            },
-            [this.errorTypes.CONNECTION]: {
-                title: 'Connection Problem',
-                message: 'Unable to connect to the server. Please check your internet connection.',
-                action: 'Retrying connection...'
-            },
-            [this.errorTypes.WEBSOCKET]: {
-                title: 'Real-time Connection Issue',
-                message: 'Lost connection to real-time updates. Switching to backup mode.',
-                action: 'Using backup connection...'
-            },
-            [this.errorTypes.API]: {
-                title: 'Server Error',
-                message: errorInfo.code >= 500
-                    ? 'The server is experiencing issues. Please try again.'
-                    : 'Request failed. Please check your input and try again.',
-                action: errorInfo.retryable ? 'Retrying...' : 'Please try again'
-            },
-            [this.errorTypes.TIMEOUT]: {
-                title: 'Request Timeout',
-                message: 'The request took too long to complete. Please try again.',
-                action: 'Retrying with longer timeout...'
-            },
-            [this.errorTypes.VALIDATION]: {
-                title: 'Invalid Input',
-                message: 'Please check your input and try again.',
-                action: 'Please correct the errors'
-            },
-            [this.errorTypes.PERMISSION]: {
-                title: 'Access Denied',
-                message: 'You don\'t have permission to perform this action.',
-                action: 'Contact support if this is unexpected'
-            },
-            [this.errorTypes.NETWORK]: {
-                title: 'Network Error',
-                message: 'Network connection problem. Please check your internet connection.',
-                action: 'Retrying...'
+    showLogoutMessage(errorMessage, source) {
+        // Create or update logout notification
+        let notification = document.getElementById('critical-error-notification');
+        
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'critical-error-notification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #dc3545;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                font-size: 14px;
+                max-width: 400px;
+                text-align: center;
+                animation: slideDown 0.3s ease-out;
+            `;
+            
+            // Add animation keyframes
+            if (!document.getElementById('error-handler-styles')) {
+                const style = document.createElement('style');
+                style.id = 'error-handler-styles';
+                style.textContent = `
+                    @keyframes slideDown {
+                        from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+                        to { transform: translateX(-50%) translateY(0); opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
             }
-        };
-
-        return messages[errorInfo.type] || messages[this.errorTypes.NETWORK];
+            
+            document.body.appendChild(notification);
+        }
+        
+        // Determine user-friendly message based on error type
+        let userMessage = 'Session expired. Redirecting to login...';
+        
+        if (errorMessage.toLowerCase().includes('websocket')) {
+            userMessage = 'Connection lost. Redirecting to login...';
+        } else if (errorMessage.toLowerCase().includes('authentication')) {
+            userMessage = 'Authentication failed. Redirecting to login...';
+        }
+        
+        notification.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 5px;">${userMessage}</div>
+            <div style="font-size: 12px; opacity: 0.9;">Please log in again to continue</div>
+        `;
     }
 
     /**
-     * Get recovery options for the error
+     * Force logout and redirect to login page
      */
-    getRecoveryOptions(errorInfo) {
-        const options = [];
-
-        if (errorInfo.retryable) {
-            options.push({
-                type: 'retry',
-                label: 'Try Again',
-                automatic: true,
-                delay: this.calculateRetryDelay(errorInfo.type)
-            });
-        }
-
-        if (errorInfo.fallbackAvailable) {
-            options.push({
-                type: 'fallback',
-                label: 'Use Backup Mode',
-                automatic: errorInfo.type === this.errorTypes.WEBSOCKET,
-                delay: 0
-            });
-        }
-
-        if (errorInfo.type === this.errorTypes.AUTHENTICATION) {
-            options.push({
-                type: 'reauth',
-                label: 'Log In Again',
-                automatic: true,
-                delay: 2000
-            });
-        }
-
-        if (errorInfo.type === this.errorTypes.CONNECTION) {
-            options.push({
-                type: 'refresh',
-                label: 'Refresh Page',
-                automatic: false,
-                delay: 0
-            });
-        }
-
-        // Always provide manual retry option
-        options.push({
-            type: 'manual',
-            label: 'Retry Manually',
-            automatic: false,
-            delay: 0
-        });
-
-        return options;
-    }
-
-    /**
-     * Execute recovery option
-     */
-    async executeRecoveryOption(option, context) {
-        switch (option.type) {
-            case 'retry':
-                if (context.retryOperation) {
-                    userFeedbackManager.showLoading('retry', 'Retrying...', false);
-                    try {
-                        await this.executeRetry(context.retryOperation, context);
-                        userFeedbackManager.hideLoading('retry');
-                        userFeedbackManager.showSuccess('Operation completed successfully');
-                    } catch (error) {
-                        userFeedbackManager.hideLoading('retry');
-                        userFeedbackManager.showError('Retry failed. Please try again manually.');
-                    }
-                }
-                break;
-
-            case 'fallback':
-                if (context.fallbackOperation) {
-                    userFeedbackManager.showInfo('Switching to backup mode...');
-                    try {
-                        await context.fallbackOperation();
-                        userFeedbackManager.showSuccess('Connected using backup mode');
-                    } catch (error) {
-                        userFeedbackManager.showError('Backup mode failed. Please refresh the page.');
-                    }
-                }
-                break;
-
-            case 'reauth':
-                userFeedbackManager.showWarning('Redirecting to login...', 3000);
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, option.delay);
-                break;
-
-            case 'refresh':
-                userFeedbackManager.showWarning('Page will refresh in 5 seconds...', 5000);
-                setTimeout(() => {
-                    window.location.reload();
-                }, 5000);
-                break;
-        }
-    }
-
-    /**
-     * Execute automatic retry with exponential backoff
-     */
-    async executeRetry(operation, context = {}) {
-        const operationKey = context.key || 'default';
-
-        if (this.activeRetries.has(operationKey)) {
-            console.log(`[ErrorHandler] Retry already in progress for ${operationKey}`);
-            return false;
-        }
-
-        const currentAttempts = this.retryAttempts.get(operationKey) || 0;
-
-        if (currentAttempts >= this.retryConfig.maxRetries) {
-            console.log(`[ErrorHandler] Max retries exceeded for ${operationKey}`);
-            this.retryAttempts.delete(operationKey);
-            this.emit('retryFailed', { operationKey, attempts: currentAttempts });
-            return false;
-        }
-
-        this.activeRetries.add(operationKey);
-        this.retryAttempts.set(operationKey, currentAttempts + 1);
-
-        const delay = this.calculateRetryDelay(operationKey, currentAttempts);
-
-        console.log(`[ErrorHandler] Retrying ${operationKey} (attempt ${currentAttempts + 1}/${this.retryConfig.maxRetries}) after ${delay}ms`);
-
-        this.emit('retryStarted', {
-            operationKey,
-            attempt: currentAttempts + 1,
-            maxAttempts: this.retryConfig.maxRetries,
-            delay
-        });
-
+    async forceLogoutAndRedirect() {
         try {
-            await this.delay(delay);
-            const result = await operation();
-
-            // Success - reset retry count
-            this.retryAttempts.delete(operationKey);
-            this.activeRetries.delete(operationKey);
-
-            this.emit('retrySucceeded', { operationKey, attempts: currentAttempts + 1 });
-            return result;
-        } catch (error) {
-            this.activeRetries.delete(operationKey);
-
-            console.error(`[ErrorHandler] Retry ${currentAttempts + 1} failed for ${operationKey}:`, error);
-
-            // Try again if we haven't exceeded max retries
-            if (currentAttempts + 1 < this.retryConfig.maxRetries) {
-                return this.executeRetry(operation, context);
-            } else {
-                this.retryAttempts.delete(operationKey);
-                this.emit('retryFailed', { operationKey, attempts: currentAttempts + 1, error });
-                throw error;
+            console.log('[ErrorHandler] Forcing logout and redirect to login');
+            
+            // Clear authentication data
+            if (this.authManager) {
+                await this.authManager.logout();
             }
+            
+            // Clear any stored session data
+            this.clearAllSessionData();
+            
+            // Redirect to login page
+            window.location.href = '/login.html';
+            
+        } catch (logoutError) {
+            console.error('[ErrorHandler] Error during forced logout:', logoutError);
+            
+            // Force redirect even if logout fails
+            this.clearAllSessionData();
+            window.location.href = '/login.html';
         }
     }
 
     /**
-     * Calculate retry delay with exponential backoff
+     * Clear all session data from storage
      */
-    calculateRetryDelay(operationKey, attempt = 0) {
-        const baseDelay = this.retryConfig.baseDelay;
-        const backoffDelay = baseDelay * Math.pow(this.retryConfig.backoffMultiplier, attempt);
-        const jitter = Math.random() * 0.1 * backoffDelay; // Add 10% jitter
-
-        return Math.min(backoffDelay + jitter, this.retryConfig.maxDelay);
-    }
-
-    /**
-     * Reset retry attempts for an operation
-     */
-    resetRetryAttempts(operationKey) {
-        this.retryAttempts.delete(operationKey);
-        this.activeRetries.delete(operationKey);
-    }
-
-    /**
-     * Check if operation is currently being retried
-     */
-    isRetrying(operationKey) {
-        return this.activeRetries.has(operationKey);
-    }
-
-    /**
-     * Get current retry attempt count
-     */
-    getRetryAttempts(operationKey) {
-        return this.retryAttempts.get(operationKey) || 0;
-    }
-
-    /**
-     * Add error event listener
-     */
-    on(event, callback) {
-        if (!this.errorListeners.has(event)) {
-            this.errorListeners.set(event, []);
-        }
-        this.errorListeners.get(event).push(callback);
-    }
-
-    /**
-     * Remove error event listener
-     */
-    off(event, callback) {
-        if (this.errorListeners.has(event)) {
-            const listeners = this.errorListeners.get(event);
-            const index = listeners.indexOf(callback);
-            if (index > -1) {
-                listeners.splice(index, 1);
-            }
-        }
-    }
-
-    /**
-     * Emit error event
-     */
-    emit(event, data) {
-        if (this.errorListeners.has(event)) {
-            this.errorListeners.get(event).forEach(callback => {
-                try {
-                    callback(data);
-                } catch (error) {
-                    console.error(`[ErrorHandler] Error in event listener for ${event}:`, error);
+    clearAllSessionData() {
+        try {
+            // Clear localStorage
+            const localStorageKeys = Object.keys(localStorage);
+            localStorageKeys.forEach(key => {
+                if (key.startsWith('auth_') || key.startsWith('game_') || key.startsWith('room_')) {
+                    localStorage.removeItem(key);
                 }
             });
+            
+            // Clear sessionStorage
+            const sessionStorageKeys = Object.keys(sessionStorage);
+            sessionStorageKeys.forEach(key => {
+                if (key.startsWith('auth_') || key.startsWith('game_') || key.startsWith('room_')) {
+                    sessionStorage.removeItem(key);
+                }
+            });
+            
+            console.log('[ErrorHandler] Session data cleared');
+        } catch (error) {
+            console.error('[ErrorHandler] Error clearing session data:', error);
         }
     }
 
     /**
-     * Utility method to create delay
+     * Handle websocket errors specifically
+     * @param {string|Error} error - Websocket error
+     * @param {Object} socket - Socket instance (optional)
      */
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    /**
-     * Create wrapped function with automatic error handling
-     */
-    withErrorHandling(fn, context = {}) {
-        return async (...args) => {
+    handleWebSocketError(error, socket = null) {
+        console.error('[ErrorHandler] WebSocket error:', error);
+        
+        // Disconnect socket if provided
+        if (socket && typeof socket.disconnect === 'function') {
             try {
-                return await fn(...args);
-            } catch (error) {
-                return this.handleError(error, context);
+                socket.disconnect();
+            } catch (disconnectError) {
+                console.error('[ErrorHandler] Error disconnecting socket:', disconnectError);
             }
-        };
+        }
+        
+        this.handleCriticalError(error, 'websocket');
     }
 
     /**
-     * Create wrapped function with automatic retry
+     * Handle HTTP authentication errors
+     * @param {Response} response - HTTP response object
+     * @param {string} url - Request URL
      */
-    withRetry(fn, context = {}) {
-        return async (...args) => {
-            return this.executeRetry(() => fn(...args), context);
-        };
+    handleHttpAuthError(response, url = '') {
+        if (response.status === 401 || response.status === 403) {
+            const error = `HTTP ${response.status}: Authentication failed for ${url}`;
+            this.handleCriticalError(error, 'http');
+        }
     }
 
     /**
-     * Setup retry feedback handlers
+     * Handle general authentication errors
+     * @param {string|Error} error - Authentication error
      */
-    setupRetryFeedback() {
-        this.on('retryStarted', ({ operationKey, attempt, maxAttempts, delay }) => {
-            userFeedbackManager.showInfo(
-                `Retrying ${operationKey} (${attempt}/${maxAttempts})...`,
-                delay + 1000
-            );
-        });
-
-        this.on('retrySucceeded', ({ operationKey, attempts }) => {
-            userFeedbackManager.showSuccess(`${operationKey} completed after ${attempts} attempt${attempts > 1 ? 's' : ''}`);
-        });
-
-        this.on('retryFailed', ({ operationKey, attempts }) => {
-            userFeedbackManager.showError(`${operationKey} failed after ${attempts} attempts. Please try again manually.`, 0);
-        });
+    handleAuthError(error) {
+        this.handleCriticalError(error, 'auth');
     }
 
     /**
-     * Cleanup resources
+     * Reset error handling state (for testing or recovery)
      */
-    cleanup() {
-        this.errorListeners.clear();
-        this.retryAttempts.clear();
-        this.activeRetries.clear();
+    reset() {
+        this.isHandlingError = false;
+        
+        // Remove notification if it exists
+        const notification = document.getElementById('critical-error-notification');
+        if (notification) {
+            notification.remove();
+        }
+    }
+
+    /**
+     * Add custom critical error pattern
+     * @param {string} pattern - Error pattern to add
+     */
+    addCriticalErrorPattern(pattern) {
+        this.criticalErrors.add(pattern);
+    }
+
+    /**
+     * Remove critical error pattern
+     * @param {string} pattern - Error pattern to remove
+     */
+    removeCriticalErrorPattern(pattern) {
+        this.criticalErrors.delete(pattern);
     }
 }
 
-// Create global instance
-const errorHandler = new ErrorHandler();
+// Export singleton instance
+let errorHandlerInstance = null;
 
-export default errorHandler;
+export function getErrorHandler(authManager = null) {
+    if (!errorHandlerInstance && authManager) {
+        errorHandlerInstance = new ErrorHandler(authManager);
+    }
+    return errorHandlerInstance;
+}
+
+// Global error handler for unhandled promise rejections and errors
+if (typeof window !== 'undefined') {
+    window.addEventListener('unhandledrejection', (event) => {
+        const error = event.reason;
+        if (errorHandlerInstance && errorHandlerInstance.isCriticalError(error)) {
+            console.error('[ErrorHandler] Unhandled promise rejection with critical error:', error);
+            errorHandlerInstance.handleCriticalError(error, 'unhandled-promise');
+        }
+    });
+
+    window.addEventListener('error', (event) => {
+        const error = event.error || event.message;
+        if (errorHandlerInstance && errorHandlerInstance.isCriticalError(error)) {
+            console.error('[ErrorHandler] Global error with critical error:', error);
+            errorHandlerInstance.handleCriticalError(error, 'global');
+        }
+    });
+}

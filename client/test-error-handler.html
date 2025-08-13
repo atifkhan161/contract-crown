@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Handler Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .error-log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Error Handler Test</h1>
+    <p>This page tests the centralized error handler functionality.</p>
+    
+    <div>
+        <h3>Test Critical Errors:</h3>
+        <button onclick="testWebSocketError()">Test WebSocket Error</button>
+        <button onclick="testSessionExpired()">Test Session Expired</button>
+        <button onclick="testAuthError()">Test Auth Error</button>
+        <button onclick="testTransportError()">Test Transport Error</button>
+        <button onclick="testNonCriticalError()">Test Non-Critical Error</button>
+        <button onclick="resetHandler()">Reset Handler</button>
+    </div>
+    
+    <div class="error-log" id="errorLog">
+        <strong>Error Log:</strong><br>
+        <div id="logContent">Ready to test...</div>
+    </div>
+
+    <script type="module">
+        import { ErrorHandler, getErrorHandler } from './src/core/ErrorHandler.js';
+        
+        // Mock AuthManager for testing
+        class MockAuthManager {
+            async logout() {
+                log('MockAuthManager: logout() called');
+                return Promise.resolve();
+            }
+            
+            getToken() {
+                return 'mock-token';
+            }
+        }
+        
+        const mockAuthManager = new MockAuthManager();
+        const errorHandler = getErrorHandler(mockAuthManager);
+        
+        // Override forceLogoutAndRedirect for testing
+        const originalForceLogout = errorHandler.forceLogoutAndRedirect;
+        errorHandler.forceLogoutAndRedirect = async function() {
+            log('ErrorHandler: forceLogoutAndRedirect() called - WOULD redirect to login');
+            // Don't actually redirect during testing
+        };
+        
+        function log(message) {
+            const logContent = document.getElementById('logContent');
+            const timestamp = new Date().toLocaleTimeString();
+            logContent.innerHTML += `<br>[${timestamp}] ${message}`;
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+        
+        // Test functions
+        window.testWebSocketError = function() {
+            log('Testing: TransportError: websocket error');
+            errorHandler.handleWebSocketError('TransportError: websocket error');
+        };
+        
+        window.testSessionExpired = function() {
+            log('Testing: Session expired or invalid');
+            errorHandler.handleCriticalError('Session expired or invalid', 'auth');
+        };
+        
+        window.testAuthError = function() {
+            log('Testing: Authentication failed');
+            errorHandler.handleAuthError('Authentication failed');
+        };
+        
+        window.testTransportError = function() {
+            log('Testing: Connection error: TransportError: websocket error');
+            errorHandler.handleCriticalError('Connection error: TransportError: websocket error', 'websocket');
+        };
+        
+        window.testNonCriticalError = function() {
+            log('Testing: Network timeout (non-critical)');
+            errorHandler.handleCriticalError('Network timeout', 'network');
+        };
+        
+        window.resetHandler = function() {
+            log('Resetting error handler state');
+            errorHandler.reset();
+        };
+        
+        log('Error handler test page loaded successfully');
+    </script>
+</body>
+</html>

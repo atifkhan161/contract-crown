@@ -3,6 +3,8 @@
  * Handles WebSocket connections and real-time communication
  */
 
+import { getErrorHandler } from './ErrorHandler.js';
+
 export class SocketManager {
     constructor(authManager = null) {
         this.socket = null;
@@ -12,6 +14,7 @@ export class SocketManager {
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 1000;
         this.authManager = authManager;
+        this.errorHandler = getErrorHandler(authManager);
     }
 
     /**
@@ -55,6 +58,11 @@ export class SocketManager {
                     this.isConnected = false;
                     this.emit('disconnect', reason);
                     
+                    // Handle critical disconnect reasons
+                    if (reason === 'io server disconnect' || reason === 'transport error') {
+                        this.errorHandler?.handleWebSocketError(`Connection error: ${reason}`, this.socket);
+                    }
+                    
                     // Attempt to reconnect if not a manual disconnect
                     if (reason !== 'io client disconnect') {
                         this.handleReconnect();
@@ -72,6 +80,9 @@ export class SocketManager {
                     console.error('Socket connection error:', error);
                     this.isConnected = false;
                     
+                    // Handle critical websocket errors
+                    this.errorHandler?.handleWebSocketError(error, this.socket);
+                    
                     if (this.reconnectAttempts === 0) {
                         // First connection attempt failed
                         reject(error);
@@ -84,8 +95,9 @@ export class SocketManager {
                 this.socket.on('auth_error', (error) => {
                     console.error('Socket authentication error:', error);
                     this.disconnect();
-                    // Don't immediately redirect - let the page handle this
-                    // The dashboard can still work without WebSocket
+                    
+                    // Handle authentication errors through error handler
+                    this.errorHandler?.handleAuthError(error);
                     this.emit('auth_error', error);
                 });
 

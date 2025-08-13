@@ -3,10 +3,13 @@
  * Handles room-related operations and API calls
  */
 
+import { getErrorHandler } from './ErrorHandler.js';
+
 export class RoomManager {
     constructor(authManager = null) {
         this.apiBase = '/api';
         this.authManager = authManager;
+        this.errorHandler = getErrorHandler(authManager);
     }
 
     /**
@@ -23,6 +26,7 @@ export class RoomManager {
             });
 
             if (!response.ok) {
+                this.errorHandler?.handleHttpAuthError(response, `${this.apiBase}/rooms`);
                 throw new Error('Failed to fetch rooms');
             }
 
@@ -49,6 +53,7 @@ export class RoomManager {
             });
 
             if (!response.ok) {
+                this.errorHandler?.handleHttpAuthError(response, `${this.apiBase}/rooms`);
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to create room');
             }
@@ -75,6 +80,7 @@ export class RoomManager {
             });
 
             if (!response.ok) {
+                this.errorHandler?.handleHttpAuthError(response, `${this.apiBase}/rooms/${roomId}/join`);
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to join room');
             }
@@ -102,6 +108,7 @@ export class RoomManager {
             });
 
             if (!response.ok) {
+                this.errorHandler?.handleHttpAuthError(response, `${this.apiBase}/rooms/join-by-code`);
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to join room');
             }
@@ -128,6 +135,7 @@ export class RoomManager {
             });
 
             if (!response.ok) {
+                this.errorHandler?.handleHttpAuthError(response, `${this.apiBase}/rooms/${roomId}/leave`);
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to leave room');
             }
@@ -153,6 +161,7 @@ export class RoomManager {
             });
 
             if (!response.ok) {
+                this.errorHandler?.handleHttpAuthError(response, `${this.apiBase}/rooms/${roomId}`);
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to delete room');
             }
@@ -178,6 +187,7 @@ export class RoomManager {
             });
 
             if (!response.ok) {
+                this.errorHandler?.handleHttpAuthError(response, `${this.apiBase}/rooms/${roomId}`);
                 const errorData = await response.json();
                 throw new Error(errorData.message || 'Failed to get room details');
             }
