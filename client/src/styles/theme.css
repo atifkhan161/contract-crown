@@ -16,6 +16,20 @@
   --hunter-green: #3a5a40;
   --brunswick-green: #344e41;
   
+  /* Pastel Palette */
+  --melon: #ffa69e;
+  --eggshell: #faf3dd;
+  --celeste: #b8f2e6;
+  --light-blue-pastel: #aed9e0;
+  --paynes-gray: #5e6472;
+  
+  /* Dark Palette */
+  --rich-black: #0d1b2a;
+  --oxford-blue: #1b263b;
+  --yinmn-blue: #415a77;
+  --silver-lake-blue: #778da9;
+  --platinum: #e0e1dd;
+  
   /* Primary Color Mapping */
   --primary-color: var(--buff);
   --primary-hover: var(--desert-sand);
@@ -137,6 +151,38 @@
   --text-secondary: #3a5a40;
   --text-muted: #588157;
   --border-color: rgba(88, 129, 87, 0.2);
+}
+
+[data-theme="pastel"] {
+  --primary-color: #ffa69e;
+  --primary-hover: #aed9e0;
+  --primary-light: #b8f2e6;
+  --secondary-color: #5e6472;
+  --secondary-light: #aed9e0;
+  --bg-primary: linear-gradient(135deg, #faf3dd, #b8f2e6);
+  --bg-secondary: #eggshell;
+  --bg-card: rgba(255, 166, 158, 0.1);
+  --bg-input: rgba(255, 166, 158, 0.05);
+  --text-primary: #5e6472;
+  --text-secondary: #aed9e0;
+  --text-muted: #ffa69e;
+  --border-color: rgba(255, 166, 158, 0.2);
+}
+
+[data-theme="deepSea"] {
+  --primary-color: #778da9;
+  --primary-hover: #415a77;
+  --primary-light: #silver-lake-blue;
+  --secondary-color: #0d1b2a;
+  --secondary-light: #1b263b;
+  --bg-primary: linear-gradient(135deg, #0d1b2a, #1b263b);
+  --bg-secondary: #1b263b;
+  --bg-card: rgba(119, 141, 169, 0.1);
+  --bg-input: rgba(119, 141, 169, 0.05);
+  --text-primary: #e0e1dd;
+  --text-secondary: #778da9;
+  --text-muted: #415a77;
+  --border-color: rgba(119, 141, 169, 0.2);
 }
 
 /* Mobile-first responsive breakpoints */

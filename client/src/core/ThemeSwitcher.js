@@ -16,7 +16,7 @@ class ThemeSwitcher {
   }
 
   getAvailableThemes() {
-    return ['earth', 'blue', 'forest'];
+    return ['earth', 'blue', 'forest', 'pastel', 'deepSea'];
   }
 
   getCurrentTheme() {
