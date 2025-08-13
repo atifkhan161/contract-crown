@@ -1,27 +1,43 @@
 /* Theme CSS - Contract Crown PWA */
 :root {
-  /* Color Palette */
-  --primary-color: #4a90e2;
-  --primary-hover: #357abd;
-  --primary-light: #6ba3e8;
-  --secondary-color: #16213e;
-  --secondary-light: #1a1a2e;
+  /* Earth Tone Palette */
+  --buff: #cb997e;
+  --champagne-pink: #eddcd2;
+  --linen: #fff1e6;
+  --isabelline: #f0efeb;
+  --desert-sand: #ddbea9;
+  --sage: #a5a58d;
+  --ash-gray: #b7b7a4;
+  
+  /* Forest Palette */
+  --timberwolf: #dad7cd;
+  --sage-green: #a3b18a;
+  --fern-green: #588157;
+  --hunter-green: #3a5a40;
+  --brunswick-green: #344e41;
+  
+  /* Primary Color Mapping */
+  --primary-color: var(--buff);
+  --primary-hover: var(--desert-sand);
+  --primary-light: var(--champagne-pink);
+  --secondary-color: var(--sage);
+  --secondary-light: var(--ash-gray);
   
   /* Background Colors */
-  --bg-primary: linear-gradient(135deg, #1a1a2e, #16213e);
-  --bg-secondary: #2c3e50;
-  --bg-card: rgba(255, 255, 255, 0.1);
-  --bg-input: rgba(255, 255, 255, 0.05);
+  --bg-primary: linear-gradient(135deg, var(--linen), var(--isabelline));
+  --bg-secondary: var(--champagne-pink);
+  --bg-card: rgba(203, 153, 126, 0.1);
+  --bg-input: rgba(203, 153, 126, 0.05);
   
   /* Text Colors */
-  --text-primary: #ffffff;
-  --text-secondary: #b8c6db;
-  --text-muted: #8a9ba8;
+  --text-primary: var(--sage);
+  --text-secondary: var(--ash-gray);
+  --text-muted: var(--desert-sand);
   --text-error: #e74c3c;
   --text-success: #27ae60;
   
   /* Border Colors */
-  --border-color: rgba(255, 255, 255, 0.2);
+  --border-color: rgba(203, 153, 126, 0.2);
   --border-focus: var(--primary-color);
   --border-error: var(--text-error);
   
@@ -68,6 +84,59 @@
   --status-connected: #27ae60;
   --status-connecting: #f39c12;
   --status-disconnected: #e74c3c;
+  
+  /* Theme Switcher */
+  --theme-switcher-bg: var(--bg-card);
+  --theme-switcher-border: var(--border-color);
+}
+
+/* Theme Variants */
+[data-theme="blue"] {
+  --primary-color: #2c7da0;
+  --primary-hover: #2a6f97;
+  --primary-light: #61a5c2;
+  --secondary-color: #012a4a;
+  --secondary-light: #013a63;
+  --bg-primary: linear-gradient(135deg, #012a4a, #013a63);
+  --bg-secondary: #01497c;
+  --bg-card: rgba(169, 214, 229, 0.1);
+  --bg-input: rgba(169, 214, 229, 0.05);
+  --text-primary: #ffffff;
+  --text-secondary: #a9d6e5;
+  --text-muted: #89c2d9;
+  --border-color: rgba(169, 214, 229, 0.2);
+}
+
+[data-theme="earth"] {
+  --primary-color: var(--buff);
+  --primary-hover: var(--desert-sand);
+  --primary-light: var(--champagne-pink);
+  --secondary-color: var(--sage);
+  --secondary-light: var(--ash-gray);
+  --bg-primary: linear-gradient(135deg, var(--linen), var(--isabelline));
+  --bg-secondary: var(--champagne-pink);
+  --bg-card: rgba(203, 153, 126, 0.1);
+  --bg-input: rgba(203, 153, 126, 0.05);
+  --text-primary: var(--sage);
+  --text-secondary: var(--ash-gray);
+  --text-muted: var(--desert-sand);
+  --border-color: rgba(203, 153, 126, 0.2);
+}
+
+[data-theme="forest"] {
+  --primary-color: #588157;
+  --primary-hover: #3a5a40;
+  --primary-light: #a3b18a;
+  --secondary-color: #344e41;
+  --secondary-light: #3a5a40;
+  --bg-primary: linear-gradient(135deg, #dad7cd, #a3b18a);
+  --bg-secondary: #a3b18a;
+  --bg-card: rgba(88, 129, 87, 0.1);
+  --bg-input: rgba(88, 129, 87, 0.05);
+  --text-primary: #344e41;
+  --text-secondary: #3a5a40;
+  --text-muted: #588157;
+  --border-color: rgba(88, 129, 87, 0.2);
 }
 
 /* Mobile-first responsive breakpoints */
