@@ -9,7 +9,7 @@
     "dev:server": "cd server && npm run dev",
     "dev:client-only": "cd client && npm run dev",
     "dev:server-only": "cd server && npm run dev",
-    "build": "cd client && npm run build",
+    "build": "cd client && npm install --include=dev && npm run build",
     "build:server": "cd server && npm install --production=false",
     "start": "cd server && npm start",
     "test": "npm run test:client && npm run test:server",

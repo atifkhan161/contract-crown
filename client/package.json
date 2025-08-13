@@ -11,7 +11,8 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
-    "socket.io-client": "^4.7.4"
+    "socket.io-client": "^4.7.4",
+    "vite": "^5.0.0"
   },
   "devDependencies": {
     "@vitest/ui": "^1.0.0",
