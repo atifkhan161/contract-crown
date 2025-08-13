@@ -14,6 +14,15 @@ import UserSession from '../models/UserSession.js';
  */
 export const authenticateSocket = async (socket, next) => {
   try {
+    // Check if database is ready
+    const rxdbConnection = (await import('../../database/rxdb-connection.js')).default;
+    if (!rxdbConnection.isReady()) {
+      console.error('[SocketAuth] Database not ready');
+      const error = new Error('Database not ready');
+      error.data = { code: 'DATABASE_NOT_READY' };
+      return next(error);
+    }
+
     // Extract token from various possible locations
     const token = extractToken(socket);
 
@@ -25,10 +34,27 @@ export const authenticateSocket = async (socket, next) => {
     }
 
     // Verify JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    } catch (jwtError) {
+      console.error('[SocketAuth] JWT verification failed:', jwtError.message);
+      const error = new Error('Invalid token format');
+      error.data = { code: 'INVALID_TOKEN' };
+      return next(error);
+    }
 
     // Check if session exists and is valid
-    const session = await UserSession.findByToken(token);
+    let session;
+    try {
+      session = await UserSession.findByToken(token);
+    } catch (sessionError) {
+      console.error('[SocketAuth] Session lookup failed:', sessionError.message);
+      const error = new Error('Session lookup failed');
+      error.data = { code: 'SESSION_LOOKUP_ERROR' };
+      return next(error);
+    }
+
     if (!session || !session.isValid()) {
       console.error('[SocketAuth] Session expired or invalid');
       const error = new Error('Session expired or invalid');
@@ -37,7 +63,16 @@ export const authenticateSocket = async (socket, next) => {
     }
 
     // Check if user still exists and is active
-    const user = await User.findById(decoded.id);
+    let user;
+    try {
+      user = await User.findById(decoded.id);
+    } catch (userError) {
+      console.error('[SocketAuth] User lookup failed:', userError.message);
+      const error = new Error('User lookup failed');
+      error.data = { code: 'USER_LOOKUP_ERROR' };
+      return next(error);
+    }
+
     if (!user || !user.is_active) {
       console.error('[SocketAuth] User not found or inactive');
       const error = new Error('User not found or inactive');
@@ -46,7 +81,12 @@ export const authenticateSocket = async (socket, next) => {
     }
 
     // Update session last used time
-    await session.updateLastUsed();
+    try {
+      await session.updateLastUsed();
+    } catch (updateError) {
+      console.error('[SocketAuth] Session update failed:', updateError.message);
+      // Don't fail authentication for this, just log the error
+    }
 
     // Attach user information to socket
     socket.userId = user.user_id;

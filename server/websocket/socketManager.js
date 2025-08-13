@@ -668,14 +668,18 @@ class SocketManager {
           let seatPosition = 1;
           for (const [userId, player] of room.players.entries()) {
             if (player.isConnected) {
-              const gamePlayerId = `${gameId}_${userId}`;
-              
-              // Check if GamePlayer record already exists
-              const existingGamePlayer = await gamePlayerModel.findOne({ game_player_id: gamePlayerId });
+              // Check if GamePlayer record already exists (search by game_id and user_id)
+              const existingGamePlayer = await gamePlayerModel.findOne({ 
+                game_id: gameId, 
+                user_id: userId 
+              });
               
               if (!existingGamePlayer) {
+                // Import uuidv4 for generating proper game_player_id
+                const { v4: uuidv4 } = await import('uuid');
+                
                 await gamePlayerModel.create({
-                  game_player_id: gamePlayerId,
+                  game_player_id: uuidv4(), // Generate proper UUID
                   game_id: gameId,
                   user_id: userId,
                   team_id: null, // Will be set later when teams are formed

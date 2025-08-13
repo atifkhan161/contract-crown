@@ -17,7 +17,17 @@ class GameServer {
   constructor() {
     this.port = process.env.PORT || 3030;
     
-    // Initialize Socket.IO server first
+    // Setup process error handling first
+    this.setupProcessErrorHandling();
+  }
+
+  async initialize() {
+    // Initialize RxDB database FIRST before setting up Socket.IO
+    console.log('[Server] Initializing RxDB database...');
+    await rxdbConnection.initialize();
+    console.log('[Server] RxDB database initialized successfully');
+    
+    // Now setup Socket.IO with authentication (database is ready)
     this.setupSocketIO();
     
     // Create Express app with dependencies
@@ -28,9 +38,6 @@ class GameServer {
     
     // Attach Socket.IO to HTTP server
     this.io.attach(this.server);
-    
-    // Setup process error handling
-    this.setupProcessErrorHandling();
   }
 
   setupSocketIO() {
@@ -80,10 +87,8 @@ class GameServer {
 
   async start() {
     try {
-      // Initialize RxDB database
-      console.log('[Server] Initializing RxDB database...');
-      await rxdbConnection.initialize();
-      console.log('[Server] RxDB database initialized successfully');
+      // Initialize everything (database is already initialized in initialize())
+      await this.initialize();
       
       this.server.listen(this.port, () => {
         console.log(`[Server] Contract Crown server running on port ${this.port}`);

@@ -1,7 +1,7 @@
 {
   "metadata": {
     "version": "1.0",
-    "timestamp": "2025-08-13T07:14:39.669Z",
+    "timestamp": "2025-08-13T07:44:15.962Z",
     "collections": [
       "users",
       "games",
@@ -23,7 +23,7 @@
   },
   "data": {
     "name": "contract_crown_rxdb",
-    "instanceToken": "wvhxqyjbbi",
+    "instanceToken": "daxyufapnk",
     "collections": [
       {
         "name": "users",
@@ -40,7 +40,7 @@
             "is_bot": false,
             "created_at": "2025-08-13T07:14:38.889Z",
             "_meta": {
-              "lwt": 1755069278889.01
+              "lwt": 1755070995846.05
             },
             "_deleted": false
           },
@@ -55,7 +55,7 @@
             "is_bot": false,
             "created_at": "2025-08-13T07:14:39.155Z",
             "_meta": {
-              "lwt": 1755069279155.01
+              "lwt": 1755070995846.05
             },
             "_deleted": false
           },
@@ -70,7 +70,7 @@
             "is_bot": false,
             "created_at": "2025-08-13T07:14:39.412Z",
             "_meta": {
-              "lwt": 1755069279412.01
+              "lwt": 1755070995846.05
             },
             "_deleted": false
           },
@@ -85,7 +85,7 @@
             "is_bot": false,
             "created_at": "2025-08-13T07:14:39.665Z",
             "_meta": {
-              "lwt": 1755069279665.01
+              "lwt": 1755070995846.05
             },
             "_deleted": false
           }
