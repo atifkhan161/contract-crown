@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import GameEngine from '../src/services/GameEngine.js';
 import BotPlayer from '../src/services/BotPlayer.js';
-import dbConnection from '../database/connection.js';
+import rxdbConnection from '../database/rxdb-connection.js';
 import { v4 as uuidv4 } from 'uuid';
 
 describe('GameEngine Demo Mode Integration', () => {

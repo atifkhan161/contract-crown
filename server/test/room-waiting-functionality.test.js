@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import Room from '../src/models/Room.js';
 import User from '../src/models/User.js';
-import dbConnection from '../database/connection.js';
+import rxdbConnection from '../database/rxdb-connection.js';
 
 describe('Room Waiting Room Functionality', () => {
     let testRoom;

@@ -438,72 +438,67 @@ class DiagnosticTools {
      */
     async testDatabaseSynchronization(gameId) {
         const test = {
-            name: 'Database Synchronization',
+            name: 'RxDB Synchronization',
             status: 'running',
             startTime: Date.now()
         };
 
         try {
-            // Test database connectivity
-            const dbConnection = (await import('../../database/connection.js')).default;
-
-            // Test basic query
-            const [rows] = await dbConnection.execute('SELECT 1 as test');
-            if (!rows || rows.length === 0 || rows[0].test !== 1) {
+            // Test RxDB connectivity
+            const rxdbConnection = (await import('../../database/rxdb-connection.js')).default;
+            
+            // Test basic connectivity
+            const isHealthy = await rxdbConnection.healthCheck();
+            if (!isHealthy) {
                 test.status = 'failed';
-                test.error = 'Database connectivity test failed';
+                test.error = 'RxDB connectivity test failed';
                 test.severity = 'critical';
                 test.endTime = Date.now();
                 test.duration = test.endTime - test.startTime;
                 return test;
             }
 
-            // Test room data retrieval
-            const [roomRows] = await dbConnection.execute(
-                'SELECT * FROM rooms WHERE room_id = ?',
-                [gameId]
-            );
+            // Test room data retrieval using Room model
+            const Room = (await import('../models/Room.js')).default;
+            const room = await Room.findById(gameId);
 
-            if (roomRows.length === 0) {
+            if (!room) {
                 test.status = 'failed';
-                test.error = 'Room not found in database';
+                test.error = 'Room not found in RxDB';
                 test.severity = 'high';
                 test.endTime = Date.now();
                 test.duration = test.endTime - test.startTime;
                 return test;
             }
 
-            // Test player data retrieval
-            const [playerRows] = await dbConnection.execute(
-                'SELECT * FROM room_players WHERE room_id = ?',
-                [gameId]
-            );
+            // Test player data retrieval using RoomPlayer model
+            const RoomPlayer = (await import('../models/RoomPlayer.js')).default;
+            const roomPlayers = await RoomPlayer.findByRoomId(gameId);
 
             // Test write operation (update room timestamp)
             const updateStart = Date.now();
-            await dbConnection.execute(
-                'UPDATE rooms SET updated_at = NOW() WHERE room_id = ?',
-                [gameId]
-            );
+            await room.updateById(gameId, {
+                updated_at: new Date().toISOString()
+            });
             const updateDuration = Date.now() - updateStart;
 
             test.status = 'passed';
             test.data = {
                 roomExists: true,
-                playerCount: playerRows.length,
+                playerCount: roomPlayers.length,
                 updateLatency: updateDuration,
                 roomData: {
-                    status: roomRows[0].status,
-                    owner_id: roomRows[0].owner_id,
-                    created_at: roomRows[0].created_at,
-                    updated_at: roomRows[0].updated_at
+                    status: room.status,
+                    owner_id: room.owner_id,
+                    created_at: room.created_at,
+                    updated_at: room.updated_at
                 }
             };
 
             // Check for performance issues
             if (updateDuration > 1000) {
                 test.severity = 'medium';
-                test.data.issues = [`Database update latency is high: ${updateDuration}ms`];
+                test.data.issues = [`RxDB update latency is high: ${updateDuration}ms`];
             }
 
         } catch (error) {

@@ -1,5 +1,4 @@
-import Room from '../models/Room.js';
-import Game from '../models/Game.js';
+// Models will be imported dynamically to avoid initialization issues
 import BotManager from '../services/BotManager.js';
 // Legacy MariaDB connection removed - now using RxDB
 // import dbConnection from '../../database/connection.js';
@@ -75,6 +74,7 @@ class WaitingRoomSocketHandler {
             // Initialize or get existing room data
             if (!this.socketManager.gameRooms.has(roomId)) {
                 // Load room from database
+                const Room = (await import('../models/Room.js')).default;
                 const dbRoom = await Room.findById(roomId);
                 if (!dbRoom) {
                     socket.emit('waiting-room-error', { message: 'Room not found' });
@@ -211,6 +211,7 @@ class WaitingRoomSocketHandler {
                 // Update database with enhanced error handling
                 let dbUpdateSuccess = false;
                 try {
+                    const Room = (await import('../models/Room.js')).default;
                     const dbRoom = await Room.findById(roomId);
                     if (dbRoom) {
                         await dbRoom.removePlayer(userId);
@@ -253,6 +254,7 @@ class WaitingRoomSocketHandler {
 
                     // Optionally clean up database room if empty
                     try {
+                        const Room = (await import('../models/Room.js')).default;
                         const dbRoom = await Room.findById(roomId);
                         if (dbRoom && dbRoom.players.length === 0) {
                             await dbRoom.delete();
@@ -348,6 +350,7 @@ class WaitingRoomSocketHandler {
             // Update database first
             let dbUpdateSuccess = false;
             try {
+                const Room = (await import('../models/Room.js')).default;
                 const dbRoom = await Room.findById(roomId);
                 if (dbRoom) {
                     await dbRoom.setPlayerReady(effectiveUserId, isReady);
@@ -475,6 +478,7 @@ class WaitingRoomSocketHandler {
             let dbUpdateSuccess = false;
 
             try {
+                const Room = (await import('../models/Room.js')).default;
                 const dbRoom = await Room.findById(roomId);
                 if (dbRoom) {
                     // Create game (this will form teams and create database entries)

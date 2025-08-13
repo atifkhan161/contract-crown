@@ -5,7 +5,7 @@ import ConnectionStatusManager from './connectionStatus.js';
 import EnhancedConnectionStatusManager from './enhancedConnectionStatusManager.js';
 import ConnectionDiagnostics from './connectionDiagnostics.js';
 import WaitingRoomSocketHandler from '../src/websocket/WaitingRoomSocketHandler.js';
-import Room from '../src/models/Room.js';
+// Room model will be imported dynamically to avoid initialization issues
 import { authenticateSocket } from '../src/middlewares/socketAuth.js';
 import ReactiveQueryManager from '../src/services/ReactiveQueryManager.js';
 import ConflictResolutionService from '../src/services/ConflictResolutionService.js';
@@ -36,11 +36,12 @@ class SocketManager {
     // Initialize waiting room handler
     this.waitingRoomHandler = new WaitingRoomSocketHandler(this);
 
-    // Initialize reactive query manager
-    this.reactiveQueryManager = new ReactiveQueryManager(this);
+    // Initialize reactive query manager (singleton)
+    this.reactiveQueryManager = ReactiveQueryManager;
+    this.reactiveQueryManager.initialize(this);
 
-    // Initialize conflict resolution service
-    this.conflictResolutionService = new ConflictResolutionService();
+    // Initialize conflict resolution service (static methods)
+    this.conflictResolutionService = ConflictResolutionService;
 
     this.setupSocketIO();
 
@@ -266,6 +267,7 @@ class SocketManager {
         // Try to load room from database first to get the correct owner
         let dbRoom = null;
         try {
+          const Room = (await import('../src/models/Room.js')).default;
           dbRoom = await Room.findById(gameId);
           if (dbRoom) {
             console.log(`[WebSocket] Loaded room from database - owner_id: ${dbRoom.owner_id}, players: ${dbRoom.players.length}`);
@@ -317,10 +319,12 @@ class SocketManager {
 
         // Restore team assignment from database on reconnection
         try {
-          const dbConnection = (await import('../database/connection.js')).default;
-          const rows = await dbConnection.query(`
-            SELECT team_assignment FROM room_players WHERE room_id = ? AND user_id = ?
-          `, [gameId, effectiveUserId]);
+          const { default: RoomPlayer } = await import('../src/models/RoomPlayer.js');
+          const roomPlayerModel = new RoomPlayer();
+          const roomPlayer = await roomPlayerModel.findOne({
+            room_id: gameId,
+            user_id: effectiveUserId
+          });
 
           if (rows && rows.length > 0 && rows[0].team_assignment !== null) {
             const dbTeamAssignment = rows[0].team_assignment;
@@ -1115,13 +1119,11 @@ class SocketManager {
       room.teams.team1 = [];
       room.teams.team2 = [];
 
-      // Assign players to teams and update database
-      const dbConnection = (await import('../database/connection.js')).default;
+      // Assign players to teams and update database using RxDB
+      const RoomPlayer = (await import('../src/models/RoomPlayer.js')).default;
 
       try {
-        // Start transaction for atomic team assignment
-        await dbConnection.query('START TRANSACTION');
-
+        // Update team assignments using RxDB
         for (let i = 0; i < shuffledPlayers.length; i++) {
           const player = shuffledPlayers[i];
           const teamAssignment = i < team1Size ? 1 : 2;
@@ -1134,36 +1136,24 @@ class SocketManager {
             room.teams.team2.push(player.userId);
           }
 
-          // Update database - ensure team_assignment column exists
+          // Update database using RxDB RoomPlayer model
           try {
-            await dbConnection.query(`
-              UPDATE room_players SET team_assignment = ? WHERE room_id = ? AND user_id = ?
-            `, [teamAssignment, gameId, player.userId]);
-          } catch (columnError) {
-            if (columnError.code === 'ER_BAD_FIELD_ERROR') {
-              // Add column if it doesn't exist
-              console.log('[WebSocket] Adding team_assignment column to room_players table');
-              await dbConnection.query(`
-                ALTER TABLE room_players ADD COLUMN team_assignment INT NULL CHECK (team_assignment IN (1, 2))
-              `);
-              // Retry the update
-              await dbConnection.query(`
-                UPDATE room_players SET team_assignment = ? WHERE room_id = ? AND user_id = ?
-              `, [teamAssignment, gameId, player.userId]);
+            const roomPlayer = await RoomPlayer.findByRoomAndUser(gameId, player.userId);
+            if (roomPlayer) {
+              await roomPlayer.updateTeamAssignment(teamAssignment);
             } else {
-              throw columnError;
+              console.warn(`[WebSocket] Room player not found for room ${gameId} and user ${player.userId}`);
             }
+          } catch (updateError) {
+            console.error(`[WebSocket] Error updating team assignment for player ${player.userId}:`, updateError);
+            throw updateError;
           }
         }
 
-        // Commit transaction
-        await dbConnection.query('COMMIT');
-        console.log(`[WebSocket] Teams formed and persisted to database in room ${gameId} by ${username}`);
+        console.log(`[WebSocket] Teams formed and persisted to RxDB in room ${gameId} by ${username}`);
 
       } catch (dbError) {
-        // Rollback transaction on error
-        await dbConnection.query('ROLLBACK');
-        console.error('[WebSocket] Database error during team formation:', dbError);
+        console.error('[WebSocket] RxDB error during team formation:', dbError);
 
         // Revert websocket state changes
         room.teams.team1 = [];

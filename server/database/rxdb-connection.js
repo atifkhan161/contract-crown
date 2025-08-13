@@ -40,7 +40,7 @@ class RxDBConnection {
         this.dbPath = process.env.RXDB_PATH || path.join(__dirname, '../data/rxdb');
         this.dbName = process.env.RXDB_NAME || 'contract_crown_rxdb';
         this.backupPath = process.env.RXDB_BACKUP_PATH || path.join(__dirname, '../data/backups');
-        
+
         // Persistence configuration
         this.persistenceConfig = {
             autosave: true,
@@ -49,7 +49,7 @@ class RxDBConnection {
             adapter: null,
             verbose: process.env.NODE_ENV !== 'production'
         };
-        
+
         // Backup configuration
         this.backupConfig = {
             enabled: process.env.RXDB_BACKUP_ENABLED !== 'false',
@@ -102,7 +102,7 @@ class RxDBConnection {
 
             // Seed default data after database is fully initialized
             const seedResult = await this.seedDefaultData();
-            
+
             // Force persistence if new users were created
             if (seedResult && !seedResult.skipped && seedResult.totalSeeded > 0) {
                 await this.saveToFile();
@@ -146,10 +146,10 @@ class RxDBConnection {
     async addAllCollections() {
         try {
             console.log('[RxDB] Adding all collections...');
-            
+
             // Import schemas
             const { allSchemas } = await import('../src/database/schemas/index.js');
-            
+
             // Add all collections at once for better performance
             const collectionsToAdd = {};
             for (const [name, schema] of Object.entries(allSchemas)) {
@@ -157,7 +157,7 @@ class RxDBConnection {
             }
 
             const collections = await this.database.addCollections(collectionsToAdd);
-            
+
             // Store collection references
             for (const [name, collection] of Object.entries(collections)) {
                 this.collections[name] = collection;
@@ -182,13 +182,13 @@ class RxDBConnection {
 
             console.log('[RxDB] Loading persisted data...');
             const loaded = await this.loadFromFile();
-            
+
             if (loaded) {
                 console.log('[RxDB] Persisted data loaded successfully');
             } else {
                 console.log('[RxDB] No persisted data found or failed to load, starting fresh');
             }
-            
+
             return loaded;
         } catch (error) {
             console.error('[RxDB] Failed to load persisted data:', error.message);
@@ -200,10 +200,10 @@ class RxDBConnection {
     async seedDefaultData() {
         try {
             console.log('[RxDB] Seeding default data...');
-            
+
             const seedService = new SeedDataService();
             const summary = await seedService.seedAllData();
-            
+
             console.log('[RxDB] Default data seeding completed:', summary);
             return summary;
         } catch (error) {
@@ -275,7 +275,7 @@ class RxDBConnection {
             // Use memory storage with enhanced JSON-based persistence
             // This provides LokiJS-like functionality with file-based persistence
             const memoryStorage = getRxStorageMemory();
-            
+
             console.log('[RxDB] Memory storage configured with enhanced JSON persistence');
             return memoryStorage;
         } catch (error) {
@@ -360,13 +360,13 @@ class RxDBConnection {
             if (!this.database) return;
 
             const dump = await this.database.exportJSON();
-            
+
             // Ensure directory exists
             await fs.mkdir(this.dbPath, { recursive: true });
 
             // Create main database file
             const filePath = path.join(this.dbPath, `${this.dbName}.json`);
-            
+
             // Add metadata for enhanced persistence
             const enhancedDump = {
                 metadata: {
@@ -468,10 +468,10 @@ class RxDBConnection {
         try {
             // For memory storage with JSON persistence, check the JSON file instead of .db file
             const dbFilePath = path.join(this.dbPath, `${this.dbName}.json`);
-            
+
             try {
                 const stats = await fs.stat(dbFilePath);
-                
+
                 // Check if file was modified recently (within last 10 minutes)
                 const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
                 if (stats.mtime.getTime() < tenMinutesAgo) {
@@ -514,7 +514,7 @@ class RxDBConnection {
     // Handle database errors
     async handleDatabaseError(error) {
         console.error('[RxDB] Handling database error:', error.message);
-        
+
         // Implement recovery strategies based on error type
         if (error.code === 'STORAGE_WRITE_ERROR') {
             await this.handleStorageWriteError(error);
@@ -529,7 +529,7 @@ class RxDBConnection {
     // Handle storage errors
     async handleStorageError(error) {
         console.error('[RxDB] Handling storage error:', error.message);
-        
+
         try {
             // Attempt to recover from storage error
             if (error.message.includes('ENOSPC')) {
@@ -539,7 +539,7 @@ class RxDBConnection {
                 console.error('[RxDB] Permission error detected');
                 // Could implement permission recovery here
             }
-            
+
             // Try to create a backup before attempting recovery
             if (this.backupService) {
                 await this.backupService.createEmergencyBackup();
@@ -552,7 +552,7 @@ class RxDBConnection {
     // Handle persistence errors
     async handlePersistenceError(error) {
         console.error('[RxDB] Handling persistence error:', error.message);
-        
+
         try {
             // Attempt to recover persistence
             await this.recoverPersistence();
@@ -565,7 +565,7 @@ class RxDBConnection {
     // Handle backup errors
     handleBackupError(error) {
         console.error('[RxDB] Backup error occurred:', error.message);
-        
+
         // Could implement backup retry logic or alerting here
         if (error.message.includes('ENOSPC')) {
             console.error('[RxDB] Backup failed due to insufficient disk space');
@@ -577,7 +577,7 @@ class RxDBConnection {
     // Handle initialization errors
     async handleInitializationError(error) {
         console.error('[RxDB] Handling initialization error:', error.message);
-        
+
         try {
             // Attempt to recover from initialization failure
             if (error.message.includes('corrupted') || error.message.includes('invalid')) {
@@ -593,7 +593,7 @@ class RxDBConnection {
     async recoverFromCorruption() {
         try {
             console.log('[RxDB] Starting corruption recovery...');
-            
+
             // Try to load from most recent backup
             const latestBackup = await this.backupService.getLatestBackup();
             if (latestBackup) {
@@ -620,7 +620,7 @@ class RxDBConnection {
     async recoverPersistence() {
         try {
             console.log('[RxDB] Attempting to recover persistence...');
-            
+
             // Check if database file exists and is accessible (JSON file for memory storage)
             const dbFilePath = path.join(this.dbPath, `${this.dbName}.json`);
             try {
@@ -630,7 +630,7 @@ class RxDBConnection {
                 // Could implement permission fixing here
                 throw new Error('Database file permission issues');
             }
-            
+
             // Force a persistence operation
             await this.forcePersistence();
             console.log('[RxDB] Persistence recovery completed');
@@ -649,7 +649,7 @@ class RxDBConnection {
                 clearInterval(this.persistenceInterval);
                 this.persistenceInterval = null;
             }
-            
+
             if (this.backupInterval) {
                 clearInterval(this.backupInterval);
                 this.backupInterval = null;
@@ -675,12 +675,12 @@ class RxDBConnection {
     // Handle storage write errors
     async handleStorageWriteError(error) {
         console.error('[RxDB] Handling storage write error:', error.message);
-        
+
         try {
             // Check disk space and permissions (JSON file for memory storage)
             const dbFilePath = path.join(this.dbPath, `${this.dbName}.json`);
             await fs.access(path.dirname(dbFilePath), fs.constants.W_OK);
-            
+
             // Try to force persistence
             await this.forcePersistence();
         } catch (recoveryError) {
@@ -692,7 +692,7 @@ class RxDBConnection {
     // Handle conflict errors
     async handleConflictError(error) {
         console.error('[RxDB] Handling conflict error:', error.message);
-        
+
         // Conflict errors are typically handled by RxDB's conflict resolution
         // Log for monitoring purposes
         console.warn('[RxDB] Document conflict detected, RxDB will handle resolution');
@@ -753,7 +753,7 @@ class RxDBConnection {
     // Update backup settings
     updateBackupConfig(newConfig) {
         this.backupConfig = { ...this.backupConfig, ...newConfig };
-        
+
         // Restart backup interval if it changed
         if (newConfig.interval && this.backupInterval) {
             clearInterval(this.backupInterval);
@@ -761,7 +761,7 @@ class RxDBConnection {
                 this.setupPeriodicBackup();
             }
         }
-        
+
         console.log('[RxDB] Backup configuration updated:', this.backupConfig);
     }
 
@@ -776,7 +776,7 @@ class RxDBConnection {
             for (let i = maxRotations - 1; i >= 1; i--) {
                 const oldFile = path.join(dirPath, `${baseFileName}.${i}.json`);
                 const newFile = path.join(dirPath, `${baseFileName}.${i + 1}.json`);
-                
+
                 try {
                     await fs.access(oldFile);
                     await fs.rename(oldFile, newFile);
