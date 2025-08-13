@@ -561,12 +561,22 @@ class GameEngine {
         try {
             const roundId = uuidv4();
 
-            await dbConnection.query(`
-                INSERT INTO game_rounds (
-                    round_id, game_id, round_number, dealer_user_id, 
-                    first_player_user_id, created_at
-                ) VALUES (?, ?, ?, ?, ?, NOW())
-            `, [roundId, gameId, roundNumber, dealerUserId, firstPlayerUserId]);
+            const { default: GameRound } = await import('../models/GameRound.js');
+            const gameRoundModel = new GameRound();
+            
+            await gameRoundModel.create({
+                round_id: roundId,
+                game_id: gameId,
+                round_number: roundNumber,
+                dealer_user_id: dealerUserId,
+                first_player_user_id: firstPlayerUserId,
+                trump_suit: null,
+                declaring_team_id: null,
+                declaring_team_tricks_won: 0,
+                challenging_team_tricks_won: 0,
+                round_completed_at: null,
+                created_at: new Date().toISOString()
+            });
 
             console.log(`[GameEngine] Created round ${roundNumber} for game ${gameId}`);
             return roundId;

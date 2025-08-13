@@ -630,6 +630,73 @@ class SocketManager {
           }
         }
 
+        // Create Game record if it doesn't exist
+        console.log(`[WebSocket] Creating Game record for game ${gameId}`);
+        try {
+          const { default: Game } = await import('../src/models/Game.js');
+          const gameModel = new Game();
+          
+          const existingGame = await gameModel.findOne({ game_id: gameId });
+          if (!existingGame) {
+            // Generate a unique game code
+            const gameCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            
+            await gameModel.create({
+              game_id: gameId,
+              game_code: gameCode,
+              status: 'in_progress',
+              host_id: room.hostId,
+              created_at: new Date().toISOString(),
+              started_at: new Date().toISOString(),
+              target_score: 52,
+              is_demo_mode: false
+            });
+            
+            console.log(`[WebSocket] Created Game record for ${gameId} with code ${gameCode}`);
+          }
+        } catch (gameError) {
+          console.error(`[WebSocket] Failed to create Game record for game ${gameId}:`, gameError);
+          throw gameError;
+        }
+
+        // Create GamePlayer records for all players (human and bots)
+        console.log(`[WebSocket] Creating GamePlayer records for game ${gameId}`);
+        try {
+          const { default: GamePlayer } = await import('../src/models/GamePlayer.js');
+          const gamePlayerModel = new GamePlayer();
+          
+          let seatPosition = 1;
+          for (const [userId, player] of room.players.entries()) {
+            if (player.isConnected) {
+              const gamePlayerId = `${gameId}_${userId}`;
+              
+              // Check if GamePlayer record already exists
+              const existingGamePlayer = await gamePlayerModel.findOne({ game_player_id: gamePlayerId });
+              
+              if (!existingGamePlayer) {
+                await gamePlayerModel.create({
+                  game_player_id: gamePlayerId,
+                  game_id: gameId,
+                  user_id: userId,
+                  team_id: null, // Will be set later when teams are formed
+                  seat_position: seatPosition,
+                  is_ready: player.isReady || false,
+                  is_host: player.userId === room.hostId,
+                  current_hand: null,
+                  tricks_won_current_round: 0,
+                  joined_at: player.joinedAt || new Date().toISOString()
+                });
+                
+                console.log(`[WebSocket] Created GamePlayer record for ${player.username} (${userId}) at seat ${seatPosition}`);
+                seatPosition++;
+              }
+            }
+          }
+        } catch (gamePlayerError) {
+          console.error(`[WebSocket] Failed to create GamePlayer records for game ${gameId}:`, gamePlayerError);
+          throw gamePlayerError;
+        }
+
         // Initialize the actual game with GameEngine
         const { default: GameEngine } = await import('../src/services/GameEngine.js');
         const gameEngine = new GameEngine();
