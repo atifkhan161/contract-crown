@@ -1807,7 +1807,8 @@ class SocketManager {
         const playerHand = gameState.players[effectiveUserId].hand;
         const cardIndex = playerHand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
         if (cardIndex !== -1) {
-          playerHand.splice(cardIndex, 1);
+          // Create a new array without the played card instead of modifying the existing one
+          const newPlayerHand = playerHand.filter((c, index) => index !== cardIndex);
 
           // Determine next player in turn order
           const room = this.gameRooms.get(gameId);
@@ -1851,8 +1852,8 @@ class SocketManager {
             players: {
               [effectiveUserId]: {
                 ...gameState.players[effectiveUserId],
-                hand: playerHand,
-                handSize: playerHand.length
+                hand: newPlayerHand, // Use the new hand array
+                handSize: newPlayerHand.length // Use the new hand array length
               }
             }
           }, effectiveUserId);
@@ -2021,8 +2022,10 @@ class SocketManager {
                     c.suit === botResult.card.suit && c.rank === botResult.card.rank
                   );
                   if (cardIndex !== -1) {
-                    botPlayer.hand.splice(cardIndex, 1);
-                    botPlayer.handSize = botPlayer.hand.length;
+                    // Create a new array without the played card instead of modifying the existing one
+                    const newBotHand = botPlayer.hand.filter((c, index) => index !== cardIndex);
+                    botPlayer.hand = newBotHand;
+                    botPlayer.handSize = newBotHand.length;
                   }
                 }
               }
