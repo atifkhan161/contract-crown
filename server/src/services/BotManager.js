@@ -177,7 +177,9 @@ class BotManager {
                 const botData = bot.toDatabaseFormat();
 
                 // Insert bot as a temporary user with all required fields and unique identifiers
-                const uniqueUsername = `${botData.username}_${botData.user_id.slice(-8)}`;
+                // Replace spaces and special characters with underscores to match schema pattern
+                const sanitizedBotName = botData.username.replace(/[^a-zA-Z0-9_]/g, '_');
+                const uniqueUsername = `${sanitizedBotName}_${botData.user_id.slice(-8)}`;
                 const uniqueEmail = `${botData.user_id}@bot.local`;
 
                 try {

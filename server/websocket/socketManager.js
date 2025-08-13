@@ -740,7 +740,6 @@ class SocketManager {
         console.log(`[WebSocket] Game ${gameId} initialized with trump declaration phase. Trump declarer: ${dealResult.firstPlayerUserId}`);
 
         // Check if trump declarer is a bot and process immediately
-        const room = this.gameRooms.get(gameId);
         const trumpDeclarerPlayer = room.players.get(dealResult.firstPlayerUserId);
         console.log(`[WebSocket] Trump declarer info:`, {
           playerId: dealResult.firstPlayerUserId,
