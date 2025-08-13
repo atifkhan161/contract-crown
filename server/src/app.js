@@ -18,6 +18,10 @@ import testAuthRoutes from './routes/test-auth.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Ensure data directories exist
+const dataDir = path.join(process.cwd(), 'data');
+const rxdbDir = path.join(dataDir, 'rxdb');
+
 /**
  * Create and configure Express application
  * @param {Object} io - Socket.IO server instance
@@ -32,12 +36,20 @@ const __dirname = path.dirname(__filename);
 export function createApp(io, socketManager, connectionStatusManager, periodicReconciliationService, monitoringService, diagnosticTools, performanceMonitor) {
   const app = express();
 
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+
+  if (!fs.existsSync(rxdbDir)) {
+    fs.mkdirSync(rxdbDir, { recursive: true });
+  }
+
   // Setup middleware
   setupMiddleware(app);
-  
+
   // Setup routes with dependencies
   setupRoutes(app, io, socketManager, connectionStatusManager, periodicReconciliationService, monitoringService, diagnosticTools, performanceMonitor);
-  
+
   // Setup error handling
   setupErrorHandling(app);
 
@@ -117,7 +129,7 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   if (process.env.NODE_ENV === 'development' && process.env.VITE_DEV_SERVER_URL) {
     console.log(`[Proxy] Setting up development proxy to ${process.env.VITE_DEV_SERVER_URL}`);
     console.log('[Proxy] Make sure Vite dev server is running on the configured port');
-    
+
     // Proxy non-API requests to Vite dev server
     app.use('/', createProxyMiddleware({
       target: process.env.VITE_DEV_SERVER_URL,
@@ -125,9 +137,9 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
       ws: true, // Enable WebSocket proxying for HMR
       pathFilter: (pathname) => {
         // Don't proxy API routes, health check, or socket.io
-        return !pathname.startsWith('/api') && 
-               !pathname.startsWith('/health') && 
-               !pathname.startsWith('/socket.io');
+        return !pathname.startsWith('/api') &&
+          !pathname.startsWith('/health') &&
+          !pathname.startsWith('/socket.io');
       },
       onError: (err, req, res) => {
         console.error('[Proxy] Error connecting to Vite dev server:', err.message);
@@ -161,7 +173,7 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   // Health check endpoint
   app.get('/health', (req, res) => {
     res.status(200).json({
-      status: 'OK',
+      status: 'healthy',
       timestamp: new Date().toISOString(),
       uptime: process.uptime()
     });
@@ -170,10 +182,10 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   // WebSocket status endpoint
   app.get('/api/websocket/status', (req, res) => {
     try {
-      const stats = req.connectionStatusManager ? 
-        req.connectionStatusManager.getPublicStats() : 
+      const stats = req.connectionStatusManager ?
+        req.connectionStatusManager.getPublicStats() :
         { error: 'Connection status manager not available' };
-      
+
       res.status(200).json({
         websocket: {
           enabled: true,
@@ -193,10 +205,10 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   // WebSocket detailed status endpoint (for admin/monitoring)
   app.get('/api/websocket/detailed-status', (req, res) => {
     try {
-      const stats = req.connectionStatusManager ? 
-        req.connectionStatusManager.getDetailedStats() : 
+      const stats = req.connectionStatusManager ?
+        req.connectionStatusManager.getDetailedStats() :
         { error: 'Connection status manager not available' };
-      
+
       res.status(200).json({
         websocket: {
           enabled: true,
@@ -216,10 +228,10 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   // Periodic reconciliation status endpoint
   app.get('/api/reconciliation/status', (req, res) => {
     try {
-      const status = req.periodicReconciliationService ? 
-        req.periodicReconciliationService.getStatus() : 
+      const status = req.periodicReconciliationService ?
+        req.periodicReconciliationService.getStatus() :
         { error: 'Periodic reconciliation service not available' };
-      
+
       res.status(200).json({
         reconciliation: status,
         timestamp: new Date().toISOString()
@@ -237,16 +249,16 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   app.post('/api/reconciliation/force/:gameId', async (req, res) => {
     try {
       const { gameId } = req.params;
-      
+
       if (!req.periodicReconciliationService) {
         return res.status(503).json({
           error: 'Periodic reconciliation service not available',
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const result = await req.periodicReconciliationService.forceReconciliation(gameId);
-      
+
       res.status(200).json({
         message: 'Reconciliation completed',
         gameId,
@@ -272,10 +284,10 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const config = req.body;
       req.periodicReconciliationService.updateConfig(config);
-      
+
       res.status(200).json({
         message: 'Configuration updated',
         config,
@@ -300,9 +312,9 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
           timestamp: new Date().toISOString()
         });
       }
-      
+
       req.periodicReconciliationService.resetStats();
-      
+
       res.status(200).json({
         message: 'Statistics reset successfully',
         timestamp: new Date().toISOString()
@@ -318,7 +330,7 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   });
 
   // Monitoring API endpoints
-  
+
   // Get comprehensive monitoring dashboard
   app.get('/api/monitoring/dashboard', (req, res) => {
     try {
@@ -328,9 +340,9 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const dashboardData = req.monitoringService.getDashboardData();
-      
+
       res.status(200).json({
         dashboard: dashboardData,
         timestamp: new Date().toISOString()
@@ -354,9 +366,9 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const metrics = req.monitoringService.exportMetrics();
-      
+
       res.status(200).json({
         metrics,
         timestamp: new Date().toISOString()
@@ -375,16 +387,16 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   app.get('/api/monitoring/room/:gameId/diagnostics', (req, res) => {
     try {
       const { gameId } = req.params;
-      
+
       if (!req.monitoringService) {
         return res.status(503).json({
           error: 'Monitoring service not available',
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const roomDiagnostics = req.monitoringService.getRoomDiagnostics(gameId);
-      
+
       res.status(200).json({
         gameId,
         diagnostics: roomDiagnostics,
@@ -409,9 +421,9 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
           timestamp: new Date().toISOString()
         });
       }
-      
+
       req.monitoringService.resetMetrics();
-      
+
       res.status(200).json({
         message: 'Monitoring metrics reset successfully',
         timestamp: new Date().toISOString()
@@ -427,21 +439,21 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   });
 
   // Diagnostic Tools API endpoints
-  
+
   // Run comprehensive lobby diagnostics
   app.post('/api/diagnostics/lobby/:gameId', async (req, res) => {
     try {
       const { gameId } = req.params;
-      
+
       if (!req.diagnosticTools) {
         return res.status(503).json({
           error: 'Diagnostic tools not available',
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const diagnostic = await req.diagnosticTools.runLobbyDiagnostics(gameId);
-      
+
       res.status(200).json({
         diagnostic,
         timestamp: new Date().toISOString()
@@ -460,16 +472,16 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   app.post('/api/diagnostics/connection/:userId', async (req, res) => {
     try {
       const { userId } = req.params;
-      
+
       if (!req.diagnosticTools) {
         return res.status(503).json({
           error: 'Diagnostic tools not available',
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const diagnostic = await req.diagnosticTools.runConnectionTest(userId);
-      
+
       res.status(200).json({
         diagnostic,
         timestamp: new Date().toISOString()
@@ -488,16 +500,16 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   app.get('/api/diagnostics/result/:diagnosticId', (req, res) => {
     try {
       const { diagnosticId } = req.params;
-      
+
       if (!req.diagnosticTools) {
         return res.status(503).json({
           error: 'Diagnostic tools not available',
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const result = req.diagnosticTools.getDiagnosticResult(diagnosticId);
-      
+
       if (!result) {
         return res.status(404).json({
           error: 'Diagnostic result not found',
@@ -505,7 +517,7 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
           timestamp: new Date().toISOString()
         });
       }
-      
+
       res.status(200).json({
         result,
         timestamp: new Date().toISOString()
@@ -529,10 +541,10 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const results = req.diagnosticTools.getAllDiagnosticResults();
       const summary = req.diagnosticTools.getDiagnosticSummary();
-      
+
       res.status(200).json({
         results,
         summary,
@@ -549,7 +561,7 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   });
 
   // Performance Monitor API endpoints
-  
+
   // Get performance summary
   app.get('/api/performance/summary', (req, res) => {
     try {
@@ -559,9 +571,9 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const summary = req.performanceMonitor.getPerformanceSummary();
-      
+
       res.status(200).json({
         performance: summary,
         timestamp: new Date().toISOString()
@@ -580,16 +592,16 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   app.get('/api/performance/room/:gameId', (req, res) => {
     try {
       const { gameId } = req.params;
-      
+
       if (!req.performanceMonitor) {
         return res.status(503).json({
           error: 'Performance monitor not available',
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const profile = req.performanceMonitor.getRoomProfile(gameId);
-      
+
       if (!profile) {
         return res.status(404).json({
           error: 'Room performance profile not found',
@@ -597,7 +609,7 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
           timestamp: new Date().toISOString()
         });
       }
-      
+
       res.status(200).json({
         gameId,
         profile,
@@ -617,16 +629,16 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
   app.get('/api/performance/user/:userId', (req, res) => {
     try {
       const { userId } = req.params;
-      
+
       if (!req.performanceMonitor) {
         return res.status(503).json({
           error: 'Performance monitor not available',
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const profile = req.performanceMonitor.getUserProfile(userId);
-      
+
       if (!profile) {
         return res.status(404).json({
           error: 'User performance profile not found',
@@ -634,7 +646,7 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
           timestamp: new Date().toISOString()
         });
       }
-      
+
       res.status(200).json({
         userId,
         profile,
@@ -659,9 +671,9 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
           timestamp: new Date().toISOString()
         });
       }
-      
+
       const performanceData = req.performanceMonitor.exportPerformanceData();
-      
+
       res.status(200).json({
         export: performanceData,
         timestamp: new Date().toISOString()
@@ -685,9 +697,9 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
           timestamp: new Date().toISOString()
         });
       }
-      
+
       req.performanceMonitor.resetMetrics();
-      
+
       res.status(200).json({
         message: 'Performance metrics reset successfully',
         timestamp: new Date().toISOString()
@@ -704,21 +716,21 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
 
   // Authentication routes
   app.use('/api/auth', authRoutes);
-  
+
   // Test authentication routes (development only)
   if (process.env.NODE_ENV !== 'production') {
     app.use('/api/auth', testAuthRoutes);
   }
-  
+
   // Rooms routes
   app.use('/api/rooms', roomsRoutes);
-  
+
   // Waiting room routes
   app.use('/api/waiting-rooms', waitingRoomsRoutes);
-  
+
   // Users routes
   app.use('/api/users', usersRoutes);
-  
+
   // Games routes
   app.use('/api/games', gamesRoutes);
 
@@ -733,13 +745,13 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
 
   // Serve static files from client build output
   const staticPath = path.join(__dirname, '..', '..', 'client', 'dist');
-  
+
   // Check if client/dist directory exists in production
   if (process.env.NODE_ENV === 'production' && !existsSync(staticPath)) {
     console.error('[Static Files] Production build directory not found at:', staticPath);
     console.error('[Static Files] Run "npm run build" from the client directory to create the production build');
   }
-  
+
   // Configure static file serving with production optimizations
   app.use(express.static(staticPath, {
     // Cache static assets for 1 year in production, no cache in development
@@ -754,12 +766,12 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
     setHeaders: (res, filePath) => {
       const ext = path.extname(filePath).toLowerCase();
       const filename = path.basename(filePath);
-      
+
       if (process.env.NODE_ENV === 'production') {
         // Security headers for all static files
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('X-Frame-Options', 'DENY');
-        
+
         // Cache hashed assets (JS, CSS with hash) for 1 year with immutable flag
         if (ext === '.js' || ext === '.css') {
           // Check if filename contains hash (Vite pattern: name-[hash].ext or name.[hash].ext)
@@ -794,7 +806,7 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
       }
     }
   }));
-  
+
   // Handle client-side routing - serve index.html for non-API routes
   app.get('*', (req, res) => {
     // Don't serve index.html for API routes, health check, or socket.io
@@ -804,9 +816,9 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
         path: req.path
       });
     }
-    
+
     const indexPath = path.join(staticPath, 'index.html');
-    
+
     // Set appropriate headers for the SPA fallback
     res.setHeader('Content-Type', 'text/html');
     if (process.env.NODE_ENV === 'production') {
@@ -814,7 +826,7 @@ function setupRoutes(app, io, socketManager, connectionStatusManager, periodicRe
     } else {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     }
-    
+
     res.sendFile(indexPath, (err) => {
       if (err) {
         console.error('[Static Files] Error serving index.html from:', indexPath, err);
@@ -844,7 +856,7 @@ function setupErrorHandling(app) {
 
     // Don't leak error details in production
     const isDevelopment = process.env.NODE_ENV !== 'production';
-    
+
     res.status(err.status || 500).json({
       error: err.message || 'Internal Server Error',
       ...(isDevelopment && { stack: err.stack }),

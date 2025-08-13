@@ -15,7 +15,7 @@ dotenv.config();
 
 class GameServer {
   constructor() {
-    this.port = process.env.PORT || 3030;
+    this.port = process.env.PORT || 10000;
     
     // Setup process error handling first
     this.setupProcessErrorHandling();
