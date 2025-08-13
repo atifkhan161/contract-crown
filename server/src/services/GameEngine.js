@@ -381,9 +381,9 @@ class GameEngine {
             const gamePlayerModel = new GamePlayer();
             
             for (const player of players) {
-                await gamePlayerModel.updateOne(
+                await gamePlayerModel.updateMany(
                     { game_id: gameId, user_id: player.user_id },
-                    { current_hand: JSON.stringify(playerHands[player.user_id]) }
+                    { current_hand: playerHands[player.user_id] }
                 );
             }
 

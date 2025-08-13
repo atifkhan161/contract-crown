@@ -238,7 +238,7 @@ export const gamePlayersSchema = {
       default: false
     },
     current_hand: {
-      type: ['object', 'null']
+      type: ['array', 'null']
     },
     tricks_won_current_round: {
       type: 'number',
