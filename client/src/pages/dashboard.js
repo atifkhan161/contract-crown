@@ -7,6 +7,7 @@ import { AuthManager } from '../core/auth.js';
 import { SocketManager } from '../core/SocketManager.js';
 import { RoomManager } from '../core/RoomManager.js';
 import { getErrorHandler } from '../core/ErrorHandler.js';
+import ThemeSelector from '../components/ThemeSelector.js';
 
 class DashboardManager {
     constructor() {
@@ -20,8 +21,17 @@ class DashboardManager {
         this.rooms = [];
         
         this.initializeElements();
+        this.initializeThemeSelector();
         this.setupEventListeners();
         this.initialize();
+    }
+
+    initializeThemeSelector() {
+        // Initialize theme selector
+        const themeContainer = document.getElementById('theme-container');
+        if (themeContainer) {
+            new ThemeSelector(themeContainer);
+        }
     }
 
     initializeElements() {

@@ -18,6 +18,7 @@
     <meta name="apple-mobile-web-app-title" content="Contract Crown">
 
     <link rel="stylesheet" href="src/styles/main.css">
+    <link rel="stylesheet" href="src/styles/theme-selector.css">
     <link rel="stylesheet" href="src/styles/dashboard.css">
 </head>
 
@@ -28,6 +29,7 @@
             <div class="header-content">
                 <h1 class="app-title">Contract Crown</h1>
                 <div class="user-info">
+                    <div id="theme-container"></div>
                     <span id="username-display" class="username"></span>
                     <span class="status-indicator" id="status-indicator"></span>
                     <button id="logout-btn" class="btn btn-secondary btn-sm">Logout</button>
@@ -168,6 +170,7 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="src/core/ThemeInitializer.js"></script>
     <script type="module" src="src/core/auth.js"></script>
     <script type="module" src="src/pages/dashboard.js"></script>
 </body>
