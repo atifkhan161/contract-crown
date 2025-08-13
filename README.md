@@ -1,6 +1,6 @@
-# Contract Crown PWA
+# Trump Crown PWA
 
-A Progressive Web App for the Contract Crown strategic card game, featuring real-time multiplayer gameplay, user authentication, and room management.
+A Progressive Web App for the Trump Crown strategic card game, featuring real-time multiplayer gameplay, user authentication, and room management with RxDB database integration.
 
 ## Features
 
@@ -89,115 +89,102 @@ A Progressive Web App for the Contract Crown strategic card game, featuring real
 
 **Note**: The project is currently undergoing a folder structure refactoring to follow modern full-stack development practices. The current structure is a hybrid state with some components moved to the new structure.
 
-### Current Structure (Transitional)
+### Current Structure
 ```
-contract-crown-pwa/
-├── client/                # Frontend application (NEW STRUCTURE)
-│   ├── public/           # Static assets (being populated)
+trump-crown/
+├── client/                # Frontend application
+│   ├── public/           # Static assets
+│   │   ├── icons/        # PWA icons
+│   │   ├── favicon.ico   # Site favicon
+│   │   ├── manifest.json # PWA manifest
+│   │   └── sw.js         # Service worker
 │   ├── src/              # Frontend source code
-│   │   ├── assets/       # Images, fonts, etc.
 │   │   ├── components/   # Reusable UI components
+│   │   │   ├── CardManager.js    # Card handling
+│   │   │   ├── ThemeSelector.js  # Theme switching
+│   │   │   ├── TrickManager.js   # Trick management
+│   │   │   ├── TrumpManager.js   # Trump suit handling
+│   │   │   └── UIManager.js      # UI utilities
 │   │   ├── core/         # Core application modules
-│   │   │   ├── auth.js        # Authentication manager
-│   │   │   ├── RoomManager.js # Room management functionality
-│   │   │   ├── SocketManager.js # WebSocket connection management
-│   │   │   └── websocket.js   # WebSocket utilities
+│   │   │   ├── auth.js           # Authentication manager
+│   │   │   ├── ConnectionManager.js # Connection handling
+│   │   │   ├── GameManager.js    # Game logic
+│   │   │   ├── GameState.js      # Game state management
+│   │   │   ├── RoomManager.js    # Room management
+│   │   │   ├── SocketManager.js  # WebSocket management
+│   │   │   └── ErrorHandler.js   # Error handling
 │   │   ├── pages/        # Page-specific components
-│   │   │   ├── dashboard.js   # Dashboard page functionality
-│   │   │   ├── lobby.js       # Lobby page functionality
-│   │   │   ├── login.js       # Login page functionality
-│   │   │   └── register.js    # Registration page functionality
-│   │   ├── styles/       # CSS and styling
-│   │   │   ├── theme.css      # Global theme variables
-│   │   │   ├── dashboard.css  # Dashboard styling
-│   │   │   ├── lobby.css      # Lobby page styling
-│   │   │   ├── login.css      # Login page styling
-│   │   │   └── register.css   # Registration styling
-│   │   └── main.js       # Application entry point
-│   ├── index.html        # Main HTML template
-│   ├── login.html        # Login page
-│   ├── register.html     # Registration page
-│   ├── dashboard.html    # Dashboard page
+│   │   │   ├── dashboard.js      # Dashboard functionality
+│   │   │   ├── game.js           # Game page functionality
+│   │   │   ├── login.js          # Login page
+│   │   │   ├── register.js       # Registration page
+│   │   │   └── waiting-room.js   # Waiting room functionality
+│   │   ├── styles/       # CSS styling (organized by page)
+│   │   │   ├── dashboard/        # Dashboard styles
+│   │   │   ├── game/             # Game page styles
+│   │   │   ├── login/            # Login styles
+│   │   │   ├── register/         # Registration styles
+│   │   │   ├── waiting-room/     # Waiting room styles
+│   │   │   └── theme.css         # Global theme
+│   │   └── ui/           # UI components
+│   │       └── WaitingRoomUI.js  # Waiting room UI
+│   ├── test/             # Frontend tests
+│   ├── *.html            # HTML pages
+│   ├── package.json      # Frontend dependencies
 │   └── vite.config.js    # Vite configuration
 ├── server/               # Backend Node.js server
-│   ├── routes/           # API route handlers
-│   ├── models/           # Database models
-│   ├── middleware/       # Express middleware
-│   │   └── socketAuth.js # WebSocket authentication middleware
+│   ├── data/             # RxDB data storage
+│   │   ├── backups/      # Database backups
+│   │   └── rxdb/         # RxDB database files
 │   ├── database/         # Database configuration
-│   ├── websocket/        # WebSocket server components
-│   │   ├── socketManager.js      # Socket.IO connection and room management
-│   │   └── connectionStatus.js   # Connection monitoring and status tracking
-│   ├── examples/         # Example implementations and demos
-│   │   └── websocket-client-example.js # Complete WebSocket client example
-│   └── tests/            # Server-side tests
-│       └── websocket.test.js      # WebSocket functionality tests
+│   │   ├── rxdb-connection.js # RxDB connection
+│   │   └── rxdb-init.js       # Database initialization
+│   ├── src/              # Server source code
+│   │   ├── database/     # Database schemas and validation
+│   │   ├── middleware/   # Express middleware
+│   │   ├── models/       # RxDB data models
+│   │   ├── routes/       # API route handlers
+│   │   ├── services/     # Business logic services
+│   │   ├── utils/        # Utility functions
+│   │   ├── websocket/    # WebSocket handlers
+│   │   ├── app.js        # Express app setup
+│   │   └── server.js     # Server entry point
+│   ├── scripts/          # Database management scripts
+│   ├── test/             # Server tests
+│   ├── tests/            # Additional test files
+│   ├── websocket/        # WebSocket management
+│   ├── examples/         # Example implementations
+│   ├── .env              # Environment configuration
+│   └── package.json      # Backend dependencies
 ├── cypress/              # End-to-end testing
 │   ├── e2e/             # E2E test specifications
-│   │   └── auth.cy.js   # Authentication flow tests
 │   ├── fixtures/        # Test data
 │   └── support/         # Test utilities
 ├── docs/                 # Project documentation
-├── test-websocket-fixes.html     # Interactive WebSocket testing tool
-├── test-websocket-connection.html # Basic WebSocket connection test
-├── test-websocket-connection-fixed.html # Complete WebSocket connection testing with authentication setup
-├── test-auth-debug.html          # Authentication state debugging and token validation
-├── test-dashboard-auth.html      # Dashboard-specific authentication testing
-├── test-auth-simple.html         # Basic authentication testing and token management
-├── validate-websocket-fixes.js   # WebSocket fixes validation script
-├── diagnose-websocket.js         # Automated WebSocket diagnostic tool
-├── QUICK_START_WEBSOCKET.md      # 3-step quick fix guide for WebSocket issues
-├── fix-websocket-connection.md   # Comprehensive WebSocket troubleshooting guide
-├── WEBSOCKET_FIXES_SUMMARY.md    # Detailed WebSocket fixes documentation
 ├── UX/                   # UI/UX design assets
-│   ├── game_lobby.png   # Lobby interface design
-│   └── multiplayer lobby*.jpg # Lobby design iterations
+├── .kiro/                # Kiro project specifications
+├── docker-scripts/       # Docker build scripts
+├── Dockerfile           # Docker configuration
+├── cypress.config.js    # Cypress configuration
+└── package.json         # Root workspace configuration
 ```
 
-### Target Structure (In Progress)
-The project is being refactored to follow the recommended full-stack Express + Vite structure:
+### Database Architecture
+The project uses **RxDB** (Reactive Database) for real-time data synchronization:
 
-```
-contract-crown-pwa/
-├── client/               # Frontend application
-│   ├── public/          # Static assets (manifest.json, sw.js, favicon, etc.)
-│   ├── src/             # Frontend source code
-│   │   ├── assets/      # Images, fonts, etc.
-│   │   ├── components/  # Reusable UI components
-│   │   ├── pages/       # Page-specific code
-│   │   ├── core/        # Core application logic
-│   │   └── main.js      # Application entry point
-│   ├── *.html           # HTML templates
-│   ├── vite.config.js   # Vite configuration
-│   └── package.json     # Frontend dependencies (planned)
-├── server/              # Backend application
-│   ├── src/             # Server source code (planned reorganization)
-│   │   ├── config/      # Configuration files
-│   │   ├── controllers/ # Request handlers
-│   │   ├── routes/      # API route definitions
-│   │   ├── middlewares/ # Express middlewares
-│   │   ├── services/    # Business logic
-│   │   ├── models/      # Data models
-│   │   ├── utils/       # Utility functions
-│   │   ├── app.js       # Express app setup (planned)
-│   │   └── server.js    # HTTP server entry (planned)
-│   ├── database/        # Database related files
-│   ├── websocket/       # WebSocket handling
-│   ├── tests/           # Server tests
-│   └── package.json     # Backend dependencies
-├── shared/              # Shared utilities (if needed)
-├── docs/                # Documentation
-├── cypress/             # E2E tests
-├── package.json         # Root workspace configuration
-└── README.md
-```
+- **Local-first Architecture**: RxDB provides offline-first capabilities with automatic synchronization
+- **Reactive Queries**: Real-time updates across all connected clients
+- **Schema Validation**: Comprehensive data validation with AJV
+- **Backup System**: Automated backup and restore functionality
+- **Migration Support**: Database schema migration with rollback capabilities
+- **Performance Monitoring**: Built-in performance tracking and optimization
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn package manager
-- VS Code (recommended for development with included debugging configuration)
+- Node.js (v18 or higher)
+- npm package manager
+- VS Code (recommended for development)
 
 ### Installation
 
@@ -207,25 +194,24 @@ git clone <repository-url>
 cd contract-crown-pwa
 ```
 
-2. Install root dependencies:
+2. Install dependencies:
 ```bash
 npm install
+cd client && npm install
+cd ../server && npm install
 ```
 
-3. Install backend dependencies:
-```bash
-cd server
-npm install
-cd ..
-```
-
-4. Set up environment variables:
+3. Set up environment variables:
 ```bash
 cp server/.env.example server/.env
 # Edit server/.env with your configuration
 ```
 
-**Note**: During the folder structure refactoring, the client will have its own `package.json` with frontend-specific dependencies. Currently, frontend dependencies are managed at the root level.
+4. Initialize RxDB database:
+```bash
+cd server
+npm run rxdb:init
+```
 
 ### Development
 
@@ -239,166 +225,112 @@ This runs:
 - Backend API server on `http://localhost:3030`
 
 ### Application Pages
+- **Home**: `http://localhost:5173/` - Landing page
 - **Login**: `http://localhost:5173/login.html` - User authentication
 - **Register**: `http://localhost:5173/register.html` - New user registration  
 - **Dashboard**: `http://localhost:5173/dashboard.html` - Main game dashboard
-- **Lobby**: `http://localhost:5173/lobby.html` - Waiting lobby for game preparation (currently at root level)
-- **Home**: `http://localhost:5173/` - Landing page
-
-**Note**: Some pages are currently being served from the root level during the transition to the new folder structure.
+- **Waiting Room**: `http://localhost:5173/waiting-room.html` - Game preparation lobby
+- **Game**: `http://localhost:5173/game.html` - Main game interface
 
 ### Individual Services
 
 Start only the frontend:
 ```bash
-npm run dev:frontend
+npm run dev:client-only
 ```
 
 Start only the backend:
 ```bash
-npm run dev:backend
+npm run dev:server-only
 ```
 
-### WebSocket Development and Testing
+### Database Management
 
-The project includes comprehensive WebSocket testing tools for development and debugging:
+The project uses RxDB for reactive, real-time data management:
 
-**Enhanced User Data Compatibility**: The WebSocket system now provides consistent handling of both `user_id` and `id` field names in user objects and JWT tokens, ensuring seamless compatibility across different authentication systems and user data structures. This includes proper current user identification in the lobby interface.
+#### Database Commands
+```bash
+# Initialize database
+npm run rxdb:init
 
-**Flexible User ID Handling**: The entire application now supports both `user_id` and `id` field names in user objects across all operations including host transfer, ready status handling, player management, current user identification, and room ownership validation, providing robust compatibility with different authentication backends and user data structures.
+# Reset database (clears all data)
+npm run rxdb:reset
 
-#### Quick Start WebSocket Fix
-For immediate WebSocket connection resolution, see `QUICK_START_WEBSOCKET.md` for a **3-step fix**:
+# Check database status
+npm run rxdb:status
 
-1. **Environment Setup** (30 seconds): Verify your `server/.env` configuration
-2. **Test Connection** (1 minute): Run `node diagnose-websocket.js` for automated testing
-3. **Verify in Browser** (1 minute): Use `test-websocket-connection-fixed.html` for interactive testing
+# Validate database setup
+npm run rxdb:check
+```
 
-#### Comprehensive Fix Guide
-For detailed troubleshooting, follow the **Complete Fix Guide** in `fix-websocket-connection.md`:
+#### Backup Management
+```bash
+# Create backup
+npm run backup:create
 
-1. **Set Environment Variables**: Configure `.env` with proper JWT settings
-2. **Test Connection**: Use interactive test pages or diagnostic tools
-3. **Common Issues**: Solutions for authentication, token, and connection problems
-4. **Manual Token Creation**: Fallback token generation for testing
-5. **Verification**: Confirm dashboard and lobby functionality
+# List available backups
+npm run backup:list
 
-#### Interactive WebSocket Testing Tools
-Access these browser-based testing interfaces during development:
+# Restore from backup
+npm run backup:restore
 
-- **`test-websocket-connection-fixed.html`**: Complete WebSocket connection testing with authentication setup
-- **`test-websocket-fixes.html`**: Room management and ready status testing
-- **`test-auth-debug.html`**: Authentication state debugging and token validation
-- **`test-dashboard-auth.html`**: Dashboard-specific authentication testing
-- **`test-auth-simple.html`**: Basic authentication testing and token management
+# Validate backup integrity
+npm run backup:validate
 
-These tools provide:
-- **Real-time Connection Testing**: Test WebSocket connections with authentication
-- **Room Management Testing**: Create, join, and leave rooms interactively
-- **Ready Status Testing**: Toggle player ready status and observe real-time updates
-- **Event Logging**: Comprehensive logging of all WebSocket events with timestamps
-- **Connection Status Monitoring**: Visual connection status indicators
-- **Error Handling Testing**: Test various error scenarios and edge cases
-- **Token Generation**: Multiple methods for creating valid authentication tokens
+# Cleanup old backups
+npm run backup:cleanup
+```
 
-#### Running the WebSocket Client Example
+### WebSocket Development
+
+The project includes comprehensive WebSocket testing and development tools:
+
+#### WebSocket Client Example
 ```bash
 cd server
 node examples/websocket-client-example.js
 ```
 
-This command-line example demonstrates:
-- **Multi-client Simulation**: Creates 4 simulated players to test multiplayer functionality
-- **Complete Game Flow**: Simulates joining rooms, ready status, game start, trump declaration, and card play
-- **Connection Management**: Tests authentication, reconnection, and error handling
-- **Real-time Events**: Demonstrates all WebSocket events used in the game
-- **Development Testing**: Perfect for automated testing of WebSocket functionality
-
-#### WebSocket Client Usage
-The example client can also be imported and used in other testing scenarios:
-
-```javascript
-import ContractCrownWebSocketClient from './server/examples/websocket-client-example.js';
-
-const client = new ContractCrownWebSocketClient('http://localhost:3030');
-await client.connect('user-123', 'TestPlayer', 'test@example.com');
-client.joinGameRoom('game-456');
-client.setReady('game-456', true);
-```
-
-#### WebSocket Diagnostic Tools
-For comprehensive WebSocket troubleshooting and validation:
-
-**Automated Diagnostic Tool**:
+#### State Reconciliation Demo
 ```bash
-node diagnose-websocket.js
+cd server
+node examples/stateReconciliationDemo.js
 ```
 
-This diagnostic tool provides:
-- **Environment Validation**: Checks JWT configuration and environment variables
-- **Token Generation Testing**: Validates JWT token creation and verification
-- **Connection Testing**: Tests WebSocket connection establishment and authentication
-- **Room Operations Testing**: Validates room joining, ready status, and event handling
-- **Comprehensive Reporting**: Generates detailed diagnostic reports with recommendations
-
-**WebSocket Fixes Validation**:
+#### WebSocket Reliability Testing
 ```bash
-node validate-websocket-fixes.js
+cd server
+node examples/websocketReliabilityDemo.js
 ```
-
-This validation script checks:
-- **Code Implementation**: Verifies that all required WebSocket fixes are present in the codebase
-- **File Existence**: Ensures all necessary files and components are in place
-- **Feature Completeness**: Validates that lobby functionality, ready status handling, and connection management are properly implemented
-- **Documentation**: Confirms that test files and documentation are available
-
-The script provides detailed feedback on:
-- ✅ Successfully implemented features
-- ❌ Missing or incomplete implementations
-- 📋 Next steps for testing and validation
 
 ### Troubleshooting
 
-#### Quick WebSocket Fix
-If experiencing WebSocket connection issues, see the comprehensive troubleshooting guides:
+#### Common Issues
+
+**Database Connection Issues:**
 ```bash
-# View the 3-step quick fix guide (fastest solution)
-cat QUICK_START_WEBSOCKET.md
+# Check RxDB status
+npm run rxdb:status
 
-# View the detailed fix guide (comprehensive troubleshooting)
-cat fix-websocket-connection.md
-
-# Run automated diagnostics
-node diagnose-websocket.js
-
-# Validate all fixes are in place
-node validate-websocket-fixes.js
+# Reinitialize database
+npm run rxdb:reset && npm run rxdb:init
 ```
 
-#### Common Troubleshooting Commands
-
+**WebSocket Connection Issues:**
 ```bash
-# Check if server is running (your server runs on port 3030)
-curl http://localhost:3030/api/health
+# Check server health
+curl http://localhost:3030/health
 
-# Test JWT token generation
-curl -X POST http://localhost:3030/api/auth/test-token \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser"}'
-
-# Run full diagnostic
-node diagnose-websocket.js
-
-# Check server logs
-npm start | grep -E "(WebSocket|Socket|Auth)"
+# Test WebSocket connection
+node server/examples/websocket-client-example.js
 ```
 
-#### Expected Behavior After Fix
-✅ Dashboard shows "Connected" status (not "Disconnected")  
-✅ Room creation works and auto-redirects to lobby  
-✅ Lobby ready status syncs in real-time between users  
-✅ No more "Authentication failed" popups  
-✅ Real-time updates visible in both dashboard and lobby
+**Build Issues:**
+```bash
+# Clean install
+rm -rf node_modules client/node_modules server/node_modules
+npm install && cd client && npm install && cd ../server && npm install
+```
 
 ### Development Environment
 
@@ -532,16 +464,26 @@ npm start
 #### Development & Testing Endpoints (Non-Production Only)
 - `POST /api/auth/test-token` - Generate test JWT token for development and testing
 
-### Rooms
+### Rooms & Waiting Rooms
 - `GET /api/rooms` - Get available rooms
 - `POST /api/rooms` - Create new room
 - `GET /api/rooms/:id` - Get room details
 - `POST /api/rooms/:id/join` - Join room
 - `POST /api/rooms/:id/leave` - Leave room
 - `DELETE /api/rooms/:id` - Delete room (owner only)
-- `POST /api/rooms/:id/ready` - Set player ready status
-- `POST /api/rooms/:id/form-teams` - Form teams (host only)
-- `POST /api/rooms/:id/start` - Start game (host only)
+- `GET /api/waiting-rooms/:id` - Get waiting room details
+- `POST /api/waiting-rooms/:id/ready` - Set player ready status
+- `POST /api/waiting-rooms/:id/start` - Start game (host only)
+
+### Games
+- `GET /api/games/:id` - Get game state
+- `POST /api/games/:id/play-card` - Play a card
+- `POST /api/games/:id/declare-trump` - Declare trump suit
+- `GET /api/games/:id/statistics` - Get game statistics
+
+### Statistics
+- `GET /api/statistics/user/:id` - Get user statistics
+- `GET /api/statistics/game/:id` - Get game statistics
 
 ### Users
 - `GET /api/users/stats` - Get user statistics
@@ -577,76 +519,69 @@ npm start
 Configure the following in `server/.env`:
 
 ```env
-NODE_ENV=development
+# Server Configuration
 PORT=3030
-JWT_SECRET=your-jwt-secret
+NODE_ENV=development
+VITE_DEV_SERVER_URL=http://localhost:5173
+
+# RxDB Configuration
+RXDB_PATH=./data/rxdb
+RXDB_NAME=trump_crown_rxdb
+
+# JWT Configuration
+JWT_SECRET=your_super_secret_jwt_key_here
 JWT_EXPIRES_IN=24h
-ALLOW_TEST_TOKENS=true
-DB_HOST=your-database-host
-DB_PORT=3306
-DB_NAME=your-database-name
-DB_USER=your-database-user
-DB_PASSWORD=your-database-password
+
+# Security
 BCRYPT_ROUNDS=12
 ```
 
-**WebSocket Development Variables:**
-- `ALLOW_TEST_TOKENS=true` - Enables test token support for development
-- `JWT_SECRET` - Must match between client and server for WebSocket authentication
-- `PORT` - Server port (default: 3030)
-- `NODE_ENV` - Environment mode (development/production)
+**Key Configuration Notes:**
+- `RXDB_PATH` - Path to RxDB database files
+- `RXDB_NAME` - Database name for RxDB
+- `JWT_SECRET` - Must be secure for production
+- `VITE_DEV_SERVER_URL` - Frontend development server URL
 
 ### PWA Configuration
 The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) for PWA functionality.
 
 ## Development Status
 
-**Current Phase**: Waiting Lobby Implementation Complete ✅ (Tasks 5.1-5.5)  
-**Next Phase**: Game Page Foundation (Tasks 6.1-6.4)  
-**Overall Progress**: ~60% Complete (Tasks 1.1-5.5 finished, moving to Game Page Foundation)
+**Current Phase**: Game Implementation & RxDB Integration ✅  
+**Overall Progress**: ~75% Complete
 
 ### Completed Features ✅
-- **Authentication System**: Complete JWT-based authentication with enhanced session management, intelligent token validation, and network-resilient authentication
-- **Dashboard & Room Management**: Full room creation, joining, and management functionality with real-time updates and auto-redirect flows
-- **Waiting Lobby**: Complete player management interface with ready status, team formation, and comprehensive WebSocket integration
-- **Real-time Communication**: Production-ready WebSocket implementation with Socket.IO featuring authentication, room management, and connection health monitoring
-- **Enhanced Session Management**: Robust authentication with graceful error handling, reduced false session expiry alerts, and intelligent fallback mechanisms
-- **WebSocket Server Integration**: Complete Socket.IO server with authentication middleware, connection status monitoring, and comprehensive event handling
-- **Testing Infrastructure**: Comprehensive test suite including WebSocket testing tools, authentication debugging utilities, E2E tests, and complete Cypress test coverage for lobby functionality
-- **Backend Infrastructure**: Production-ready Node.js/Express server with MariaDB integration, security middleware, and optimized static file serving
-- **PWA Foundation**: Service worker, manifest, and mobile-optimized design
-- **Development Tools**: Interactive WebSocket testing interface, authentication debugging tools, automated diagnostic tools, and comprehensive logging
+- **RxDB Database Integration**: Complete migration from MariaDB to RxDB with reactive queries, backup system, and schema validation
+- **Authentication System**: JWT-based authentication with session management and security middleware
+- **Dashboard & Room Management**: Full room creation, joining, and management with real-time updates
+- **Waiting Room**: Complete player management with ready status, team formation, and WebSocket integration
+- **Game Interface**: Card display, game table layout, trump declaration, and trick management
+- **Real-time Communication**: Production-ready WebSocket implementation with Socket.IO
+- **Bot AI System**: Intelligent bot players with strategic decision-making
+- **State Management**: Comprehensive game state synchronization and conflict resolution
+- **Testing Infrastructure**: Extensive test suite with Cypress E2E tests and unit tests
+- **PWA Features**: Service worker, manifest, offline capabilities, and mobile optimization
+- **Development Tools**: Comprehensive debugging tools, state monitoring, and diagnostic utilities
 
 ### Recent Updates 🔄
-- **Waiting Lobby Phase Complete**: All lobby functionality tests (Task 5.5) have been completed, marking the full completion of the Waiting Lobby Implementation phase with comprehensive Cypress test coverage
-- **Enhanced User ID Field Compatibility**: Improved dashboard and lobby systems to support both `user_id` and `id` field names in user objects across all operations including host transfer, ready status handling, player management, current user identification, and room ownership validation, ensuring seamless compatibility across different authentication systems and user data structures
-- **Enhanced Token Field Compatibility**: Improved WebSocket authentication middleware to consistently handle both `userId` and `id` fields in JWT tokens, ensuring seamless compatibility across production JWT tokens and development test tokens
-- **Comprehensive WebSocket Troubleshooting**: Added complete troubleshooting guide (`fix-websocket-connection.md`) with step-by-step solutions for common WebSocket connection issues
-- **Automated Diagnostic Tool**: New `diagnose-websocket.js` script provides comprehensive WebSocket connection testing with environment validation, token generation testing, and detailed reporting
-- **Enhanced Testing Suite**: Multiple specialized test pages for different authentication and WebSocket scenarios with real-time debugging capabilities
-- **Intelligent Token Management**: Support for both production JWT tokens and development test tokens with flexible authentication methods
-- **Enhanced Ready Status Handling**: Improved WebSocket ready status updates with intelligent fallback to HTTP API and timeout handling (3-second fallback)
-- **Connection-Aware Ready Status**: Ready status changes now properly consider only connected players, preventing game start issues with disconnected players
-- **Robust User Data Handling**: WebSocket events now support flexible user identification from both socket authentication and request data
-- **Automatic Room Rejoining**: Enhanced auto-rejoin functionality for players who lose WebSocket connection but attempt ready status changes
-- **Improved Connection Status Logic**: Ready status validation now distinguishes between total players and connected players for accurate game start conditions
-- **WebSocket State Validation**: Enhanced room joining state validation to ensure WebSocket events are only sent when properly connected to room
-- **Connection Status Monitoring**: Real-time connection health monitoring with visual indicators and automatic room rejoining
-- **Heartbeat Connection Management**: Added heartbeat functionality for maintaining stable WebSocket connections with automatic start/stop on connect/disconnect events
-- **Enhanced Connection Security**: Added mandatory user information validation during WebSocket connection establishment to prevent unauthorized access
-- **Improved Error Recovery**: Enhanced WebSocket error handling with specific responses for session expiration and authentication failures
-- **Graceful Authentication Error Handling**: WebSocket authentication failures no longer force immediate page redirects, allowing applications to continue functioning with HTTP API fallback while maintaining user experience
-- **Comprehensive Error Validation**: Enhanced WebSocket authentication middleware with better error handling and validation for all connection scenarios
-- **Defensive Programming Improvements**: Added safety checks for optional authentication methods to prevent runtime errors and improve code reliability
-- **Intelligent Token Validation**: Enhanced session validation with local JWT expiration checks before server calls, graceful handling of missing validation endpoints, and network-resilient authentication that doesn't clear sessions on temporary network errors
+- **RxDB Migration Complete**: Successfully migrated from MariaDB to RxDB with full data preservation and enhanced real-time capabilities
+- **Game Interface Implementation**: Complete game page with card display, trump declaration, and trick management
+- **Bot AI Integration**: Intelligent bot players with strategic decision-making and realistic gameplay
+- **State Synchronization**: Advanced state reconciliation engine for handling conflicts and ensuring data consistency
+- **Performance Optimization**: Enhanced database queries, connection pooling, and real-time update efficiency
+- **Backup System**: Automated backup and restore functionality with scheduled backups and integrity validation
+- **Error Handling Enhancement**: Comprehensive error monitoring and recovery mechanisms
+- **Testing Expansion**: Extended test coverage including game logic, bot behavior, and state synchronization
+- **UI/UX Improvements**: Enhanced responsive design, theme system, and user feedback mechanisms
+- **Development Tools**: Advanced debugging utilities, performance monitoring, and diagnostic tools
 
 ### Upcoming Features 📋
-- **Game Page Foundation**: Card display, game table layout, and trump declaration interface (Tasks 6.1-6.4)
-- **Game Logic Engine**: Core Contract Crown game mechanics, card dealing, and trick-taking rules (Tasks 7.1-7.5)
-- **Real-time Game Communication**: Complete WebSocket integration for live gameplay (Tasks 8.1-8.4)
-- **Complete Game Flow**: Full gameplay integration with scoring and Crown Rule implementation (Tasks 9.1-9.4)
-- **PWA Enhancement**: Advanced mobile optimization, offline support, and installation features (Tasks 10.1-10.4)
-- **Final Polish**: Performance optimization, theme customization, and production deployment (Tasks 11.1-11.4)
+- **Advanced Game Features**: Tournament mode, spectator support, and advanced statistics
+- **Social Features**: Friend system, chat functionality, and player profiles
+- **Mobile Optimization**: Enhanced mobile UI, touch controls, and offline gameplay
+- **Performance Enhancements**: Advanced caching, lazy loading, and optimization
+- **Analytics Integration**: Player behavior tracking, game analytics, and performance metrics
+- **Production Deployment**: Docker containerization, CI/CD pipeline, and cloud deployment
 
 ## Contributing
 
@@ -676,10 +611,11 @@ The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) f
 ### Backend
 - **Node.js** - Runtime environment
 - **Express.js** - Web framework
-- **Socket.IO** - Real-time WebSocket communication with automatic reconnection
+- **RxDB** - Reactive database with real-time synchronization
+- **Socket.IO** - Real-time WebSocket communication
 - **JWT** - Authentication tokens
 - **bcrypt** - Password hashing
-- **MariaDB/MySQL2** - Database integration
+- **LokiJS** - In-memory database adapter for RxDB
 
 ### Testing
 - **Vitest** - Unit testing framework
