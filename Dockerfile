@@ -34,7 +34,8 @@ COPY --chown=contractcrown:nodejs server/package*.json ./server/
 
 # Install server dependencies (production only)
 WORKDIR /app/server
-RUN npm ci --only=production && npm cache clean --force
+# RUN npm ci --only=production && npm cache clean --force
+RUN npm ci && npm cache clean --force
 
 # Copy server source code
 COPY --chown=contractcrown:nodejs server/ ./
