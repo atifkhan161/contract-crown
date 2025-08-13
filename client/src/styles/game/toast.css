@@ -17,16 +17,16 @@
 }
 
 .toast-message {
-  background: rgba(0, 0, 0, 0.85); /* Slightly more opaque */
-  color: white;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   padding: var(--spacing-xs) var(--spacing-sm); /* Reduced padding */
   border-radius: var(--radius-md); /* Smaller radius */
   font-size: var(--font-size-xs); /* Smaller font */
   font-weight: 500;
   text-align: center;
   backdrop-filter: blur(8px); /* Reduced blur */
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3); /* Smaller shadow */
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
   max-width: 260px; /* Smaller max width */
   word-wrap: break-word;
   line-height: 1.3; /* Improved line height */
@@ -49,24 +49,24 @@
 
 /* Toast message types */
 .toast-message.info {
-  background: rgba(74, 144, 226, 0.9);
-  border-color: rgba(74, 144, 226, 0.3);
+  background: var(--primary-color);
+  border-color: var(--primary-light);
 }
 
 .toast-message.success {
-  background: rgba(39, 174, 96, 0.9);
-  border-color: rgba(39, 174, 96, 0.3);
+  background: var(--text-success);
+  border-color: var(--text-success);
 }
 
 .toast-message.warning {
-  background: rgba(243, 156, 18, 0.9);
-  border-color: rgba(243, 156, 18, 0.3);
-  color: #333;
+  background: var(--status-connecting);
+  border-color: var(--status-connecting);
+  color: var(--secondary-color);
 }
 
 .toast-message.error {
-  background: rgba(231, 76, 60, 0.9);
-  border-color: rgba(231, 76, 60, 0.3);
+  background: var(--text-error);
+  border-color: var(--text-error);
 }
 
 /* Toast animations - slide from right */
@@ -127,26 +127,26 @@
 
 .toast-message.lead-suit .suit-symbol.hearts,
 .toast-message.lead-suit .suit-symbol.diamonds {
-  color: #ff6b6b;
+  color: var(--text-error);
 }
 
 .toast-message.lead-suit .suit-symbol.clubs,
 .toast-message.lead-suit .suit-symbol.spades {
-  color: #ffffff;
+  color: var(--text-primary);
 }
 
 /* Trump declaration toast */
 .toast-message.trump-declared {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.9), rgba(255, 193, 7, 0.9));
-  color: #333;
-  border-color: rgba(255, 215, 0, 0.5);
+  background: linear-gradient(135deg, var(--status-connecting), var(--primary-color));
+  color: var(--secondary-color);
+  border-color: var(--status-connecting);
   font-weight: 600;
 }
 
 /* Trick winner toast */
 .toast-message.trick-winner {
-  background: linear-gradient(135deg, rgba(76, 175, 80, 0.9), rgba(56, 142, 60, 0.9));
-  border-color: rgba(76, 175, 80, 0.3);
+  background: linear-gradient(135deg, var(--text-success), var(--primary-color));
+  border-color: var(--text-success);
   animation: toastWinnerPulse 0.4s ease-in-out; /* Faster animation */
 }
 
@@ -161,8 +161,8 @@
 
 /* Game phase toast */
 .toast-message.game-phase {
-  background: rgba(63, 81, 181, 0.9);
-  border-color: rgba(63, 81, 181, 0.3);
+  background: var(--secondary-color);
+  border-color: var(--secondary-light);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px; /* Reduced letter spacing */

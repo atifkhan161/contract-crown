@@ -5,12 +5,10 @@
   position: relative;
   
   /* Casino table outer styling */
-  background: linear-gradient(135deg, #8b4513, #a0522d, #8b4513);
+  background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light), var(--secondary-color));
   border-radius: 20px;
-  border: 4px solid #654321;
-  box-shadow: 
-    0 8px 24px rgba(0, 0, 0, 0.4),
-    inset 0 2px 4px rgba(255, 255, 255, 0.1);
+  border: 4px solid var(--border-color);
+  box-shadow: var(--shadow-lg), inset 0 2px 4px var(--bg-card);
   
   padding: var(--spacing-md);
   margin: var(--spacing-md) var(--spacing-sm);
@@ -27,8 +25,8 @@
   
   /* Wood grain texture effect */
   background-image: 
-    linear-gradient(90deg, transparent 50%, rgba(0, 0, 0, 0.1) 50%),
-    linear-gradient(0deg, transparent 50%, rgba(0, 0, 0, 0.05) 50%);
+    linear-gradient(90deg, transparent 50%, var(--bg-input) 50%),
+    linear-gradient(0deg, transparent 50%, var(--bg-card) 50%);
   background-size: 4px 4px, 8px 8px;
 }
 
@@ -40,10 +38,10 @@
   gap: var(--spacing-xs);
   
   /* Casino player seat styling */
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-input);
   border-radius: var(--radius-lg);
   padding: var(--spacing-xs);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
   backdrop-filter: blur(2px);
 }
 
@@ -73,17 +71,17 @@
   grid-area: bottom;
   /* Bottom player (user) sits closest */
   transform: translateY(5px);
-  background: rgba(74, 144, 226, 0.1);
-  border-color: rgba(74, 144, 226, 0.3);
+  background: var(--bg-card);
+  border-color: var(--primary-color);
 }
 
 .player-info {
   text-align: center;
   min-width: 80px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--bg-secondary);
   border-radius: var(--radius-sm);
   padding: var(--spacing-xs);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--border-color);
 }
 
 .player-name {
@@ -92,7 +90,7 @@
   color: var(--text-primary);
   margin-bottom: 3px;
   line-height: 1.2;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
 .player-display {
@@ -101,7 +99,7 @@
   color: var(--text-primary);
   line-height: 1.2;
   text-align: center;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
 .player-status {
@@ -114,15 +112,15 @@
 }
 
 .card-count {
-  background: linear-gradient(135deg, #2c3e50, #34495e);
+  background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
   padding: 2px var(--spacing-xs);
   border-radius: var(--radius-sm);
-  border: 1px solid #f39c12;
+  border: 1px solid var(--status-connecting);
   font-size: var(--font-size-xs);
-  color: #f39c12;
+  color: var(--status-connecting);
   font-weight: 600;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
+  box-shadow: inset 0 1px 2px var(--bg-input);
 }
 
 .turn-indicator {
@@ -130,20 +128,16 @@
   height: 10px;
   border-radius: 50%;
   background: transparent;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid var(--border-color);
   transition: all var(--transition-fast);
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-sm);
 }
 
 .turn-indicator.active {
-  background: radial-gradient(circle, #f39c12, #e67e22);
-  border-color: #f39c12;
+  background: radial-gradient(circle, var(--status-connecting), var(--primary-color));
+  border-color: var(--status-connecting);
   transform: scale(1.5);
-  box-shadow: 
-    0 0 8px #f39c12,
-    0 0 16px rgba(243, 156, 18, 0.5),
-    0 0 24px rgba(243, 156, 18, 0.3),
-    0 1px 2px rgba(255, 255, 255, 0.3);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Center Table Area - Casino Style */
@@ -159,14 +153,11 @@
   min-height: 150px;
   
   /* Casino table styling - Green felt */
-  background-color: #1a7c3a !important;
-  background: linear-gradient(135deg, #0d5f2a, #1a7c3a, #0d5f2a) !important;
-  border: 3px solid #8b4513 !important;
+  background-color: var(--primary-color) !important;
+  background: linear-gradient(135deg, var(--primary-hover), var(--primary-color), var(--primary-hover)) !important;
+  border: 3px solid var(--secondary-color) !important;
   border-radius: 50px !important;
-  box-shadow: 
-    inset 0 2px 8px rgba(0, 0, 0, 0.3),
-    0 4px 12px rgba(0, 0, 0, 0.4),
-    0 0 0 2px #654321 !important;
+  box-shadow: var(--shadow-lg), 0 0 0 2px var(--border-color) !important;
 }
 
 /* Felt texture overlay */
@@ -180,8 +171,8 @@
   bottom: 0;
   border-radius: 47px;
   background-image: 
-    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+    radial-gradient(circle at 25% 25%, var(--bg-card) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, var(--bg-input) 0%, transparent 50%);
   pointer-events: none;
   z-index: 1;
 }
@@ -199,8 +190,8 @@
       45deg,
       transparent,
       transparent 1px,
-      rgba(255, 255, 255, 0.02) 1px,
-      rgba(255, 255, 255, 0.02) 2px
+      var(--bg-input) 1px,
+      var(--bg-input) 2px
     ) !important;
   pointer-events: none;
   z-index: 1;
@@ -212,23 +203,21 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
-  background: linear-gradient(135deg, #2c3e50, #34495e);
+  background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-md);
-  border: 2px solid #f39c12;
+  border: 2px solid var(--status-connecting);
   align-self: start;
   justify-self: start;
   font-size: var(--font-size-xs);
-  box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 2px rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
 }
 
 .trump-label {
   font-size: var(--font-size-xs);
-  color: #f39c12;
+  color: var(--status-connecting);
   font-weight: 600;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
 .trump-suit {
@@ -240,39 +229,37 @@
 .trump-symbol {
   font-size: var(--font-size-base);
   line-height: 1;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
 .trump-symbol.hearts,
 .trump-symbol.diamonds {
-  color: #e74c3c;
+  color: var(--text-error);
 }
 
 .trump-symbol.clubs,
 .trump-symbol.spades {
-  color: #2c3e50;
+  color: var(--secondary-color);
 }
 
 .trump-name {
   font-size: var(--font-size-xs);
   font-weight: 600;
   color: var(--text-primary);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
 /* Score Display - Corner Position */
 .score-display-corner {
   grid-area: score-corner;
-  background: linear-gradient(135deg, #2c3e50, #34495e);
+  background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-md);
-  border: 2px solid #27ae60;
+  border: 2px solid var(--text-success);
   align-self: start;
   justify-self: end;
   font-size: var(--font-size-xs);
-  box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 2px rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
 }
 
 .team-scores {
@@ -287,39 +274,37 @@
 
 .team-label {
   font-size: var(--font-size-xs);
-  color: #27ae60;
+  color: var(--text-success);
   margin-bottom: 2px;
   font-weight: 600;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
 .score-value {
   font-size: var(--font-size-base);
   font-weight: bold;
   color: var(--text-primary);
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
 .score-separator {
   font-size: var(--font-size-base);
-  color: #f39c12;
+  color: var(--status-connecting);
   font-weight: bold;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
 /* Round Score Display */
 .round-score-display {
   grid-area: round-score-area;
-  background: linear-gradient(135deg, #2c3e50, #34495e);
+  background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-md);
-  border: 2px solid #e74c3c;
+  border: 2px solid var(--text-error);
   align-self: start;
   justify-self: start;
   font-size: var(--font-size-md);
-  box-shadow: 
-    0 4px 8px rgba(0, 0, 0, 0.3),
-    inset 0 1px 2px rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
 }
 
 .score-section {
@@ -332,11 +317,11 @@
 
 .score-title {
   font-size: var(--font-size-xs);
-  color: #e74c3c;
+  color: var(--text-error);
   text-align: center;
   margin-bottom: 2px;
   font-weight: 600;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
 /* Responsive adjustments for target resolution */

@@ -41,7 +41,7 @@
   transform: translateY(-8px); /* Reduced selection effect */
   border-color: var(--primary-color);
   box-shadow: 0 0 10px var(--primary-color);
-  background: #f8f9fa;
+  background: #f8f9fa; /* keep Lighter background for selected card */
 }
 
 .card.disabled {
@@ -112,7 +112,7 @@
 .card.diamonds .card-rank,
 .card.diamonds .card-suit,
 .card.diamonds .card-suit-small {
-  color: #dc3545;
+  color: #dc3545; /* Keep it as red always */
 }
 
 /* Black suits (Clubs & Spades) */
@@ -122,20 +122,20 @@
 .card.spades .card-rank,
 .card.spades .card-suit,
 .card.spades .card-suit-small {
-  color: #000;
+  color: #000; /* Keep it as black always */
 }
 
 /* Legacy color classes for backward compatibility */
 .card-rank.red,
 .card-suit.red,
 .card-suit-small.red {
-  color: #dc3545;
+  color: #dc3545; /* Keep it as red always */
 }
 
 .card-rank.black,
 .card-suit.black,
 .card-suit-small.black {
-  color: #000;
+  color: #000; /* Keep it as black always */
 }
 
 /* Card content structure */
@@ -251,13 +251,13 @@
 
 /* Card Playability States */
 .card.playable {
-  border-color: var(--success-color, #28a745);
+  border-color: var(--text-success);
   cursor: pointer;
 }
 
 .card.playable:hover {
-  border-color: var(--success-color, #28a745);
-  box-shadow: 0 0 6px rgba(40, 167, 69, 0.3); /* Smaller glow */
+  border-color: var(--text-success);
+  box-shadow: 0 0 6px var(--text-success);
 }
 
 .card.unplayable {
@@ -365,8 +365,8 @@
 
 /* Highlighted cards */
 .card.highlighted {
-  border-color: var(--warning-color, #ffc107);
-  box-shadow: 0 0 8px rgba(255, 193, 7, 0.4); /* Smaller glow */
+  border-color: var(--status-connecting);
+  box-shadow: 0 0 8px var(--status-connecting);
   animation: cardHighlight 0.3s ease-in-out; /* Faster animation */
 }
 
