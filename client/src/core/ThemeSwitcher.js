@@ -1,7 +1,7 @@
 // Theme Switcher - Contract Crown PWA
 class ThemeSwitcher {
   constructor() {
-    this.currentTheme = localStorage.getItem('theme') || 'forest';
+    this.currentTheme = localStorage.getItem('theme') || 'deepSea';
     this.applyTheme(this.currentTheme);
   }
 
@@ -16,7 +16,7 @@ class ThemeSwitcher {
   }
 
   getAvailableThemes() {
-    return ['earth', 'blue', 'forest', 'pastel', 'deepSea'];
+    return ['deepSea', 'earth', 'blue', 'forest', 'pastel', ];
   }
 
   getCurrentTheme() {

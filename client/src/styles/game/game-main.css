@@ -57,8 +57,10 @@
 body {
     margin: 0;
     padding: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    line-height: 1.4; /* Improved line height for compact layout */
+    font-family: var(--font-family);
+    line-height: 1.4;
+    background: var(--bg-primary);
+    color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }

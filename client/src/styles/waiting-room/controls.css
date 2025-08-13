@@ -20,12 +20,12 @@
 }
 
 .ready-status.all-ready {
-  color: var(--success-color);
+  color: var(--text-success);
   font-weight: 600;
 }
 
 .ready-status.some-ready {
-  color: var(--warning-color);
+  color: var(--status-connecting);
 }
 
 .ready-status.none-ready {
@@ -70,7 +70,7 @@
 }
 
 .host-info .host-text.ready {
-  color: var(--success-color);
+  color: var(--text-success);
   font-weight: 600;
 }
 

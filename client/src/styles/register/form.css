@@ -40,24 +40,24 @@
 
 .form-input:focus {
   border-color: var(--border-focus);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-card);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+  box-shadow: var(--shadow-md);
 }
 
 .form-input.error {
   border-color: var(--border-error);
-  background: rgba(231, 76, 60, 0.1);
+  background: var(--bg-input);
 }
 
 .form-input.error:focus {
   border-color: var(--border-error);
-  box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .form-input.success {
   border-color: var(--text-success);
-  background: rgba(39, 174, 96, 0.1);
+  background: var(--bg-input);
 }
 
 /* Password Strength Indicator */
@@ -173,7 +173,7 @@
 }
 
 .checkbox-input:focus + .checkbox-custom {
-  outline: 2px solid var(--primary-color);
+  outline: 2px solid var(--border-focus);
   outline-offset: 2px;
 }
 

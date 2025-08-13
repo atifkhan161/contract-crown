@@ -134,12 +134,12 @@
 
 .player-slot.occupied {
   border-color: var(--primary-color);
-  background: rgba(74, 144, 226, 0.1);
+  background: var(--bg-card);
 }
 
 .player-slot.ready {
   border-color: var(--status-connected);
-  background: rgba(39, 174, 96, 0.1);
+  background: var(--bg-input);
 }
 
 .player-avatar {
@@ -231,22 +231,22 @@
 
 /* Bot Player Styles */
 .player-slot.bot-player {
-  border-color: #9b59b6;
-  background: rgba(155, 89, 182, 0.1);
+  border-color: var(--secondary-color);
+  background: var(--bg-input);
 }
 
 .player-slot.bot-player.ready {
-  border-color: #8e44ad;
-  background: rgba(142, 68, 173, 0.15);
+  border-color: var(--secondary-light);
+  background: var(--bg-card);
 }
 
 .player-slot.bot-player .player-name {
-  color: #9b59b6;
+  color: var(--secondary-color);
   font-weight: 500;
 }
 
 .player-slot.bot-player .avatar-placeholder {
-  background: rgba(155, 89, 182, 0.2);
-  color: #9b59b6;
-  border: 1px solid #9b59b6;
+  background: var(--bg-secondary);
+  color: var(--secondary-color);
+  border: 1px solid var(--secondary-color);
 }
