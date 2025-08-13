@@ -6,22 +6,22 @@
   
   /* Casino table outer styling */
   background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light), var(--secondary-color));
-  border-radius: 20px;
-  border: 4px solid var(--border-color);
+  border-radius: 16px;
+  border: 2px solid var(--border-color);
   box-shadow: var(--shadow-lg), inset 0 2px 4px var(--bg-card);
   
-  padding: var(--spacing-md);
-  margin: var(--spacing-md) var(--spacing-sm);
+  padding: 6px;
+  margin: 4px;
   display: grid;
   grid-template-areas:
       "trump-corner top score-corner"
       "left center right"
       "round-score-area bottom .";
-  grid-template-columns: auto 1fr auto;
-  grid-template-rows: auto 1fr auto;
-  gap: var(--spacing-sm);
-  height: calc(430px - 80px);
-  max-height: 350px;
+  grid-template-columns: 140px 1fr 140px;
+  grid-template-rows: 45px 1fr 80px;
+  gap: 4px;
+  height: calc(100vh - 60px);
+  max-height: 420px;
   
   /* Wood grain texture effect */
   background-image: 
@@ -35,12 +35,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: 2px;
   
   /* Casino player seat styling */
   background: var(--bg-input);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xs);
+  border-radius: var(--radius-md);
+  padding: 4px;
   border: 1px solid var(--border-color);
   backdrop-filter: blur(2px);
 }
@@ -77,10 +77,10 @@
 
 .player-info {
   text-align: center;
-  min-width: 80px;
+  min-width: 100px;
   background: var(--bg-secondary);
   border-radius: var(--radius-sm);
-  padding: var(--spacing-xs);
+  padding: 3px 6px;
   border: 1px solid var(--border-color);
 }
 
@@ -115,9 +115,9 @@
   background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
   padding: 2px var(--spacing-xs);
   border-radius: var(--radius-sm);
-  border: 1px solid var(--status-connecting);
+  border: 1px solid var(--primary-hover);
   font-size: var(--font-size-xs);
-  color: var(--status-connecting);
+  color: var(--primary-hover);
   font-weight: 600;
   text-shadow: 1px 1px 2px var(--bg-secondary);
   box-shadow: inset 0 1px 2px var(--bg-input);
@@ -134,8 +134,8 @@
 }
 
 .turn-indicator.active {
-  background: radial-gradient(circle, var(--status-connecting), var(--primary-color));
-  border-color: var(--status-connecting);
+  background: radial-gradient(circle, var(--primary-hover), var(--primary-color));
+  border-color: var(--primary-hover);
   transform: scale(1.5);
   box-shadow: var(--shadow-lg);
 }
@@ -144,20 +144,20 @@
 .game-table .table-center,
 .table-center {
   grid-area: center;
-  display: flex;
+  /* display: flex; */
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-sm);
+  gap: 4px;
   position: relative;
-  min-height: 150px;
+  min-height: 180px;
   
   /* Casino table styling - Green felt */
   background-color: var(--primary-color) !important;
   background: linear-gradient(135deg, var(--primary-hover), var(--primary-color), var(--primary-hover)) !important;
-  border: 3px solid var(--secondary-color) !important;
-  border-radius: 50px !important;
-  box-shadow: var(--shadow-lg), 0 0 0 2px var(--border-color) !important;
+  border: 2px solid var(--secondary-color) !important;
+  border-radius: 40px !important;
+  box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-color) !important;
 }
 
 /* Felt texture overlay */
@@ -202,20 +202,22 @@
   grid-area: trump-corner;
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: 4px;
   background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: 4px 8px;
   border-radius: var(--radius-md);
-  border: 2px solid var(--status-connecting);
+  border: 2px solid var(--primary-hover);
   align-self: start;
   justify-self: start;
-  font-size: var(--font-size-xs);
+  font-size: 10px;
   box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
+  width: 130px;
+  height: 35px;
 }
 
 .trump-label {
   font-size: var(--font-size-xs);
-  color: var(--status-connecting);
+  color: var(--primary-hover);
   font-weight: 600;
   text-shadow: 1px 1px 2px var(--bg-secondary);
 }
@@ -253,58 +255,71 @@
 .score-display-corner {
   grid-area: score-corner;
   background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: 4px 8px;
   border-radius: var(--radius-md);
   border: 2px solid var(--text-success);
   align-self: start;
   justify-self: end;
-  font-size: var(--font-size-xs);
+  font-size: 10px;
   box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
+  width: 130px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .team-scores {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
 }
 
 .team-score {
   text-align: center;
+  flex: 0 0 auto;
 }
 
 .team-label {
-  font-size: var(--font-size-xs);
+  font-size: 9px;
   color: var(--text-success);
-  margin-bottom: 2px;
+  margin-bottom: 1px;
   font-weight: 600;
   text-shadow: 1px 1px 2px var(--bg-secondary);
+  line-height: 1;
 }
 
 .score-value {
-  font-size: var(--font-size-base);
+  font-size: 12px;
   font-weight: bold;
   color: var(--text-primary);
   text-shadow: 1px 1px 2px var(--bg-secondary);
+  line-height: 1;
 }
 
 .score-separator {
-  font-size: var(--font-size-base);
+  font-size: 12px;
   color: var(--status-connecting);
   font-weight: bold;
   text-shadow: 1px 1px 2px var(--bg-secondary);
+  line-height: 1;
 }
 
 /* Round Score Display */
 .round-score-display {
   grid-area: round-score-area;
   background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: 4px 8px;
   border-radius: var(--radius-md);
-  border: 2px solid var(--text-error);
+  border: 2px solid var(--primary-hover);
   align-self: start;
   justify-self: start;
-  font-size: var(--font-size-md);
+  font-size: 11px;
   box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
+  width: 130px;
+  height: 70px;
 }
 
 .score-section {

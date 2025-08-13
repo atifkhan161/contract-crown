@@ -4,18 +4,19 @@
 .player-hand {
   display: flex;
   justify-content: center;
-  gap: 3px; /* Reduced gap for compact layout */
-  flex-wrap: wrap;
+  gap: 2px;
+  flex-wrap: nowrap;
   max-width: 100%;
-  padding: 0 var(--spacing-xs);
+  padding: 0 4px;
+  overflow-x: auto;
 }
 
 .card {
-  width: 45px; /* Smaller cards for compact layout */
-  height: 67px;
-  background: var(--text-primary);
+  width: 50px;
+  height: 72px;
+  background: white;
   border: 2px solid var(--border-color);
-  border-radius: var(--radius-sm); /* Smaller radius */
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
   position: relative;
@@ -174,13 +175,13 @@
 }
 
 .card-back {
-  width: 30px; /* Smaller card backs */
-  height: 45px;
+  width: 32px;
+  height: 48px;
   background: linear-gradient(135deg, var(--bg-secondary), var(--primary-color));
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   position: relative;
-  margin-left: -5px; /* Reduced overlap */
+  margin-left: -4px;
   transition: all 0.2s ease;
   opacity: 0;
   transform: translateY(-5px) scale(0.9);
@@ -218,17 +219,17 @@
 
 /* Played Cards in Trick Area */
 .played-card {
-  width: 35px; /* Smaller played cards */
-  height: 53px;
+  width: 40px;
+  height: 58px;
   background: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 2px; /* Reduced padding */
+  padding: 3px;
   color: #000;
-  font-size: 8px; /* Smaller font */
+  font-size: 9px;
   transition: all 0.3s ease;
 }
 
@@ -365,8 +366,8 @@
 
 /* Highlighted cards */
 .card.highlighted {
-  border-color: var(--status-connecting);
-  box-shadow: 0 0 8px var(--status-connecting);
+  border-color: var(--primary-hover);
+  box-shadow: 0 0 8px var(--primary-hover);
   animation: cardHighlight 0.3s ease-in-out; /* Faster animation */
 }
 

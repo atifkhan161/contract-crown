@@ -9,8 +9,8 @@
 
 .trick-cards {
   position: relative;
-  width: 140px; /* Smaller for compact layout */
-  height: 140px;
+  width: 280px;
+  height: 160px;
   display: grid;
   grid-template-areas:
       ". top ."
@@ -18,20 +18,20 @@
       ". bottom .";
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr 1fr 1fr;
-  gap: var(--spacing-xs); /* Reduced gap */
+  gap: 10px;
 }
 
 .played-card-slot {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px dashed rgba(255, 255, 255, 0.4);
+  border: 2px dashed var(--border-color);
   border-radius: var(--radius-sm);
-  min-width: 35px;
-  min-height: 53px;
+  min-width: 55px;
+  min-height: 75px;
   transition: all var(--transition-fast);
-  background: rgba(0, 0, 0, 0.2);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  background: var(--bg-input);
+  box-shadow: inset 0 2px 4px var(--bg-secondary);
 }
 
 .played-card-slot[data-position="top"] {
@@ -51,40 +51,40 @@
 }
 
 .played-card-slot.active {
-  border-color: #f39c12;
-  background: rgba(243, 156, 18, 0.2);
+  border-color: var(--primary-hover);
+  background: var(--bg-card);
   box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.3),
-    0 0 8px rgba(243, 156, 18, 0.4);
+    inset 0 2px 4px var(--bg-secondary),
+    0 0 8px var(--primary-hover);
 }
 
 .trick-info {
   text-align: center;
-  font-size: var(--font-size-xs);
-  color: #f39c12;
-  margin-top: var(--spacing-xs);
+  font-size: 11px;
+  margin-top: 4px;
   font-weight: 600;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-  background: rgba(0, 0, 0, 0.3);
-  padding: var(--spacing-xs);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
+  background: var(--bg-secondary);
+  padding: 3px 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(243, 156, 18, 0.3);
+  border: 1px solid var(--border-color);
 }
 
 /* Lead suit indicator - Compact */
 .lead-suit-indicator {
   position: absolute;
-  top: 5px; /* Adjusted position */
+  top: 5px;
   left: 5px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 3px 6px; /* Reduced padding */
-  border-radius: 8px; /* Smaller radius */
-  font-size: 10px; /* Smaller font */
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 3px 6px;
+  border-radius: 8px;
+  font-size: 10px;
   display: flex;
   align-items: center;
-  gap: 3px; /* Reduced gap */
+  gap: 3px;
   z-index: 100;
+  border: 1px solid var(--border-color);
 }
 
 .lead-suit-label {
@@ -98,12 +98,12 @@
 
 .lead-suit-symbol.hearts,
 .lead-suit-symbol.diamonds {
-  color: #e53e3e;
+  color: var(--text-error);
 }
 
 .lead-suit-symbol.clubs,
 .lead-suit-symbol.spades {
-  color: #2d3748;
+  color: var(--secondary-color);
 }
 
 /* Trick completion animations - Optimized */
@@ -129,17 +129,17 @@
 /* Winner card highlight - Subtle animation */
 .played-card.winner,
 .winning-card {
-  animation: winnerHighlightSubtle 0.8s ease-in-out; /* Faster animation */
-  border: 2px solid #ffd700;
-  box-shadow: 0 0 10px rgba(255, 215, 0, 0.4); /* Smaller glow */
+  animation: winnerHighlightSubtle 0.8s ease-in-out;
+  border: 2px solid var(--primary-hover);
+  box-shadow: 0 0 10px var(--primary-hover);
 }
 
 @keyframes winnerHighlightSubtle {
   0%, 100% {
-      box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+      box-shadow: 0 0 10px var(--primary-hover);
   }
   50% {
-      box-shadow: 0 0 15px rgba(255, 215, 0, 0.6); /* Smaller glow */
+      box-shadow: 0 0 15px var(--primary-hover);
   }
 }
 
@@ -167,9 +167,9 @@
 }
 
 .turn-indicator.trick-winner {
-  animation: trickWinnerCelebration 1.5s ease-in-out; /* Faster animation */
-  background: linear-gradient(45deg, #ffd700, #ffed4e);
-  color: #333;
+  animation: trickWinnerCelebration 1.5s ease-in-out;
+  background: linear-gradient(45deg, var(--primary-hover), var(--primary-color));
+  color: var(--secondary-color);
 }
 
 @keyframes turnPulse {
@@ -186,21 +186,21 @@
 @keyframes trickWinnerCelebration {
   0%, 100% {
       transform: scale(1);
-      box-shadow: 0 0 6px rgba(255, 215, 0, 0.4); /* Smaller glow */
+      box-shadow: 0 0 6px var(--primary-hover);
   }
   50% {
-      transform: scale(1.05); /* Reduced scale */
-      box-shadow: 0 0 12px rgba(255, 215, 0, 0.8); /* Smaller glow */
+      transform: scale(1.05);
+      box-shadow: 0 0 12px var(--primary-hover);
   }
 }
 
 /* Enhanced played card slots - Casino style */
 .played-card-slot.active {
-  background: rgba(243, 156, 18, 0.2);
-  border: 2px solid #f39c12;
+  background: var(--bg-card);
+  border: 2px solid var(--primary-hover);
   box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.3),
-    0 0 8px rgba(243, 156, 18, 0.4);
+    inset 0 2px 4px var(--bg-secondary),
+    0 0 8px var(--primary-hover);
 }
 
 /* Responsive adjustments for target resolution */
@@ -208,7 +208,6 @@
   .trick-cards {
       width: 120px;
       height: 120px;
-      gap: 2px;
   }
   
   .played-card-slot {
@@ -233,7 +232,6 @@
   .trick-cards {
       width: 100px;
       height: 100px;
-      gap: 1px;
   }
   
   .played-card-slot {
@@ -286,7 +284,7 @@
   
   .played-card.winner,
   .winning-card {
-      border: 2px solid #ffd700;
-      box-shadow: 0 0 8px rgba(255, 215, 0, 0.4);
+      border: 2px solid var(--primary-hover);
+      box-shadow: 0 0 8px var(--primary-hover);
   }
 }

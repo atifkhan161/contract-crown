@@ -110,7 +110,7 @@
 .trump-modal-card {
   width: 50px;
   height: 70px;
-  background: var(--text-primary);
+  background: white;
   border: 1px solid var(--border-color);
   border-radius: 6px;
   position: relative;
@@ -307,7 +307,7 @@
 
 .game-message.warning {
   background: var(--bg-input);
-  color: var(--status-connecting);
+  color: var(--primary-hover);
 }
 
 .game-message.error {
@@ -490,13 +490,13 @@
   width: 90vw;
   max-height: 85vh;
   background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
-  border: 3px solid var(--status-connecting);
+  border: 3px solid var(--primary-hover);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg), inset 0 2px 4px var(--bg-card);
 }
 
 .congratulations-modal-content .modal-header {
-  background: linear-gradient(135deg, var(--status-connecting), var(--primary-color));
+  background: linear-gradient(135deg, var(--primary-hover), var(--primary-color));
   margin: calc(-1 * var(--spacing-md));
   margin-bottom: var(--spacing-md);
   padding: var(--spacing-md);
@@ -558,7 +558,7 @@
 }
 
 .round-summary h4 {
-  color: var(--status-connecting);
+  color: var(--primary-hover);
   font-size: var(--font-size-lg);
   margin: 0 0 var(--spacing-md) 0;
   text-shadow: 1px 1px 2px var(--bg-secondary);
@@ -651,13 +651,13 @@
   padding: var(--spacing-xs) var(--spacing-sm);
   background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
   border-radius: var(--radius-sm);
-  border: 2px solid var(--status-connecting);
+  border: 2px solid var(--primary-hover);
   min-width: 60px;
 }
 
 .congratulations-modal-content .score-separator {
   font-size: var(--font-size-xxl);
-  color: var(--status-connecting);
+  color: var(--primary-hover);
   font-weight: bold;
   text-shadow: 2px 2px 4px var(--bg-secondary);
 }
