@@ -61,21 +61,20 @@ class RxDBConnection {
 
     async initialize() {
         try {
-            console.log('[RxDB] Initializing RxDB with LokiJS storage adapter...');
+            console.log('[RxDB] Initializing RxDB with memory storage...');
 
-            // Ensure database directory exists
-            await this.ensureDirectoryExists(this.dbPath);
-            await this.ensureDirectoryExists(this.backupPath);
-
-            // Configure storage with enhanced persistence settings
+            // Configure storage adapter
             const storageAdapter = await this.configureStorageAdapter();
 
-            // Create RxDB database with enhanced storage wrapped with AJV validation
+            // Create unique database name for production to avoid conflicts
+            const uniqueDbName = process.env.NODE_ENV === 'production' 
+                ? `${this.dbName}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+                : this.dbName;
+
+            // Create RxDB database with memory storage (no persistence in production)
             this.database = await createRxDatabase({
-                name: this.dbName,
-                storage: wrappedValidateAjvStorage({
-                    storage: storageAdapter
-                }),
+                name: uniqueDbName,
+                storage: storageAdapter,
                 eventReduce: true,
                 ignoreDuplicate: true
             });
@@ -85,17 +84,23 @@ class RxDBConnection {
             // Set up error handling and monitoring
             this.setupDatabaseMonitoring();
 
-            // Initialize backup service
-            this.backupService = new BackupService(this);
-
             // Add all collections
             await this.addAllCollections();
 
-            // Load persisted data after collections are set up
-            await this.loadPersistedData();
-
-            // Set up persistence and backup mechanisms
-            await this.setupPersistenceAndBackup();
+            // Skip file persistence in production, but allow memory-only backups
+            if (process.env.NODE_ENV !== 'production') {
+                // Initialize backup service
+                this.backupService = new BackupService(this);
+                
+                // Load persisted data after collections are set up
+                await this.loadPersistedData();
+                
+                // Set up persistence and backup mechanisms
+                await this.setupPersistenceAndBackup();
+            } else {
+                // Production: Initialize backup service for memory-only backups
+                this.backupService = new BackupService(this);
+            }
 
             this.isInitialized = true;
             console.log('[RxDB] RxDB initialization completed successfully');
@@ -103,8 +108,8 @@ class RxDBConnection {
             // Seed default data after database is fully initialized
             const seedResult = await this.seedDefaultData();
 
-            // Force persistence if new users were created
-            if (seedResult && !seedResult.skipped && seedResult.totalSeeded > 0) {
+            // Force persistence if new users were created (development only)
+            if (process.env.NODE_ENV !== 'production' && seedResult && !seedResult.skipped && seedResult.totalSeeded > 0) {
                 await this.saveToFile();
                 console.log('[RxDB] Forced persistence after seeding default data');
             }
@@ -269,14 +274,17 @@ class RxDBConnection {
         return this.collections;
     }
 
-    // Configure storage adapter with enhanced persistence settings
+    // Configure storage adapter
     async configureStorageAdapter() {
         try {
-            // Use memory storage with enhanced JSON-based persistence
-            // This provides LokiJS-like functionality with file-based persistence
+            // Use pure memory storage (no persistence in production)
             const memoryStorage = getRxStorageMemory();
 
-            console.log('[RxDB] Memory storage configured with enhanced JSON persistence');
+            if (process.env.NODE_ENV === 'production') {
+                console.log('[RxDB] Memory storage configured (no persistence)');
+            } else {
+                console.log('[RxDB] Memory storage configured with JSON persistence');
+            }
             return memoryStorage;
         } catch (error) {
             console.error('[RxDB] Failed to configure storage adapter:', error.message);
