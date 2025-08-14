@@ -178,6 +178,69 @@ The project uses **LokiJS** for fast, reliable data storage:
 - **Backup System**: Simple backup and restore functionality
 - **File-based Storage**: JSON file persistence with automatic saving
 - **Easy Maintenance**: Simple, debuggable database operations
+- **Migration Complete**: Successfully migrated from RxDB to eliminate stability issues and simplify maintenance
+- **Default Users**: Automatically seeds 4 default users during initialization for testing and development
+
+## Game Rules and Gameplay
+
+### Overview
+Contract Crown is a trick-taking card game for four players in two fixed partnerships, emphasizing strategic trump declaration and achieving specific trick counts.
+
+### Objective
+The primary objective is for a team to be the first to reach **52 points**. Points are earned by successfully winning a specified number of tricks. A unique "Crown Rule" allows the team whose player declared trump to retain that privilege in the subsequent round by meeting a specific trick target.
+
+### Players and Deck
+- **Players**: Four players in two fixed partnerships. Partners sit opposite each other
+- **Deck**: A stripped standard 52-card deck consisting only of cards from **7 through Ace** in all four suits (32-card deck)
+- **Card Ranks** (Highest to Lowest): Ace, King, Queen, Jack, 10, 9, 8, 7
+
+### Game Flow
+
+#### 1. The Deal
+1. **First Dealer**: Determined randomly for the first game, then rotates clockwise
+2. The dealer shuffles the 32-card deck thoroughly
+3. The dealer deals **4 cards** to each player, one card at a time, clockwise
+4. Players look only at their initial 4 cards
+5. After trump is declared, the dealer deals the remaining **4 cards** to each player
+6. Each player now has a total of 8 cards
+
+#### 2. Trump Declaration Phase
+1. **First Player**: The player to the dealer's left declares trump
+2. **Trump Declaration**: Based on their initial 4 cards, the First Player must declare one of the four suits as trump
+3. **Teams Defined**: 
+   - The team of the player who declared trump becomes the **Declaring Team**
+   - The opposing team becomes the **Challenging Team**
+
+#### 3. Trick-Taking Gameplay
+1. **Lead Card**: The First Player (who declared trump) leads the first trick
+2. **Following Suit**: Players must follow suit if they have a card of the lead suit
+3. **Playing Trump**: If unable to follow suit, players may play a trump card (not mandatory)
+4. **Discarding**: If unable to follow suit and choosing not to play trump, players may discard any other card
+5. **Trick Winner**:
+   - The highest trump card played wins the trick
+   - If no trumps are played, the highest card of the lead suit wins
+6. **Next Lead**: The winner of the trick leads the next trick
+7. **Hand Completion**: Continues for all 8 tricks until all cards are played
+
+### Scoring System
+Points are awarded based on the number of tricks won by each team:
+
+#### Declaring Team
+- **5 or more tricks**: Score the exact number of tricks won (5-8 points)
+- **Fewer than 5 tricks**: Score 0 points
+
+#### Challenging Team
+- **4 or more tricks**: Score the exact number of tricks won (4-8 points)
+- **Fewer than 4 tricks**: Score 0 points
+
+### Crown Rule
+This rule determines who declares trump in the subsequent round:
+
+- **If Declaring Team wins 5+ tricks**: The same player declares trump for the next hand
+- **If Declaring Team wins <5 tricks**: Trump declaration passes to the player on the current dealer's left
+
+### Winning the Game
+The game ends when a team reaches or exceeds **52 points**.
 
 ## Getting Started
 
@@ -544,6 +607,13 @@ BCRYPT_ROUNDS=12
 - `JWT_SECRET` - Must be secure for production
 - `VITE_DEV_SERVER_URL` - Frontend development server URL
 
+**Default Users:**
+The database automatically seeds 4 default users for testing:
+- Username: `atif`, Password: `asdwasdw`
+- Username: `aasim`, Password: `asdwasdw`
+- Username: `sohail`, Password: `asdwasdw`
+- Username: `usama`, Password: `asdwasdw`
+
 ### PWA Configuration
 The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) for PWA functionality.
 
@@ -566,7 +636,11 @@ The app includes a web manifest (`manifest.json`) and service worker (`sw.js`) f
 - **Development Tools**: Comprehensive debugging tools, state monitoring, and diagnostic utilities
 
 ### Recent Updates 🔄
-- **LokiJS Migration Complete**: Successfully migrated from RxDB to LokiJS with improved stability, performance, and simplified architecture
+- **Complete RxDB to LokiJS Migration**: Successfully migrated from RxDB to LokiJS with improved stability, performance, and simplified architecture
+- **Dependency Cleanup**: Removed all RxDB dependencies (173 packages) and related files to eliminate ECONNRESET errors and dev-mode warnings
+- **Database Architecture Simplification**: LokiJS provides simpler, more stable alternative with file-based JSON persistence
+- **API Compatibility Maintained**: 100% API compatibility during migration - all existing code continues to work unchanged
+- **Automatic User Seeding**: Database initialization now automatically creates 4 default users (atif, aasim, sohail, usama) with password "asdwasdw"
 - **Game Interface Implementation**: Complete game page with card display, trump declaration, and trick management
 - **Bot AI Integration**: Intelligent bot players with strategic decision-making and realistic gameplay
 - **State Synchronization**: Advanced state reconciliation engine for handling conflicts and ensuring data consistency

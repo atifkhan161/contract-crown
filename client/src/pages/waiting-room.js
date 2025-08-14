@@ -73,8 +73,16 @@ class WaitingRoomManager {
         this.elements.errorOkBtn = document.getElementById('error-ok-btn');
     }
     setupEventListeners() {
-        // Leave room button
+        // Leave room button with fallback
         this.elements.leaveRoomBtn.addEventListener('click', () => this.handleLeaveRoom());
+
+        // Double-click fallback - force redirect to dashboard
+        this.elements.leaveRoomBtn.addEventListener('dblclick', () => {
+            console.log('[WaitingRoom] Force leaving room via double-click');
+            this.cleanup().then(() => {
+                window.location.href = 'dashboard.html';
+            });
+        });
 
         // Copy room code button
         this.elements.copyCodeBtn.addEventListener('click', () => this.handleCopyRoomCode());
@@ -108,6 +116,15 @@ class WaitingRoomManager {
                 this.handlePageHidden();
             } else {
                 this.handlePageVisible();
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Escape key - force leave room
+            if (e.key === 'Escape') {
+                console.log('[WaitingRoom] Escape key pressed - leaving room');
+                this.handleLeaveRoom();
             }
         });
     }
@@ -152,7 +169,16 @@ class WaitingRoomManager {
 
         } catch (error) {
             console.error('[WaitingRoom] Initialization error:', error);
-            this.showError('Failed to initialize waiting room. Please try again.');
+
+            // If room not found, redirect to dashboard
+            if (error.message.includes('Room not found') || error.message.includes('deleted')) {
+                this.showError('Room not found. Redirecting to dashboard...');
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 2000);
+            } else {
+                this.showError('Failed to initialize waiting room. Please try again.');
+            }
         }
     }
     parseRoomIdFromURL() {
@@ -203,7 +229,7 @@ class WaitingRoomManager {
 
             // Check if user is in the room, if not try to join
             const currentUserId = this.currentUser.user_id || this.currentUser.id;
-            const isUserInRoom = this.roomData.players && this.roomData.players.some(p => 
+            const isUserInRoom = this.roomData.players && this.roomData.players.some(p =>
                 (p.id === currentUserId || p.user_id === currentUserId)
             );
 
@@ -302,11 +328,11 @@ class WaitingRoomManager {
 
         this.socketManager.on('reconnecting', (data) => {
             this.updateConnectionStatus('reconnecting', data);
-            this.uiManager.addMessage(`Reconnecting... (attempt ${data.attempt}/${data.maxAttempts})`, 'system');
+            this.uiManager.showConnectionToast('reconnecting');
         });
 
         this.socketManager.on('reconnected', (data) => {
-            this.uiManager.addMessage('Reconnected successfully!', 'success');
+            this.uiManager.showConnectionToast('connected');
             this.uiManager.hideConnectionWarning();
         });
 
@@ -315,7 +341,7 @@ class WaitingRoomManager {
         });
 
         this.socketManager.on('connection-lost', () => {
-            this.uiManager.addMessage('Connection lost. Attempting to reconnect...', 'error');
+            this.uiManager.showConnectionToast('disconnected');
             this.uiManager.showConnectionWarning('warning', 'Connection lost - trying to reconnect...');
         });
 
@@ -329,12 +355,12 @@ class WaitingRoomManager {
 
         // HTTP polling fallback events
         this.socketManager.on('http-polling-started', (data) => {
-            this.uiManager.addMessage('Using backup connection mode', 'system');
+            this.uiManager.showToast('Using backup connection mode', 'system', { compact: true });
             this.uiManager.showConnectionWarning('info', 'Using backup mode - some features may be limited');
         });
 
         this.socketManager.on('http-polling-stopped', () => {
-            this.uiManager.addMessage('Real-time connection restored', 'success');
+            this.uiManager.showToast('Real-time connection restored', 'success', { compact: true });
             this.uiManager.hideConnectionWarning();
         });
 
@@ -401,10 +427,10 @@ class WaitingRoomManager {
                 // Refresh the UI to show/hide buttons based on new status
                 this.updateRoomDisplay();
                 this.markSuccessfulUpdate();
-                
+
                 // Show a message to users
                 if (data.message) {
-                    this.uiManager.addMessage(data.message, 'success');
+                    this.uiManager.showToast(data.message, 'success', { compact: true });
                 }
             }
         });
@@ -442,7 +468,7 @@ class WaitingRoomManager {
                 this.players[playerIndex].isConnected = false;
                 this.updatePlayersDisplay();
                 const playerName = this.players[playerIndex].username || this.players[playerIndex].name;
-                this.uiManager.addMessage(`${playerName} disconnected`, 'system');
+                this.uiManager.showToast(`${playerName} disconnected`, 'warning', { icon: '⚠️', compact: true });
             }
         });
 
@@ -453,7 +479,7 @@ class WaitingRoomManager {
 
         this.socketManager.on('teams-formed', (data) => {
             console.log('[WaitingRoom] Teams formed:', data);
-            this.uiManager.addMessage('Teams have been formed! Starting game...', 'success');
+            this.uiManager.showGameStartingToast();
         });
 
         this.socketManager.on('bots-added', (data) => {
@@ -487,7 +513,7 @@ class WaitingRoomManager {
 
             // Show success message if database sync failed but WebSocket succeeded
             if (!data.dbSynced) {
-                this.uiManager.addMessage('Ready status updated (WebSocket only)', 'system');
+                this.uiManager.showToast('Ready status updated (WebSocket only)', 'warning', { compact: true });
             }
         });
 
@@ -589,7 +615,7 @@ class WaitingRoomManager {
 
     async retryConnection() {
         try {
-            this.uiManager.addMessage('Retrying connection...', 'system');
+            this.uiManager.showToast('Retrying connection...', 'info', { compact: true });
 
             if (this.socketManager) {
                 await this.socketManager.disconnect();
@@ -604,7 +630,7 @@ class WaitingRoomManager {
     enableHttpFallbackMode() {
         if (this.socketManager) {
             this.socketManager.enableHttpFallback();
-            this.uiManager.addMessage('Enabled backup connection mode', 'system');
+            this.uiManager.showToast('Enabled backup connection mode', 'system', { compact: true });
         }
     }
 
@@ -811,7 +837,7 @@ class WaitingRoomManager {
                 const leaveConfirmationHandler = (data) => {
                     console.log('[WaitingRoom] Leave confirmation received:', data);
                     if (data.success) {
-                        this.uiManager.addMessage('Successfully left the room', 'success');
+                        this.uiManager.showToast('Successfully left the room', 'success', { compact: true });
                         setTimeout(async () => {
                             await this.cleanup();
                             window.location.href = 'dashboard.html';
@@ -860,7 +886,22 @@ class WaitingRoomManager {
 
             } catch (error) {
                 console.error('[WaitingRoom] Error leaving room:', error);
-                this.showError('Failed to leave room. Please try again.');
+
+                // If room not found or already deleted, redirect anyway
+                if (error.message.includes('Room not found') || error.message.includes('404')) {
+                    console.log('[WaitingRoom] Room not found during leave, redirecting to dashboard');
+                    this.uiManager.showToast('Room no longer exists', 'info', { compact: true });
+                    setTimeout(async () => {
+                        await this.cleanup();
+                        window.location.href = 'dashboard.html';
+                    }, 1000);
+                } else {
+                    this.showError('Failed to leave room. Redirecting to dashboard...');
+                    setTimeout(async () => {
+                        await this.cleanup();
+                        window.location.href = 'dashboard.html';
+                    }, 2000);
+                }
                 this.showLoading(false);
             }
         }
@@ -881,16 +922,21 @@ class WaitingRoomManager {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to leave room');
+                // If room not found (404), it means room was already deleted - this is OK
+                if (response.status === 404) {
+                    console.log('[WaitingRoom] Room already deleted, proceeding with redirect');
+                    this.uiManager.showToast('Room no longer exists', 'info', { compact: true });
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to leave room');
+                }
+            } else {
+                const result = await response.json();
+                console.log('[WaitingRoom] Left room via HTTP API:', result);
+                this.uiManager.showToast('Successfully left the room', 'success', { compact: true });
             }
 
-            const result = await response.json();
-            console.log('[WaitingRoom] Left room via HTTP API:', result);
-
-            this.uiManager.addMessage('Successfully left the room', 'success');
-
-            // Clean up and redirect
+            // Clean up and redirect regardless of API response
             setTimeout(async () => {
                 await this.cleanup();
                 window.location.href = 'dashboard.html';
@@ -898,7 +944,18 @@ class WaitingRoomManager {
 
         } catch (error) {
             console.error('[WaitingRoom] HTTP API leave failed:', error);
-            throw error;
+
+            // If it's a network error or room not found, still redirect to dashboard
+            if (error.message.includes('Room not found') || error.message.includes('404')) {
+                console.log('[WaitingRoom] Room not found, redirecting to dashboard anyway');
+                this.uiManager.showToast('Room no longer exists', 'info', { compact: true });
+                setTimeout(async () => {
+                    await this.cleanup();
+                    window.location.href = 'dashboard.html';
+                }, 1000);
+            } else {
+                throw error;
+            }
         }
     }
 
@@ -943,11 +1000,8 @@ class WaitingRoomManager {
                 this.socketManager.toggleReady(newReadyStatus);
                 console.log('[WaitingRoom] Ready status toggle sent via socket:', newReadyStatus);
 
-                // Add user feedback message
-                this.uiManager.addMessage(
-                    `You are now ${newReadyStatus ? 'ready' : 'not ready'}`,
-                    'system'
-                );
+                // User feedback will be shown when the socket event is received
+                // this.uiManager.showPlayerReadyToast(this.currentUser.username, newReadyStatus);
             } else {
                 // Fallback to HTTP API if socket not available
                 console.warn('[WaitingRoom] Socket not available, using HTTP fallback');
@@ -1000,11 +1054,11 @@ class WaitingRoomManager {
                 this.updatePlayersDisplay();
             }
 
-            // Add user feedback message
-            this.uiManager.addMessage(
-                `You are now ${newReadyStatus ? 'ready' : 'not ready'}`,
-                'system'
-            );
+            // User feedback will be shown when the socket event is received (if connected)
+            // For HTTP-only mode, show feedback directly
+            if (!this.socketManager || !this.socketManager.isReady()) {
+                this.uiManager.showPlayerReadyToast(this.currentUser.username, newReadyStatus);
+            }
 
             console.log('[WaitingRoom] Ready status updated via HTTP API:', newReadyStatus);
 
@@ -1061,7 +1115,7 @@ class WaitingRoomManager {
                 console.log('[WaitingRoom] Game start request sent via socket');
 
                 // Add user feedback
-                this.uiManager.addMessage('Starting game...', 'system');
+                this.uiManager.showGameStartingToast();
             } else {
                 // Fallback to HTTP API if socket not available
                 console.warn('[WaitingRoom] Socket not available, using HTTP fallback');
@@ -1106,14 +1160,14 @@ class WaitingRoomManager {
             if (result.teams) {
                 const team1Names = result.teams.team1.map(p => p.username).join(', ');
                 const team2Names = result.teams.team2.map(p => p.username).join(', ');
-                this.uiManager.addMessage(`Teams formed! Team 1: ${team1Names} vs Team 2: ${team2Names}`, 'success');
+                this.uiManager.showToast(`Teams formed! Team 1: ${team1Names} vs Team 2: ${team2Names}`, 'success');
             }
 
             // Display game information if available
             if (result.game) {
-                this.uiManager.addMessage(`Game ${result.game.code} created! Starting...`, 'success');
+                this.uiManager.showToast(`Game ${result.game.code} created! Starting...`, 'success');
             } else {
-                this.uiManager.addMessage('Game is starting! Redirecting...', 'success');
+                this.uiManager.showGameStartingToast();
             }
 
             // Redirect to game page
@@ -1177,7 +1231,7 @@ class WaitingRoomManager {
             }
 
             // Show success message
-            this.uiManager.addMessage('Room has been reset to waiting status. Players can now get ready for another game!', 'success');
+            this.uiManager.showToast('Room has been reset to waiting status. Players can now get ready for another game!', 'success');
 
         } catch (error) {
             console.error('[WaitingRoom] Error resetting room to waiting:', error);
@@ -1217,7 +1271,7 @@ class WaitingRoomManager {
         }
 
         this.updatePlayersDisplay();
-        this.uiManager.addMessage(`${mappedPlayerData.username} joined the room`, 'system');
+        this.uiManager.showPlayerJoinedToast(mappedPlayerData.username);
     }
 
     handlePlayerLeave(data) {
@@ -1267,19 +1321,22 @@ class WaitingRoomManager {
             // Add appropriate message
             if (data.wasHost) {
                 if (this.isHost) {
-                    this.uiManager.addMessage(`${playerName} (host) left. You are now the host!`, 'success');
+                    this.uiManager.showToast(`${playerName} (host) left. You are now the host!`, 'success', { icon: '👑' });
                 } else {
                     const newHost = this.players.find(p =>
                         (p.id === data.newHostId || p.user_id === data.newHostId)
                     );
                     const newHostName = newHost ? newHost.username : 'Unknown';
-                    this.uiManager.addMessage(`${playerName} (host) left. ${newHostName} is now the host.`, 'system');
+                    this.uiManager.showHostTransferToast(newHostName);
                 }
             } else {
-                this.uiManager.addMessage(`${playerName} left the room`, 'system');
+                this.uiManager.showPlayerLeftToast(playerName);
             }
         } else {
-            this.uiManager.addMessage(`${playerName} left the room`, 'system');
+            // Fallback case - only show if we haven't already shown a message above
+            if (!data.wasHost) {
+                this.uiManager.showPlayerLeftToast(playerName);
+            }
         }
 
         // Update display with new player count and ready status
@@ -1312,11 +1369,9 @@ class WaitingRoomManager {
 
         // Add appropriate message
         if (this.isHost && !wasHost) {
-            this.uiManager.addMessage(`You are now the host! You can start the game when all players are ready.`, 'success');
-        } else if (!this.isHost && wasHost) {
-            this.uiManager.addMessage(`Host privileges transferred to ${data.newHostName}`, 'system');
+            this.uiManager.showToast(`You are now the host! You can start the game when all players are ready.`, 'success', { icon: '👑' });
         } else {
-            this.uiManager.addMessage(`${data.newHostName} is now the host`, 'system');
+            this.uiManager.showHostTransferToast(data.newHostName);
         }
 
         // Update players display to show new host badge
@@ -1342,7 +1397,7 @@ class WaitingRoomManager {
             }
 
             this.updatePlayersDisplay();
-            this.uiManager.addMessage(`${playerName} is ${isReady ? 'ready' : 'not ready'}`, 'system');
+            this.uiManager.showPlayerReadyToast(playerName, isReady);
         }
     }
 
@@ -1353,14 +1408,14 @@ class WaitingRoomManager {
         if (data.teams) {
             const team1Names = data.teams.team1.map(p => p.username).join(', ');
             const team2Names = data.teams.team2.map(p => p.username).join(', ');
-            this.uiManager.addMessage(`Teams formed! Team 1: ${team1Names} vs Team 2: ${team2Names}`, 'success');
+            this.uiManager.showToast(`Teams formed! Team 1: ${team1Names} vs Team 2: ${team2Names}`, 'success');
         }
 
         // Display game information if available
         if (data.game) {
-            this.uiManager.addMessage(`Game ${data.game.gameCode} created! Starting...`, 'success');
+            this.uiManager.showToast(`Game ${data.game.gameCode} created! Starting...`, 'success');
         } else {
-            this.uiManager.addMessage('Game is starting! Redirecting...', 'success');
+            this.uiManager.showGameStartingToast();
         }
 
         // Use redirect URL from server if provided, otherwise construct it
@@ -1400,7 +1455,7 @@ class WaitingRoomManager {
                 };
 
                 // Check if bot already exists (avoid duplicates)
-                const existingBotIndex = this.roomData.players.findIndex(p => 
+                const existingBotIndex = this.roomData.players.findIndex(p =>
                     p.id === bot.userId || p.user_id === bot.userId
                 );
 
@@ -1417,7 +1472,7 @@ class WaitingRoomManager {
 
             // Show message about bots joining
             if (data.message) {
-                this.uiManager.addMessage(data.message, 'system');
+                this.uiManager.showToast(data.message, 'info', { compact: true });
             }
         }
     }
@@ -1428,7 +1483,7 @@ class WaitingRoomManager {
         // Immediate navigation when server sends explicit command
         const redirectUrl = data?.redirectUrl || `game.html?room=${this.roomId}`;
 
-        this.uiManager.addMessage('Navigating to game...', 'system');
+        this.uiManager.showToast('Navigating to game...', 'info', { compact: true });
 
         // Clean up before navigation
         this.cleanup();
@@ -1598,7 +1653,7 @@ class WaitingRoomManager {
     }
 
     showMessage(message) {
-        this.uiManager.addMessage(message, 'system');
+        this.uiManager.showToast(message, 'system', { compact: true });
     }
 }
 

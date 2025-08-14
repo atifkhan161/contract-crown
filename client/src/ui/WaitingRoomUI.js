@@ -54,8 +54,8 @@ export class WaitingRoomUI {
             console.log('[WaitingRoomUI] Initial host controls classes:', this.elements.hostControls.classList.toString());
         }
         
-        // Message elements
-        this.elements.gameMessages = document.getElementById('game-messages');
+        // Message elements (now using toast system)
+        // this.elements.gameMessages = document.getElementById('game-messages'); // Removed - using toasts now
         
         // Modal elements
         this.elements.loadingOverlay = document.getElementById('loading-overlay');
@@ -429,7 +429,6 @@ export class WaitingRoomUI {
         skipLinks.innerHTML = `
             <a href="#players-heading" class="skip-link">Skip to players</a>
             <a href="#ready-toggle-btn" class="skip-link">Skip to ready controls</a>
-            <a href="#game-messages" class="skip-link">Skip to messages</a>
         `;
 
         // Add skip link styles
@@ -984,38 +983,21 @@ export class WaitingRoomUI {
     }
 
     /**
-     * Add message to game messages area
-     * @param {string} message - Message text
-     * @param {string} type - Message type: 'system', 'error', 'success'
+     * Add message (deprecated - use toast system instead)
+     * @deprecated Use showToast() instead
      */
     addMessage(message, type = 'system') {
-        const messagesContainer = this.elements.gameMessages;
-        
-        if (messagesContainer) {
-            const messageElement = document.createElement('div');
-            messageElement.className = `message ${type}`;
-            messageElement.textContent = message;
-            
-            messagesContainer.appendChild(messageElement);
-            
-            // Auto-scroll to bottom
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            
-            // Limit message history to prevent memory issues
-            const messages = messagesContainer.querySelectorAll('.message');
-            if (messages.length > 50) {
-                messages[0].remove();
-            }
-        }
+        console.warn('[WaitingRoomUI] addMessage is deprecated, use showToast instead');
+        this.showToast(message, type, { compact: true });
     }
 
     /**
-     * Clear all messages
+     * Clear all messages (deprecated - use clearToasts instead)
+     * @deprecated Use clearToasts() instead
      */
     clearMessages() {
-        if (this.elements.gameMessages) {
-            this.elements.gameMessages.innerHTML = '';
-        }
+        console.warn('[WaitingRoomUI] clearMessages is deprecated, use clearToasts instead');
+        this.clearToasts();
     }
 
     /**
@@ -1035,13 +1017,13 @@ export class WaitingRoomUI {
         const roomCode = this.elements.roomCode?.textContent;
         
         if (!roomCode || roomCode === '------') {
-            this.addMessage('No room code to copy', 'error');
+            this.showToast('No room code to copy', 'error', { compact: true });
             return;
         }
 
         try {
             await navigator.clipboard.writeText(roomCode);
-            this.addMessage('Room code copied to clipboard!', 'success');
+            this.showRoomCodeCopiedToast();
             
             // Visual feedback
             const copyBtn = this.elements.copyCodeBtn;
@@ -1054,7 +1036,7 @@ export class WaitingRoomUI {
             }
         } catch (error) {
             console.error('Failed to copy room code:', error);
-            this.addMessage('Failed to copy room code', 'error');
+            this.showToast('Failed to copy room code', 'error', { compact: true });
         }
     }
 
@@ -1357,6 +1339,172 @@ export class WaitingRoomUI {
     }
 
     /**
+     * Show a toast message
+     * @param {string} message - The message to display
+     * @param {string} type - The type of toast (info, success, warning, error, system)
+     * @param {Object} options - Additional options
+     */
+    showToast(message, type = 'info', options = {}) {
+        const {
+            duration = 3000,
+            icon = null,
+            compact = false,
+            className = ''
+        } = options;
+
+        // Get or create toast container
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.className = 'toast-container';
+            toastContainer.setAttribute('aria-live', 'polite');
+            toastContainer.setAttribute('aria-atomic', 'false');
+            document.body.appendChild(toastContainer);
+        }
+
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `toast-message ${type} ${compact ? 'compact' : ''} ${icon ? 'with-icon' : ''} ${className}`;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+
+        // Set toast content
+        if (icon) {
+            toast.innerHTML = `
+                <span class="toast-icon" aria-hidden="true">${icon}</span>
+                <span class="toast-text">${message}</span>
+            `;
+        } else {
+            toast.textContent = message;
+        }
+
+        // Add toast to container
+        toastContainer.appendChild(toast);
+
+        // Trigger show animation
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 10);
+
+        // Auto-remove toast after duration
+        const removeToast = () => {
+            toast.classList.add('hide');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        };
+
+        setTimeout(removeToast, duration);
+
+        // Allow manual dismissal on click (for touch devices)
+        toast.addEventListener('click', removeToast);
+
+        return toast;
+    }
+
+    /**
+     * Show player joined toast
+     * @param {string} playerName - Name of the player who joined
+     */
+    showPlayerJoinedToast(playerName) {
+        this.showToast(`${playerName} joined the room`, 'player-joined', {
+            icon: '👋',
+            duration: 2500
+        });
+    }
+
+    /**
+     * Show player left toast
+     * @param {string} playerName - Name of the player who left
+     */
+    showPlayerLeftToast(playerName) {
+        this.showToast(`${playerName} left the room`, 'player-left', {
+            icon: '👋',
+            duration: 2500
+        });
+    }
+
+    /**
+     * Show player ready status toast
+     * @param {string} playerName - Name of the player
+     * @param {boolean} isReady - Whether the player is ready
+     */
+    showPlayerReadyToast(playerName, isReady) {
+        const message = isReady ? `${playerName} is ready` : `${playerName} is not ready`;
+        const icon = isReady ? '✅' : '⏳';
+        this.showToast(message, 'player-ready', {
+            icon,
+            duration: 2000,
+            compact: true
+        });
+    }
+
+    /**
+     * Show host transfer toast
+     * @param {string} newHostName - Name of the new host
+     */
+    showHostTransferToast(newHostName) {
+        this.showToast(`${newHostName} is now the host`, 'host-transfer', {
+            icon: '👑',
+            duration: 3000
+        });
+    }
+
+    /**
+     * Show connection status toast
+     * @param {string} status - Connection status (connected, disconnected, reconnecting)
+     */
+    showConnectionToast(status) {
+        const messages = {
+            connected: { text: 'Connected to server', icon: '🟢', type: 'connection-restored' },
+            disconnected: { text: 'Connection lost', icon: '🔴', type: 'connection-lost' },
+            reconnecting: { text: 'Reconnecting...', icon: '🟡', type: 'warning' }
+        };
+
+        const config = messages[status];
+        if (config) {
+            this.showToast(config.text, config.type, {
+                icon: config.icon,
+                duration: status === 'reconnecting' ? 5000 : 3000
+            });
+        }
+    }
+
+    /**
+     * Show room code copied toast
+     */
+    showRoomCodeCopiedToast() {
+        this.showToast('Room code copied to clipboard', 'success', {
+            icon: '📋',
+            duration: 2000,
+            compact: true
+        });
+    }
+
+    /**
+     * Show game starting toast
+     */
+    showGameStartingToast() {
+        this.showToast('Game is starting...', 'info', {
+            icon: '🎮',
+            duration: 3000
+        });
+    }
+
+    /**
+     * Clear all toast messages
+     */
+    clearToasts() {
+        const toastContainer = document.getElementById('toast-container');
+        if (toastContainer) {
+            toastContainer.innerHTML = '';
+        }
+    }
+
+    /**
      * Cleanup UI resources
      */
     cleanup() {
@@ -1381,7 +1529,7 @@ export class WaitingRoomUI {
         this.disableSwipeGestures();
         
         // Clear any timers or intervals
-        this.clearMessages();
+        this.clearToasts();
         this.hideLoading();
         this.hideError();
         

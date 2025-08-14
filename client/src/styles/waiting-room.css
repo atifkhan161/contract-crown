@@ -7,6 +7,6 @@
 @import './waiting-room/header.css';
 @import './waiting-room/players.css';
 @import './waiting-room/controls.css';
-@import './waiting-room/messages.css';
 @import './waiting-room/modals.css';
+@import './waiting-room/toast.css';
 @import './waiting-room/responsive.css';

@@ -191,16 +191,7 @@
                     </div>
                 </section>
 
-                <!-- Messages Section -->
-                <section class="messages-section" aria-labelledby="messages-heading">
-                    <h3 id="messages-heading" class="sr-only">Game Messages</h3>
-                    <div id="game-messages" class="game-messages" 
-                         role="log" 
-                         aria-live="polite" 
-                         aria-label="Game status messages">
-                        <!-- Messages will be populated dynamically -->
-                    </div>
-                </section>
+
             </div>
         </main>
 
@@ -227,6 +218,11 @@
                     <button id="error-ok-btn" class="btn btn-primary">OK</button>
                 </div>
             </div>
+        </div>
+
+        <!-- Toast Messages Container -->
+        <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="false">
+            <!-- Toast messages will be dynamically added here -->
         </div>
     </div>
 
