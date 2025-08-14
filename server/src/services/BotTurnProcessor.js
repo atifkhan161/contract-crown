@@ -3,12 +3,7 @@ import GameEngine from './GameEngine.js';
 // Legacy MariaDB connection removed - now using LokiJS
 // import dbConnection from '../../database/connection.js';
 
-// Temporary compatibility layer - this needs to be replaced with LokiJS queries
-const dbConnection = {
-    query: () => {
-        throw new Error('dbConnection is not defined - BotTurnProcessor needs to be migrated to LokiJS');
-    }
-};
+// LokiJS database operations - migrated from MariaDB
 
 /**
  * BotTurnProcessor handles automatic bot turn processing and action execution
@@ -220,23 +215,26 @@ class BotTurnProcessor {
     }
 
     /**
-     * Get bot's current hand from database
+     * Get bot's current hand from database using LokiJS
      * @param {string} gameId - Game ID
      * @param {string} botId - Bot player ID
      * @returns {Promise<Array>} Bot's current hand
      */
     async getBotHand(gameId, botId) {
         try {
-            const handResult = await dbConnection.query(`
-                SELECT current_hand FROM game_players 
-                WHERE game_id = ? AND user_id = ?
-            `, [gameId, botId]);
+            const { default: GamePlayer } = await import('../models/GamePlayer.js');
+            const gamePlayerModel = new GamePlayer();
 
-            if (handResult.length === 0) {
+            const gamePlayer = await gamePlayerModel.findOne({
+                game_id: gameId,
+                user_id: botId
+            });
+
+            if (!gamePlayer) {
                 return [];
             }
 
-            const hand = JSON.parse(handResult[0].current_hand || '[]');
+            const hand = gamePlayer.current_hand || [];
             return hand;
         } catch (error) {
             console.error('[BotTurnProcessor] Error getting bot hand:', error.message);

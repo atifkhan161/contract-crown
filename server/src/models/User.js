@@ -14,7 +14,7 @@ class User extends BaseLokiModel {
     this.total_games_played = userData.total_games_played || 0;
     this.total_games_won = userData.total_games_won || 0;
     this.is_active = userData.is_active !== undefined ? userData.is_active : true;
-    this.is_bot = userData.is_bot || false;
+    this.is_bot = userData.is_bot !== undefined ? userData.is_bot : false;
   }
 
   // Static methods for database operations
@@ -230,7 +230,8 @@ class User extends BaseLokiModel {
       last_login: this.last_login,
       total_games_played: this.total_games_played,
       total_games_won: this.total_games_won,
-      is_active: this.is_active
+      is_active: this.is_active,
+      is_bot: this.is_bot
     };
   }
 

@@ -171,6 +171,7 @@ class GameEngine {
             const userModel = new User();
             const user = await userModel.findOne({ user_id: playerId });
 
+            console.log(`[GameEngine] Bot check for ${playerId}: user found=${!!user}, is_bot=${user?.is_bot}, username=${user?.username}`);
             return user && Boolean(user.is_bot);
         } catch (error) {
             console.error('[GameEngine] Error checking if player is bot:', error.message);
@@ -393,14 +394,71 @@ class GameEngine {
                 }
             }
 
+            // Determine dealer and first player (trump declarer) with bot validation
+            const { dealerUserId, firstPlayerUserId } = await this.determineDealerAndFirstPlayer(gameId, players);
+
             return {
                 playerHands,
                 remainingDeck,
-                dealerUserId: players[0].user_id, // First player is dealer for first round
-                firstPlayerUserId: players[1].user_id // Player to left of dealer goes first
+                dealerUserId,
+                firstPlayerUserId
             };
         } catch (error) {
             console.error('[GameEngine] Deal initial cards error:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Determine dealer and first player (trump declarer) with bot validation
+     * Ensures that when there are bots in the room, the trump declarer is always a human player
+     * @param {string} gameId - Game ID
+     * @param {Array} players - Array of player objects in seat order
+     * @returns {Object} Dealer and first player user IDs
+     */
+    async determineDealerAndFirstPlayer(gameId, players) {
+        try {
+            // Check if there are any bots in the room
+            const playerBotStatus = [];
+            for (const player of players) {
+                const isBot = await this.isPlayerBotInDatabase(player.user_id);
+                playerBotStatus.push({ ...player, isBot });
+            }
+
+            const humanPlayers = playerBotStatus.filter(p => !p.isBot);
+            const botPlayers = playerBotStatus.filter(p => p.isBot);
+
+            console.log(`[GameEngine] Player composition for game ${gameId}: ${humanPlayers.length} humans, ${botPlayers.length} bots`);
+
+            // If there are no bots, use standard dealer/first player assignment
+            if (botPlayers.length === 0) {
+                console.log(`[GameEngine] No bots detected, using standard dealer assignment`);
+                return {
+                    dealerUserId: players[0].user_id, // First player is dealer
+                    firstPlayerUserId: players[1].user_id // Player to left of dealer goes first
+                };
+            }
+
+            // If there are bots, ensure the trump declarer (first player) is always human
+            if (humanPlayers.length === 0) {
+                throw new Error('Cannot start game with only bots - at least one human player is required');
+            }
+
+            // Find the first human player to be the trump declarer
+            const firstHumanPlayer = humanPlayers[0];
+            const firstHumanIndex = players.findIndex(p => p.user_id === firstHumanPlayer.user_id);
+
+            // Set dealer as the player before the first human (clockwise)
+            const dealerIndex = (firstHumanIndex - 1 + players.length) % players.length;
+
+            console.log(`[GameEngine] Bot-aware assignment: Dealer=${players[dealerIndex].user_id}, Trump Declarer=${firstHumanPlayer.user_id}`);
+
+            return {
+                dealerUserId: players[dealerIndex].user_id,
+                firstPlayerUserId: firstHumanPlayer.user_id
+            };
+        } catch (error) {
+            console.error('[GameEngine] Error determining dealer and first player:', error.message);
             throw error;
         }
     }
@@ -423,10 +481,8 @@ class GameEngine {
 
             for (const player of players) {
                 const gamePlayer = await gamePlayerModel.findOne({
-                    selector: {
-                        game_id: gameId,
-                        user_id: player.user_id
-                    }
+                    game_id: gameId,
+                    user_id: player.user_id
                 });
 
                 currentHands[player.user_id] = gamePlayer?.current_hand || [];
@@ -525,11 +581,13 @@ class GameEngine {
             const userModel = new User();
 
             const gamePlayers = await gamePlayerModel.find({ game_id: gameId });
+            console.log(`[GameEngine] Found ${gamePlayers.length} GamePlayer records for game ${gameId}`);
 
             // Get user data for each player
             const players = [];
             for (const gamePlayer of gamePlayers) {
                 const user = await userModel.findOne({ user_id: gamePlayer.user_id });
+                console.log(`[GameEngine] Looking up user ${gamePlayer.user_id}: ${user ? 'found' : 'not found'}`);
                 if (user) {
                     players.push({
                         user_id: gamePlayer.user_id,
@@ -537,8 +595,12 @@ class GameEngine {
                         team_id: gamePlayer.team_id,
                         username: user.username
                     });
+                } else {
+                    console.warn(`[GameEngine] User not found for GamePlayer ${gamePlayer.user_id} in game ${gameId}`);
                 }
             }
+
+            console.log(`[GameEngine] Returning ${players.length} players for game ${gameId}`);
 
             // Sort by seat position
             players.sort((a, b) => (a.seat_position || 0) - (b.seat_position || 0));
@@ -620,10 +682,8 @@ class GameEngine {
             const gameRoundModel = new GameRound();
 
             const round = await gameRoundModel.findOne({
-                selector: {
-                    round_id: roundId,
-                    game_id: gameId
-                }
+                round_id: roundId,
+                game_id: gameId
             });
 
             if (!round) {
@@ -645,10 +705,8 @@ class GameEngine {
             const gamePlayerModel = new GamePlayer();
 
             const gamePlayer = await gamePlayerModel.findOne({
-                selector: {
-                    game_id: gameId,
-                    user_id: playerId
-                }
+                game_id: gameId,
+                user_id: playerId
             });
 
             if (!gamePlayer) {
@@ -785,7 +843,7 @@ class GameEngine {
             const gameRoundModel = new GameRound();
 
             const rounds = await gameRoundModel.find({
-                selector: { game_id: gameId }
+                game_id: gameId
             });
 
             if (rounds.length === 0) {
@@ -1634,7 +1692,7 @@ class GameEngine {
             const gameModel = new Game();
 
             const game = await gameModel.findOne({
-                selector: { game_id: gameId }
+                game_id: gameId
             });
 
             if (!game) {
@@ -1657,10 +1715,8 @@ class GameEngine {
                 const gameTrickModel = new GameTrick();
 
                 const tricks = await gameTrickModel.find({
-                    selector: { 
-                        round_id: currentRound.round_id,
-                        completed_at: null
-                    }
+                    round_id: currentRound.round_id,
+                    completed_at: null
                 });
 
                 if (tricks.length > 0) {

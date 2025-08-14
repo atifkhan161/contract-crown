@@ -3,12 +3,7 @@ import BotManager from '../services/BotManager.js';
 // Legacy MariaDB connection removed - now using LokiJS
 // import dbConnection from '../../database/connection.js';
 
-// Temporary compatibility layer - this needs to be replaced with LokiJS queries
-const dbConnection = {
-    query: () => {
-        throw new Error('dbConnection is not defined - WaitingRoomSocketHandler needs to be migrated to LokiJS');
-    }
-};
+// LokiJS migration complete - dbConnection removed
 
 /**
  * Waiting Room WebSocket Handler
@@ -530,6 +525,17 @@ class WaitingRoomSocketHandler {
             // Broadcast game start to all players with game information
             this.broadcastGameStarting(roomId, userId, username, teams, room, game, dbUpdateSuccess);
 
+            // After broadcasting game start, delegate to the main socket manager for actual game initialization
+            // This ensures the game is properly initialized with cards dealt, etc.
+            setTimeout(async () => {
+                try {
+                    console.log(`[WaitingRoom] Delegating to main socket manager for game initialization`);
+                    await this.socketManager.handleStartGame(socket, { gameId: roomId, userId, username });
+                } catch (gameInitError) {
+                    console.error(`[WaitingRoom] Error in main socket manager game initialization:`, gameInitError);
+                }
+            }, 2000); // Give time for players to navigate to game page
+
         } catch (error) {
             console.error('[WaitingRoom] Error starting game:', error);
 
@@ -631,6 +637,7 @@ class WaitingRoomSocketHandler {
             // Update database
             let dbUpdateSuccess = false;
             try {
+                const Room = (await import('../models/Room.js')).default;
                 const dbRoom = await Room.findById(roomId);
                 if (dbRoom) {
                     await dbRoom.removePlayer(userId);
@@ -669,6 +676,7 @@ class WaitingRoomSocketHandler {
 
                 // Clean up database room if empty
                 try {
+                    const Room = (await import('../models/Room.js')).default;
                     const dbRoom = await Room.findById(roomId);
                     if (dbRoom && dbRoom.players.length === 0) {
                         await dbRoom.delete();
@@ -689,6 +697,7 @@ class WaitingRoomSocketHandler {
      */
     async formTeams(roomId) {
         try {
+            const Room = (await import('../models/Room.js')).default;
             const dbRoom = await Room.findById(roomId);
             if (!dbRoom) {
                 throw new Error('Room not found in database');
@@ -795,32 +804,34 @@ class WaitingRoomSocketHandler {
                 room.players.set(bot.id, botPlayerData);
             }
 
-            // Store bots in database - first create users, then add to room
+            // Store bots in database using LokiJS models
             let botsStoredInDatabase = false;
             try {
-                // Step 1: Create bot users with unique identifiers
+                // Step 1: Create bot users using User model
+                const User = (await import('../models/User.js')).default;
+                const userModel = new User();
+                
                 for (const bot of bots) {
                     const botData = bot.toDatabaseFormat();
                     const uniqueUsername = `${botData.username}_${botData.user_id.slice(-8)}`;
                     const uniqueEmail = `${botData.user_id}@bot.local`;
 
-                    await dbConnection.query(`
-                        INSERT INTO users (user_id, username, email, password_hash, created_at)
-                        VALUES (?, ?, ?, ?, NOW())
-                        ON DUPLICATE KEY UPDATE
-                        username = VALUES(username),
-                        email = VALUES(email)
-                    `, [
-                        botData.user_id,
-                        uniqueUsername,
-                        uniqueEmail,
-                        'BOT_NO_PASSWORD'
-                    ]);
-
-                    console.log(`[WaitingRoom] Created bot user ${uniqueUsername} (${botData.user_id})`);
+                    // Check if bot user already exists
+                    const existingUser = await userModel.findOne({ user_id: botData.user_id });
+                    if (!existingUser) {
+                        await userModel.create({
+                            user_id: botData.user_id,
+                            username: uniqueUsername,
+                            email: uniqueEmail,
+                            password_hash: 'BOT_NO_PASSWORD',
+                            created_at: new Date().toISOString()
+                        });
+                        console.log(`[WaitingRoom] Created bot user ${uniqueUsername} (${botData.user_id})`);
+                    }
                 }
 
-                // Step 2: Add bots to room_players
+                // Step 2: Add bots to room_players using Room model
+                const Room = (await import('../models/Room.js')).default;
                 const dbRoom = await Room.findById(roomId);
                 if (dbRoom) {
                     for (const bot of bots) {
