@@ -1,4 +1,4 @@
-/* Modal Styles - Optimized for 932x430 */
+/* Modals - Mobile First */
 
 /* Base Modal Styles */
 .modal {
@@ -27,10 +27,10 @@
   position: relative;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md); /* Smaller radius for compact layout */
-  padding: var(--spacing-md); /* Reduced padding */
-  max-width: 85vw; /* Smaller max width */
-  max-height: 85vh; /* Smaller max height */
+  border-radius: var(--radius-md);
+  padding: 3vw;
+  max-width: 90vw;
+  max-height: 90vh;
   overflow-y: auto;
 }
 
@@ -38,24 +38,27 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 3vw;
 }
 
 .modal-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: var(--font-size-base); /* Smaller header */
+  font-size: 4vw;
+  min-font-size: 16px;
 }
 
 .modal-close {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: var(--font-size-lg); /* Smaller close button */
+  font-size: 5vw;
   cursor: pointer;
   padding: 0;
-  width: 24px; /* Smaller button */
-  height: 24px;
+  width: 6vw;
+  height: 6vw;
+  min-width: 24px;
+  min-height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -69,31 +72,32 @@
 }
 
 .modal-footer {
-  margin-top: var(--spacing-md);
+  margin-top: 3vw;
   display: flex;
   justify-content: flex-end;
-  gap: var(--spacing-sm); /* Reduced gap */
+  gap: 2vw;
 }
 
-/* Trump Declaration Modal - Optimized for 932x430 */
+/* Trump Declaration Modal - Smaller */
 .trump-modal-content {
-  max-width: 420px; /* Smaller for compact layout */
-  width: 90vw;
-  max-height: 80vh; /* Reduced height */
+  max-width: 75vw;
+  width: 100%;
+  max-height: 75vh;
   overflow-y: auto;
 }
 
 .trump-instruction {
   text-align: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 3vw;
   color: var(--text-secondary);
-  font-size: var(--font-size-sm); /* Smaller font */
+  font-size: 3vw;
+  min-font-size: 12px;
 }
 
-/* Initial cards display in trump modal */
+/* Initial cards display */
 .trump-cards-display {
-  margin-bottom: var(--spacing-md);
-  padding: var(--spacing-sm); /* Reduced padding */
+  margin-bottom: 3vw;
+  padding: 2vw;
   background: var(--bg-input);
   border-radius: var(--border-radius);
   border: 1px solid var(--border-color);
@@ -102,14 +106,16 @@
 .initial-cards-container {
   display: flex;
   justify-content: center;
-  gap: var(--spacing-sm);
+  gap: 1vw;
   flex-wrap: wrap;
-  padding: var(--spacing-sm) 0;
+  padding: 2vw 0;
 }
 
 .trump-modal-card {
-  width: 50px;
-  height: 70px;
+  width: 9vw;
+  height: 13vw;
+  min-width: 35px;
+  min-height: 52px;
   background: white;
   border: 1px solid var(--border-color);
   border-radius: 6px;
@@ -121,7 +127,7 @@
 }
 
 .trump-modal-card:hover {
-  transform: translateY(-1px); /* Reduced hover effect */
+  transform: translateY(-0.5vw);
   box-shadow: var(--shadow-md);
 }
 
@@ -131,19 +137,20 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 10px;
+  font-size: 2vw;
   font-weight: bold;
   line-height: 1;
+  min-font-size: 8px;
 }
 
 .trump-modal-card .card-corner-top {
-  top: 3px;
-  left: 3px;
+  top: 0.5vw;
+  left: 0.5vw;
 }
 
 .trump-modal-card .card-corner-bottom {
-  bottom: 3px;
-  right: 3px;
+  bottom: 0.5vw;
+  right: 0.5vw;
   transform: rotate(180deg);
 }
 
@@ -158,23 +165,26 @@
 }
 
 .trump-modal-card .card-rank {
-  font-size: 10px;
+  font-size: 2vw;
   font-weight: bold;
   line-height: 1;
-  margin-bottom: 1px;
+  margin-bottom: 0.2vw;
+  min-font-size: 8px;
 }
 
 .trump-modal-card .card-suit {
-  font-size: 16px;
+  font-size: 4vw;
   line-height: 1;
+  min-font-size: 14px;
 }
 
 .trump-modal-card .card-suit-small {
-  font-size: 10px;
+  font-size: 2vw;
   line-height: 1;
+  min-font-size: 8px;
 }
 
-/* Red suits */
+/* Suit Colors */
 .trump-modal-card.hearts .card-rank,
 .trump-modal-card.hearts .card-suit,
 .trump-modal-card.hearts .card-suit-small,
@@ -184,7 +194,6 @@
   color: var(--text-error);
 }
 
-/* Black suits */
 .trump-modal-card.clubs .card-rank,
 .trump-modal-card.clubs .card-suit,
 .trump-modal-card.clubs .card-suit-small,
@@ -197,22 +206,22 @@
 .trump-selection {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-sm); /* Reduced gap */
+  gap: 2vw;
 }
 
 .trump-option {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-xs); /* Reduced gap */
-  padding: var(--spacing-md); /* Reduced padding */
+  gap: 0.8vw;
+  padding: 2vw;
   background: var(--bg-input);
   border: 2px solid var(--border-color);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
   color: var(--text-primary);
-  min-height: 60px; /* Reduced height */
+  min-height: 8vw;
   justify-content: center;
 }
 
@@ -224,7 +233,7 @@
 .trump-option.selected {
   border-color: var(--primary-color);
   background: var(--bg-input);
-  box-shadow: 0 0 8px var(--primary-color);
+  box-shadow: 0 0 2vw var(--primary-color);
 }
 
 .trump-option.recommended {
@@ -236,22 +245,25 @@
 .trump-option.recommended::before {
   content: '★';
   position: absolute;
-  top: 4px;
-  right: 4px;
+  top: 1vw;
+  right: 1vw;
   color: var(--text-success);
-  font-size: var(--font-size-sm);
+  font-size: 3vw;
+  min-font-size: 12px;
 }
 
 .suit-recommendation {
-  font-size: var(--font-size-xs);
+  font-size: 2.5vw;
   color: var(--text-success);
   font-weight: 600;
-  margin-top: var(--spacing-xs);
+  margin-top: 1vw;
+  min-font-size: 10px;
 }
 
 .suit-symbol {
-  font-size: 1.5rem; /* Smaller symbol */
+  font-size: 4vw;
   line-height: 1;
+  min-font-size: 16px;
 }
 
 .suit-symbol.hearts,
@@ -265,30 +277,32 @@
 }
 
 .suit-name {
-  font-size: var(--font-size-xs); /* Smaller name */
+  font-size: 2.5vw;
   font-weight: 600;
+  min-font-size: 10px;
 }
 
 /* Game Messages */
 .game-messages-section {
-  margin-top: var(--spacing-sm); /* Reduced margin */
+  margin-top: 2vw;
 }
 
 .game-messages {
-  max-height: 60px; /* Reduced height */
+  max-height: 15vw;
   overflow-y: auto;
   background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: var(--spacing-xs); /* Reduced padding */
+  padding: 1vw;
 }
 
 .game-message {
-  font-size: var(--font-size-xs); /* Smaller font */
+  font-size: 2.5vw;
   color: var(--text-secondary);
-  margin-bottom: 2px; /* Reduced margin */
-  padding: var(--spacing-xs);
+  margin-bottom: 0.5vw;
+  padding: 1vw;
   border-radius: var(--radius-sm);
+  min-font-size: 10px;
 }
 
 .game-message:last-child {
@@ -315,159 +329,264 @@
   color: var(--text-error);
 }
 
-/* Round completion overlay - Compact */
+/* Round completion overlay - Enhanced */
 .round-completion-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: var(--bg-secondary);
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  animation: fadeIn 0.3s ease-in; /* Faster animation */
+  animation: fadeIn 0.3s ease-in;
 }
 
 .round-completion-content {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 50%, var(--primary-hover) 100%);
   color: var(--text-primary);
-  padding: 1.5rem; /* Reduced padding */
-  border-radius: 12px; /* Smaller radius */
+  padding: 3vw;
+  border-radius: 2vw;
   text-align: center;
-  max-width: 400px; /* Smaller width */
-  width: 85%; /* Reduced width */
-  animation: slideIn 0.3s ease-out; /* Faster animation */
+  max-width: 70vw;
+  width: 100%;
+  animation: slideIn 0.3s ease-out;
+  border: 2px solid var(--primary-hover);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5), 0 0 60px var(--primary-color);
 }
 
 .round-completion-content h2 {
-  margin: 0 0 1rem 0; /* Reduced margin */
-  font-size: 1.5rem; /* Smaller font */
+  margin: 0 0 3vw 0;
+  font-size: 5vw;
   text-shadow: 2px 2px 4px var(--bg-secondary);
+  min-font-size: 18px;
 }
 
 .round-stats {
   display: flex;
   justify-content: space-around;
-  gap: 1rem; /* Reduced gap */
-  margin-top: 1rem; /* Reduced margin */
+  gap: 2vw;
+  margin-top: 3vw;
 }
 
 .team-result {
   flex: 1;
-  padding: 0.75rem; /* Reduced padding */
+  padding: 2vw;
   background: var(--bg-card);
-  border-radius: 8px; /* Smaller radius */
+  border-radius: 2vw;
   backdrop-filter: blur(10px);
 }
 
 .team-result h3 {
-  margin: 0 0 0.25rem 0; /* Reduced margin */
-  font-size: 1rem; /* Smaller font */
+  margin: 0 0 1vw 0;
+  font-size: 3.5vw;
+  min-font-size: 14px;
 }
 
 .team-result p {
-  margin: 0.125rem 0; /* Reduced margin */
-  font-size: 0.875rem; /* Smaller font */
+  margin: 0.5vw 0;
+  font-size: 3vw;
+  min-font-size: 12px;
 }
 
-/* Responsive adjustments for target resolution */
-@media (max-width: 932px) {
-  .modal-content {
-      max-width: 90vw;
-      padding: var(--spacing-sm);
-  }
-  
-  .trump-modal-content {
-      max-width: 380px;
-      width: 95vw;
-  }
-  
+/* Portrait Mode */
+@media (orientation: portrait) {
   .trump-selection {
-      grid-template-columns: 1fr;
-      gap: var(--spacing-xs);
+    grid-template-columns: 1fr;
+    gap: 2vw;
   }
   
   .trump-option {
-      padding: var(--spacing-sm);
-      min-height: 50px;
-  }
-  
-  .trump-modal-card {
-      width: 35px;
-      height: 49px;
-      font-size: 8px;
-  }
-  
-  .round-completion-content {
-      max-width: 350px;
-      padding: 1rem;
-  }
-}
-
-@media (max-height: 430px) {
-  .modal-content {
-      max-height: 90vh;
-      padding: var(--spacing-xs);
-  }
-  
-  .trump-modal-content {
-      max-height: 85vh;
-      padding: var(--spacing-sm);
-  }
-  
-  .modal-header h3 {
-      font-size: var(--font-size-sm);
-  }
-  
-  .trump-instruction {
-      font-size: var(--font-size-xs);
-      margin-bottom: var(--spacing-sm);
-  }
-  
-  .trump-cards-display {
-      padding: var(--spacing-xs);
-      margin-bottom: var(--spacing-sm);
-  }
-  
-  .trump-modal-card {
-      width: 32px;
-      height: 45px;
-      font-size: 7px;
-  }
-  
-  .trump-option {
-      padding: var(--spacing-xs);
-      min-height: 40px;
-      flex-direction: row;
-      gap: var(--spacing-xs);
-  }
-  
-  .suit-symbol {
-      font-size: 1.2rem;
-  }
-  
-  .round-completion-content {
-      padding: 1rem;
-      max-width: 320px;
-  }
-  
-  .round-completion-content h2 {
-      font-size: 1.25rem;
+    min-height: 15vw;
   }
   
   .round-stats {
-      flex-direction: column;
-      gap: 0.5rem;
-  }
-  
-  .game-messages {
-      max-height: 40px;
+    flex-direction: column;
+    gap: 2vw;
   }
 }
 
-/* Animation keyframes */
+/* Desktop */
+@media (min-width: 768px) {
+  .modal-content {
+    padding: 24px;
+    max-width: 600px;
+  }
+  
+  .trump-modal-content {
+    max-width: 450px;
+  }
+  
+  .trump-modal-card {
+    width: 42px;
+    height: 60px;
+  }
+  
+  .trump-option {
+    min-height: 60px;
+    padding: 12px;
+  }
+  
+  .suit-symbol {
+    font-size: 1.2rem;
+  }
+  
+  .round-completion-content {
+    max-width: 450px;
+    padding: 24px;
+    border-radius: 12px;
+  }
+  
+  .congratulations-modal-content {
+    max-width: 500px;
+  }
+  
+  .winner-announcement h2 {
+    font-size: 24px;
+  }
+  
+  .winner-announcement p {
+    font-size: 16px;
+  }
+  
+  .round-summary h4,
+  .game-score h4 {
+    font-size: 18px;
+  }
+  
+  .team-name {
+    font-size: 16px;
+  }
+  
+  .team-tricks,
+  .team-points {
+    font-size: 14px;
+  }
+  
+  .score-team {
+    font-size: 16px;
+  }
+  
+  .score-value {
+    font-size: 20px;
+  }
+  
+  .score-separator {
+    font-size: 20px;
+  }
+}
+
+/* Congratulations Modal Styles */
+.congratulations-modal-content {
+  max-width: 80vw;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 50%, var(--primary-hover) 100%);
+  border: 2px solid var(--primary-hover);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5), 0 0 60px var(--primary-color);
+}
+
+.congratulations-content {
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.winner-announcement h2 {
+  font-size: 5vw;
+  margin: 0 0 2vw 0;
+  text-shadow: 2px 2px 4px var(--bg-secondary);
+  min-font-size: 20px;
+}
+
+.winner-announcement p {
+  font-size: 3vw;
+  margin: 0 0 3vw 0;
+  opacity: 0.9;
+  min-font-size: 14px;
+}
+
+.round-summary,
+.game-score {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  padding: 2vw;
+  margin: 2vw 0;
+  backdrop-filter: blur(10px);
+}
+
+.round-summary h4,
+.game-score h4 {
+  font-size: 3.5vw;
+  margin: 0 0 2vw 0;
+  min-font-size: 16px;
+}
+
+.team-breakdown {
+  display: flex;
+  justify-content: space-around;
+  gap: 2vw;
+}
+
+.team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1vw;
+  flex: 1;
+}
+
+.team-name {
+  font-size: 3vw;
+  font-weight: bold;
+  min-font-size: 14px;
+}
+
+.team-tricks,
+.team-points {
+  font-size: 2.5vw;
+  opacity: 0.9;
+  min-font-size: 12px;
+}
+
+.total-scores {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2vw;
+}
+
+.score-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1vw;
+}
+
+.score-team {
+  font-size: 3vw;
+  font-weight: bold;
+  min-font-size: 14px;
+}
+
+.score-value {
+  font-size: 3vw;
+  font-weight: bold;
+  color: var(--primary-hover);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
+  min-font-size: 18px;
+}
+
+.score-separator {
+  font-size: 4vw;
+  font-weight: bold;
+  opacity: 0.7;
+  min-font-size: 18px;
+}
+
+/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -475,7 +594,7 @@
 
 @keyframes slideIn {
   from {
-      transform: translateY(-30px); /* Reduced effect */
+      transform: translateY(-7vw);
       opacity: 0;
   }
   to {
@@ -484,255 +603,28 @@
   }
 }
 
-/* Congratulations Modal - Casino Style */
+@keyframes celebration {
+  0%, 100% {
+      transform: scale(1);
+  }
+  50% {
+      transform: scale(1.05);
+  }
+}
+
 .congratulations-modal-content {
-  max-width: 500px;
-  width: 90vw;
-  max-height: 85vh;
-  background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
-  border: 3px solid var(--primary-hover);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg), inset 0 2px 4px var(--bg-card);
-}
-
-.congratulations-modal-content .modal-header {
-  background: linear-gradient(135deg, var(--primary-hover), var(--primary-color));
-  margin: calc(-1 * var(--spacing-md));
-  margin-bottom: var(--spacing-md);
-  padding: var(--spacing-md);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  text-align: center;
-}
-
-.congratulations-modal-content .modal-header h3 {
-  color: var(--secondary-color);
-  font-size: var(--font-size-xl);
-  font-weight: bold;
-  text-shadow: 1px 1px 2px var(--bg-card);
-  margin: 0;
-}
-
-.congratulations-content {
-  text-align: center;
-  color: var(--text-primary);
-}
-
-.winner-announcement {
-  margin-bottom: var(--spacing-lg);
-  padding: var(--spacing-md);
-  background: var(--bg-input);
-  border-radius: var(--radius-md);
-  border: 2px solid var(--text-success);
-}
-
-.winner-announcement h2 {
-  font-size: var(--font-size-xxl);
-  color: var(--text-success);
-  margin: 0 0 var(--spacing-sm) 0;
-  text-shadow: 2px 2px 4px var(--bg-secondary);
-  animation: winnerGlow 2s ease-in-out infinite alternate;
-}
-
-@keyframes winnerGlow {
-  from {
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  }
-  to {
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5), 0 0 10px rgba(39, 174, 96, 0.5);
-  }
-}
-
-.winner-announcement p {
-  font-size: var(--font-size-lg);
-  color: var(--text-primary);
-  margin: 0;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
-}
-
-.round-summary {
-  margin-bottom: var(--spacing-lg);
-  padding: var(--spacing-md);
-  background: var(--bg-input);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-}
-
-.round-summary h4 {
-  color: var(--primary-hover);
-  font-size: var(--font-size-lg);
-  margin: 0 0 var(--spacing-md) 0;
-  text-shadow: 1px 1px 2px var(--bg-secondary);
-}
-
-.score-breakdown {
-  display: flex;
-  justify-content: center;
-}
-
-.team-breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-  width: 100%;
-  max-width: 300px;
-}
-
-.team-info {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: var(--spacing-md);
-  align-items: center;
-  padding: var(--spacing-sm);
-  background: var(--bg-card);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
-}
-
-.team-name {
-  font-weight: 600;
-  color: var(--text-primary);
-  text-shadow: 1px 1px 2px var(--bg-secondary);
-}
-
-.team-tricks {
-  font-size: var(--font-size-sm);
-  color: var(--primary-light);
-  font-weight: 600;
-  text-shadow: 1px 1px 2px var(--bg-secondary);
-}
-
-.team-points {
-  font-size: var(--font-size-sm);
-  color: var(--text-success);
-  font-weight: bold;
-  text-shadow: 1px 1px 2px var(--bg-secondary);
-}
-
-.game-score {
-  padding: var(--spacing-md);
-  background: var(--bg-input);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-}
-
-.game-score h4 {
-  color: var(--text-error);
-  font-size: var(--font-size-lg);
-  margin: 0 0 var(--spacing-md) 0;
-  text-shadow: 1px 1px 2px var(--bg-secondary);
-}
-
-.total-scores {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--spacing-lg);
-}
-
-.score-display {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.score-team {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  font-weight: 600;
-  text-shadow: 1px 1px 2px var(--bg-secondary);
-}
-
-.score-value {
-  font-size: var(--font-size-xxl);
-  font-weight: bold;
-  color: var(--text-primary);
-  text-shadow: 2px 2px 4px var(--bg-secondary);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
-  border-radius: var(--radius-sm);
-  border: 2px solid var(--primary-hover);
-  min-width: 60px;
-}
-
-.congratulations-modal-content .score-separator {
-  font-size: var(--font-size-xxl);
-  color: var(--primary-hover);
-  font-weight: bold;
-  text-shadow: 2px 2px 4px var(--bg-secondary);
-}
-
-.congratulations-modal-content .modal-footer {
-  display: none;
-}
-
-/* Responsive adjustments */
-@media (max-width: 932px) {
-  .congratulations-modal-content {
-    max-width: 450px;
-    width: 95vw;
-  }
-  
-  .team-breakdown {
-    max-width: 280px;
-  }
-  
-  .total-scores {
-    gap: var(--spacing-md);
-  }
-}
-
-@media (max-height: 430px) {
-  .congratulations-modal-content {
-    max-height: 90vh;
-    padding: var(--spacing-sm);
-  }
-  
-  .congratulations-modal-content .modal-header {
-    margin: calc(-1 * var(--spacing-sm));
-    margin-bottom: var(--spacing-sm);
-    padding: var(--spacing-sm);
-  }
-  
-  .congratulations-modal-content .modal-header h3 {
-    font-size: var(--font-size-lg);
-  }
-  
-  .winner-announcement h2 {
-    font-size: var(--font-size-xl);
-  }
-  
-  .round-summary,
-  .game-score {
-    padding: var(--spacing-sm);
-  }
-  
-  .team-breakdown {
-    gap: var(--spacing-xs);
-  }
-  
-  .score-value {
-    font-size: var(--font-size-xl);
-    min-width: 50px;
-  }
+  animation: slideIn 0.3s ease-out, celebration 2s ease-in-out infinite;
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   .round-completion-overlay,
-  .round-completion-content {
+  .round-completion-content,
+  .trump-modal-card:hover {
       animation: none;
   }
   
   .trump-modal-card:hover {
-      transform: none;
-  }
-  
-  .winner-announcement h2 {
-      animation: none;
-  }
-  
-  .congratulations-modal-content .btn:hover {
       transform: none;
   }
 }

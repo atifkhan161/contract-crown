@@ -48,6 +48,7 @@ export class UIManager {
         // Center table elements
         this.elements.trumpSuit = document.getElementById('trump-suit');
         this.elements.currentTrick = document.getElementById('current-trick');
+        this.elements.currentTrickCounter = document.getElementById('current-trick-counter');
         this.elements.trickArea = document.getElementById('trick-area');
         this.elements.playedCardTop = document.getElementById('played-card-top');
         this.elements.playedCardLeft = document.getElementById('played-card-left');
@@ -111,6 +112,9 @@ export class UIManager {
         }
         if (this.elements.currentTrick) {
             this.elements.currentTrick.textContent = state.currentTrick?.trickNumber || 1;
+        }
+        if (this.elements.currentTrickCounter) {
+            this.elements.currentTrickCounter.textContent = state.currentTrick?.trickNumber || 1;
         }
     }
 

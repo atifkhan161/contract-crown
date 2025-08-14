@@ -1,29 +1,21 @@
-/* Base Styles - Contract Crown PWA */
+/* Base Styles - Mobile First */
 
-/* Mobile-only elements - hidden by default */
+/* Mobile-only elements */
 .mobile-leave-btn,
 .mobile-connection-status {
-    display: none !important;
+    display: block;
 }
 
-/* Ensure mobile elements are only shown on mobile screens */
-@media (min-width: 1024px) {
-    .mobile-leave-btn,
-    .mobile-connection-status {
-        display: none !important;
-    }
-}
-
-/* Main Game Layout - Optimized for 932x430 */
+/* Main Game Layout */
 .game-main {
     flex: 1;
-    padding: var(--spacing-sm);
+    padding: 0;
     overflow: hidden;
-    height: 430px; /* Fixed height for target resolution */
+    height: 100vh;
 }
 
 .game-container {
-    max-width: 932px;
+    width: 100%;
     margin: 0 auto;
     height: 100%;
     display: flex;
@@ -50,33 +42,35 @@
 }
 
 .loading-content .spinner {
-    width: 40px;
-    height: 40px;
-    margin-bottom: var(--spacing-md);
+    width: 10vw;
+    height: 10vw;
+    min-width: 30px;
+    min-height: 30px;
+    margin-bottom: 3vw;
 }
 
-/* Prevent layout shifts during game state changes */
+/* Prevent layout shifts */
 .game-table * {
     box-sizing: border-box;
 }
 
-/* Safe area handling for devices with notches */
+/* Safe area handling */
 @supports (padding: max(0px)) {
     .game-main {
-        padding-left: max(var(--spacing-sm), env(safe-area-inset-left));
-        padding-right: max(var(--spacing-sm), env(safe-area-inset-right));
-        padding-bottom: max(var(--spacing-sm), env(safe-area-inset-bottom));
+        padding-left: max(0, env(safe-area-inset-left));
+        padding-right: max(0, env(safe-area-inset-right));
+        padding-bottom: max(0, env(safe-area-inset-bottom));
     }
 }
 
-/* Prevent zoom on input focus (mobile Safari) */
+/* Prevent zoom on input focus */
 input,
 select,
 textarea {
     font-size: 16px;
 }
 
-/* Improve touch responsiveness */
+/* Touch responsiveness */
 .card,
 .trump-option,
 .btn {
@@ -89,10 +83,26 @@ textarea {
     user-select: none;
 }
 
-/* Better focus indicators for accessibility */
+/* Focus indicators */
 .card:focus,
 .trump-option:focus,
 .btn:focus {
     outline: 2px solid var(--border-focus);
     outline-offset: 2px;
+}
+
+/* Desktop overrides */
+@media (min-width: 768px) {
+    .mobile-leave-btn,
+    .mobile-connection-status {
+        display: none;
+    }
+    
+    .game-main {
+        padding: var(--spacing-sm);
+    }
+    
+    .game-container {
+        max-width: 1200px;
+    }
 }

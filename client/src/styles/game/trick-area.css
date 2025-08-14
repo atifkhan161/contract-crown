@@ -1,16 +1,18 @@
-/* Trick Area Styles - Optimized for 932x430 */
+/* Trick Area - Mobile First */
 
 .trick-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-sm); /* Reduced gap */
+  gap: 1vw;
 }
 
 .trick-cards {
   position: relative;
-  width: 280px;
-  height: 160px;
+  width: 20vw;
+  height: 20vw;
+  min-width: 80px;
+  min-height: 80px;
   display: grid;
   grid-template-areas:
       ". top ."
@@ -18,7 +20,7 @@
       ". bottom .";
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr 1fr 1fr;
-  gap: 10px;
+  gap: 1.5vw;
 }
 
 .played-card-slot {
@@ -27,8 +29,8 @@
   justify-content: center;
   border: 2px dashed var(--border-color);
   border-radius: var(--radius-sm);
-  min-width: 55px;
-  min-height: 75px;
+  min-width: 8vw;
+  min-height: 12vw;
   transition: all var(--transition-fast);
   background: var(--bg-input);
   box-shadow: inset 0 2px 4px var(--bg-secondary);
@@ -55,36 +57,38 @@
   background: var(--bg-card);
   box-shadow: 
     inset 0 2px 4px var(--bg-secondary),
-    0 0 8px var(--primary-hover);
+    0 0 2vw var(--primary-hover);
 }
 
 .trick-info {
   text-align: center;
-  font-size: 11px;
-  margin-top: 4px;
+  font-size: 2.5vw;
+  margin-top: 1vw;
   font-weight: 600;
   text-shadow: 1px 1px 2px var(--bg-secondary);
   background: var(--bg-secondary);
-  padding: 3px 8px;
+  padding: 0.7vw 2vw;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
+  min-font-size: 10px;
 }
 
-/* Lead suit indicator - Compact */
+/* Lead suit indicator */
 .lead-suit-indicator {
   position: absolute;
-  top: 5px;
-  left: 5px;
+  top: 1vw;
+  left: 1vw;
   background: var(--bg-secondary);
   color: var(--text-primary);
-  padding: 3px 6px;
-  border-radius: 8px;
-  font-size: 10px;
+  padding: 0.7vw 1.5vw;
+  border-radius: 2vw;
+  font-size: 2.5vw;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 0.7vw;
   z-index: 100;
   border: 1px solid var(--border-color);
+  min-font-size: 9px;
 }
 
 .lead-suit-label {
@@ -92,8 +96,9 @@
 }
 
 .lead-suit-symbol {
-  font-size: 11px; /* Smaller symbol */
+  font-size: 3vw;
   font-weight: bold;
+  min-font-size: 11px;
 }
 
 .lead-suit-symbol.hearts,
@@ -106,9 +111,9 @@
   color: var(--secondary-color);
 }
 
-/* Trick completion animations - Optimized */
+/* Animations */
 .played-card.trick-complete {
-  animation: trickCompleteSmooth 0.4s ease-in-out forwards; /* Faster animation */
+  animation: trickCompleteSmooth 0.4s ease-in-out forwards;
 }
 
 @keyframes trickCompleteSmooth {
@@ -117,34 +122,33 @@
       opacity: 1;
   }
   50% {
-      transform: scale(1.05); /* Reduced scale */
+      transform: scale(1.05);
       opacity: 0.7;
   }
   100% {
-      transform: scale(0.9); /* Reduced scale */
+      transform: scale(0.9);
       opacity: 0;
   }
 }
 
-/* Winner card highlight - Subtle animation */
 .played-card.winner,
 .winning-card {
   animation: winnerHighlightSubtle 0.8s ease-in-out;
   border: 2px solid var(--primary-hover);
-  box-shadow: 0 0 10px var(--primary-hover);
+  box-shadow: 0 0 2.5vw var(--primary-hover);
 }
 
 @keyframes winnerHighlightSubtle {
   0%, 100% {
-      box-shadow: 0 0 10px var(--primary-hover);
+      box-shadow: 0 0 2.5vw var(--primary-hover);
   }
   50% {
-      box-shadow: 0 0 15px var(--primary-hover);
+      box-shadow: 0 0 3.5vw var(--primary-hover);
   }
 }
 
 .winner-pulse {
-  animation: winnerPulse 0.4s ease-in-out infinite alternate; /* Faster animation */
+  animation: winnerPulse 0.4s ease-in-out infinite alternate;
 }
 
 @keyframes winnerPulse {
@@ -152,7 +156,7 @@
       transform: scale(1);
   }
   to {
-      transform: scale(1.03); /* Reduced scale */
+      transform: scale(1.03);
   }
 }
 
@@ -161,9 +165,9 @@
   filter: grayscale(30%);
 }
 
-/* Turn indicator enhancements - Compact */
+/* Turn indicator enhancements */
 .turn-indicator.active {
-  animation: turnPulse 1.5s infinite; /* Faster animation */
+  animation: turnPulse 1.5s infinite;
 }
 
 .turn-indicator.trick-winner {
@@ -179,87 +183,74 @@
   }
   50% {
       opacity: 0.7;
-      transform: scale(1.05); /* Reduced scale */
+      transform: scale(1.05);
   }
 }
 
 @keyframes trickWinnerCelebration {
   0%, 100% {
       transform: scale(1);
-      box-shadow: 0 0 6px var(--primary-hover);
+      box-shadow: 0 0 1.5vw var(--primary-hover);
   }
   50% {
       transform: scale(1.05);
-      box-shadow: 0 0 12px var(--primary-hover);
+      box-shadow: 0 0 3vw var(--primary-hover);
   }
 }
 
-/* Enhanced played card slots - Casino style */
-.played-card-slot.active {
-  background: var(--bg-card);
-  border: 2px solid var(--primary-hover);
-  box-shadow: 
-    inset 0 2px 4px var(--bg-secondary),
-    0 0 8px var(--primary-hover);
-}
-
-/* Responsive adjustments for target resolution */
-@media (max-width: 932px) {
+/* Portrait Mode */
+@media (orientation: portrait) {
   .trick-cards {
-      width: 120px;
-      height: 120px;
+    width: 28vw;
+    height: 28vw;
   }
   
   .played-card-slot {
-      min-width: 30px;
-      min-height: 45px;
+    min-width: 7vw;
+    min-height: 10.5vw;
+  }
+}
+
+/* Landscape Mode */
+@media (orientation: landscape) {
+  .trick-cards {
+    width: 16vh;
+    height: 16vh;
+  }
+  
+  .played-card-slot {
+    min-width: 5vh;
+    min-height: 7.5vh;
   }
   
   .lead-suit-indicator {
-      top: 3px;
-      left: 3px;
-      padding: 2px 4px;
-      font-size: 9px;
-      border-radius: 6px;
-  }
-  
-  .lead-suit-symbol {
-      font-size: 10px;
-  }
-}
-
-@media (max-height: 430px) {
-  .trick-cards {
-      width: 100px;
-      height: 100px;
-  }
-  
-  .played-card-slot {
-      min-width: 25px;
-      min-height: 38px;
-      border-width: 1px;
+    font-size: 2vh;
   }
   
   .trick-info {
-      font-size: 9px;
-      margin-top: 2px;
+    font-size: 2vh;
+  }
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+  .trick-cards {
+    width: 160px;
+    height: 160px;
+  }
+  
+  .played-card-slot {
+    min-width: 40px;
+    min-height: 60px;
   }
   
   .lead-suit-indicator {
-      top: 2px;
-      left: 2px;
-      padding: 1px 3px;
-      font-size: 8px;
-      border-radius: 4px;
-      gap: 2px;
+    font-size: 12px;
+    padding: 6px 12px;
   }
   
-  .lead-suit-symbol {
-      font-size: 9px;
-  }
-  
-  .trick-area {
-      gap: var(--spacing-xs);
+  .trick-info {
+    font-size: 12px;
   }
 }
 

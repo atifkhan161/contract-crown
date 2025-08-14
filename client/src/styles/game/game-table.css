@@ -4,40 +4,38 @@
   flex: 1;
   position: relative;
   
-  /* Casino table outer styling */
+  /* Casino table styling */
   background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light), var(--secondary-color));
   border-radius: 16px;
   border: 2px solid var(--border-color);
   box-shadow: var(--shadow-lg), inset 0 2px 4px var(--bg-card);
   
   padding: 6px;
-  margin: 4px;
+  margin: 8px;
   display: grid;
   grid-template-areas:
       "trump-corner top score-corner"
       "left center right"
-      "round-score-area bottom .";
-  grid-template-columns: 140px 1fr 140px;
-  grid-template-rows: 45px 1fr 80px;
-  gap: 4px;
-  height: calc(100vh - 60px);
-  max-height: 420px;
+      "trick-info bottom .";
+  grid-template-columns: 120px 1fr 120px;
+  grid-template-rows: 40px 1fr 100px;
+  gap: 6px;
+  height: calc(100vh - 16px);
   
-  /* Wood grain texture effect */
+  /* Wood grain texture */
   background-image: 
     linear-gradient(90deg, transparent 50%, var(--bg-input) 50%),
     linear-gradient(0deg, transparent 50%, var(--bg-card) 50%);
   background-size: 4px 4px, 8px 8px;
 }
 
-/* Player Areas - Casino seating layout */
+/* Player Areas */
 .player-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   
-  /* Casino player seat styling */
   background: var(--bg-input);
   border-radius: var(--radius-md);
   padding: 4px;
@@ -47,37 +45,33 @@
 
 .player-top {
   grid-area: top;
-  /* Top player sits across the table */
-  transform: translateY(-5px);
+  transform: translateY(-4px);
 }
 
 .player-left {
   grid-area: left;
   transform: rotate(90deg);
   transform-origin: center;
-  /* Left player sits to the left */
-  margin-right: var(--spacing-sm);
+  margin-right: 8px;
 }
 
 .player-right {
   grid-area: right;
   transform: rotate(-90deg);
   transform-origin: center;
-  /* Right player sits to the right */
-  margin-left: var(--spacing-sm);
+  margin-left: 8px;
 }
 
 .player-bottom {
   grid-area: bottom;
-  /* Bottom player (user) sits closest */
-  transform: translateY(5px);
+  transform: translateY(4px);
   background: var(--bg-card);
   border-color: var(--primary-color);
 }
 
 .player-info {
   text-align: center;
-  min-width: 100px;
+  min-width: 80px;
   background: var(--bg-secondary);
   border-radius: var(--radius-sm);
   padding: 3px 6px;
@@ -85,16 +79,16 @@
 }
 
 .player-name {
-  font-size: var(--font-size-sm);
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 3px;
+  margin-bottom: 2px;
   line-height: 1.2;
   text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
 .player-display {
-  font-size: var(--font-size-sm);
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.2;
@@ -107,16 +101,16 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  font-size: var(--font-size-xs);
+  font-size: 9px;
   color: var(--text-secondary);
 }
 
 .card-count {
   background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
-  padding: 2px var(--spacing-xs);
+  padding: 2px 4px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--primary-hover);
-  font-size: var(--font-size-xs);
+  font-size: 9px;
   color: var(--primary-hover);
   font-weight: 600;
   text-shadow: 1px 1px 2px var(--bg-secondary);
@@ -124,8 +118,8 @@
 }
 
 .turn-indicator {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: transparent;
   border: 2px solid var(--border-color);
@@ -140,23 +134,22 @@
   box-shadow: var(--shadow-lg);
 }
 
-/* Center Table Area - Casino Style */
+/* Center Table Area - Proper Size for 932x430 */
 .game-table .table-center,
 .table-center {
   grid-area: center;
-  /* display: flex; */
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 8px;
   position: relative;
-  min-height: 180px;
+  min-height: 200px;
   
   /* Casino table styling - Green felt */
   background-color: var(--primary-color) !important;
   background: linear-gradient(135deg, var(--primary-hover), var(--primary-color), var(--primary-hover)) !important;
   border: 2px solid var(--secondary-color) !important;
-  border-radius: 40px !important;
+  border-radius: 60px !important;
   box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-color) !important;
 }
 
@@ -169,7 +162,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  border-radius: 47px;
+  border-radius: 58px;
   background-image: 
     radial-gradient(circle at 25% 25%, var(--bg-card) 0%, transparent 50%),
     radial-gradient(circle at 75% 75%, var(--bg-input) 0%, transparent 50%);
@@ -184,7 +177,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  border-radius: 47px;
+  border-radius: 58px;
   background-image: 
     repeating-linear-gradient(
       45deg,
@@ -197,7 +190,7 @@
   z-index: 1;
 }
 
-/* Trump Display - Corner Position */
+/* Trump Display - Compact */
 .trump-display-corner {
   grid-area: trump-corner;
   display: flex;
@@ -211,12 +204,12 @@
   justify-self: start;
   font-size: 10px;
   box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
-  width: 130px;
-  height: 35px;
+  width: 110px;
+  height: 32px;
 }
 
 .trump-label {
-  font-size: var(--font-size-xs);
+  font-size: 10px;
   color: var(--primary-hover);
   font-weight: 600;
   text-shadow: 1px 1px 2px var(--bg-secondary);
@@ -225,11 +218,11 @@
 .trump-suit {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: 3px;
 }
 
 .trump-symbol {
-  font-size: var(--font-size-base);
+  font-size: 14px;
   line-height: 1;
   text-shadow: 1px 1px 2px var(--bg-secondary);
 }
@@ -245,13 +238,13 @@
 }
 
 .trump-name {
-  font-size: var(--font-size-xs);
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-primary);
   text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
-/* Score Display - Corner Position */
+/* Score Display - Compact */
 .score-display-corner {
   grid-area: score-corner;
   background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
@@ -262,8 +255,8 @@
   justify-self: end;
   font-size: 10px;
   box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
-  width: 130px;
-  height: 35px;
+  width: 110px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -273,7 +266,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
 }
 
@@ -283,7 +276,7 @@
 }
 
 .team-label {
-  font-size: 9px;
+  font-size: 8px;
   color: var(--text-success);
   margin-bottom: 1px;
   font-weight: 600;
@@ -292,7 +285,7 @@
 }
 
 .score-value {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
   color: var(--text-primary);
   text-shadow: 1px 1px 2px var(--bg-secondary);
@@ -300,30 +293,50 @@
 }
 
 .score-separator {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--status-connecting);
   font-weight: bold;
   text-shadow: 1px 1px 2px var(--bg-secondary);
   line-height: 1;
 }
 
-/* Round Score Display */
-.round-score-display {
-  grid-area: round-score-area;
+/* Trick Info Display - Left Side */
+.trick-info-display {
+  grid-area: trick-info;
   background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
   padding: 4px 8px;
   border-radius: var(--radius-md);
   border: 2px solid var(--primary-hover);
   align-self: start;
   justify-self: start;
-  font-size: 11px;
+  font-size: 10px;
   box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
-  width: 130px;
-  height: 70px;
+  width: 110px;
+  height: 90px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.trick-counter {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--text-primary);
+  text-shadow: 1px 1px 2px var(--bg-secondary);
+  background: var(--bg-card);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.round-score-display {
+  display: none;
 }
 
 .score-section {
-  margin-bottom: var(--spacing-xs); /* Reduced margin */
+  margin-bottom: 4px;
 }
 
 .score-section:last-child {
@@ -331,7 +344,7 @@
 }
 
 .score-title {
-  font-size: var(--font-size-xs);
+  font-size: 10px;
   color: var(--text-error);
   text-align: center;
   margin-bottom: 2px;
@@ -339,47 +352,102 @@
   text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
-/* Responsive adjustments for target resolution */
-@media (max-width: 932px) {
+/* Portrait Mode */
+@media (orientation: portrait) {
   .game-table {
-      margin: var(--spacing-xs) var(--spacing-xs);
-      padding: 4px;
-      gap: 4px;
-  }
-  
-  .trump-display-corner,
-  .score-display-corner,
-  .round-score-display {
-      padding: 4px 6px;
-      font-size: 10px;
-  }
-  
-  .player-info {
-      min-width: 60px;
-  }
-}
-
-@media (max-height: 430px) {
-  .game-table {
-      height: calc(100vh - 40px);
-      max-height: none;
-      grid-template-rows: auto 1fr auto;
+    grid-template-areas:
+      "trump-corner top score-corner"
+      "left center right"
+      ". center ."
+      "round-score-area bottom .";
+    grid-template-rows: auto 1fr auto auto;
+    grid-template-columns: 25vw 1fr 25vw;
+    margin: 10px;
+    padding: 8px;
+    gap: 8px;
   }
   
   .table-center {
-      min-height: 120px;
-      gap: var(--spacing-xs);
+    min-height: 60vw;
+    border-radius: 15vw;
   }
   
   .trump-display-corner,
-  .score-display-corner,
-  .round-score-display {
-      padding: 3px 5px;
-      font-size: 9px;
+  .score-display-corner {
+    width: 22vw;
+    height: 8vw;
+    font-size: 2.5vw;
   }
   
-  .trump-symbol,
-  .score-value {
-      font-size: var(--font-size-md);
+  .trick-info-display {
+    width: 22vw;
+    height: 18vw;
+    font-size: 2.5vw;
+  }
+}
+
+/* Landscape Mode - 932x430 Focus */
+@media (orientation: landscape) and (max-height: 500px) {
+  .game-table {
+    margin: 6px;
+    padding: 4px;
+    gap: 4px;
+    grid-template-rows: 35px 1fr 85px;
+  }
+  
+  .trump-display-corner,
+  .score-display-corner {
+    height: 28px;
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+  
+  .trick-info-display {
+    height: 75px;
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+  
+  .table-center {
+    min-height: 160px;
+    border-radius: 50px;
+  }
+  
+  .player-info {
+    min-width: 60px;
+    padding: 2px 4px;
+  }
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+  .game-table {
+    max-width: 1200px;
+    margin: 16px auto;
+    padding: 12px;
+    grid-template-columns: 200px 1fr 200px;
+    grid-template-rows: 60px 1fr 120px;
+  }
+  
+  .trump-display-corner,
+  .score-display-corner {
+    width: 180px;
+    height: 50px;
+    font-size: 12px;
+  }
+  
+  .trick-info-display {
+    width: 180px;
+    height: 100px;
+    font-size: 12px;
+  }
+  
+  .table-center {
+    min-height: 300px;
+    border-radius: 80px;
+  }
+  
+  .player-info {
+    min-width: 120px;
   }
 }
