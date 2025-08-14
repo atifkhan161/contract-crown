@@ -180,33 +180,48 @@
   
   .waiting-room-header {
     padding: var(--waiting-spacing-sm) 0;
-    height: var(--waiting-header-height);
+    height: auto;
+    min-height: var(--waiting-header-height);
   }
   
   .header-content {
-    flex-direction: column;
-    align-items: center;
+    display: grid;
+    grid-template-areas: 
+      "left right"
+      "center center";
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
     gap: var(--waiting-spacing-sm);
     padding: 0 var(--waiting-spacing-md);
-  }
-  
-  .header-left,
-  .header-right {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
     align-items: center;
   }
   
+  /* First row: Leave button and Connection status */
+  .header-left {
+    grid-area: left;
+    justify-self: start;
+  }
+  
+  .header-right {
+    grid-area: right;
+    justify-self: end;
+  }
+  
+  /* Second row: Room title and code */
   .header-center {
-    order: -1;
-    width: 100%;
+    grid-area: center;
     text-align: center;
+    width: 100%;
   }
   
   .room-title {
     font-size: var(--waiting-font-size-lg);
     margin: 0 0 var(--waiting-spacing-xs) 0;
+  }
+  
+  .room-code-display {
+    justify-content: center;
+    margin-top: var(--waiting-spacing-xs);
   }
   
   .waiting-room-container {
