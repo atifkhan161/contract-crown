@@ -280,7 +280,7 @@
 }
 
 .player-slot.bot-player .player-name {
-  color: var(--secondary-color);
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
