@@ -1,43 +1,181 @@
-/* Responsive design for all screen sizes with 932x430 optimization */
+/* Responsive design for 932x430 resolution */
 
-/* Exact 932x430 Resolution Optimizations */
-@media screen and (width: 932px) and (height: 430px) {
-  .waiting-room-container {
-    max-width: 920px;
-    padding: 0 6px;
+/* Landscape Mode - 932x430 */
+@media (max-width: 932px) and (max-height: 430px) and (orientation: landscape) {
+  :root {
+    --waiting-spacing-xs: 0.125rem;
+    --waiting-spacing-sm: 0.25rem;
+    --waiting-spacing-md: 0.375rem;
+    --waiting-spacing-lg: 0.5rem;
+    --waiting-spacing-xl: 0.75rem;
+    --waiting-spacing-xxl: 1rem;
+    --waiting-header-height: 35px;
+    --waiting-player-slot-height: 40px;
+    --waiting-player-avatar-size: 28px;
+    --waiting-font-size-xs: 0.625rem;
+    --waiting-font-size-sm: 0.6875rem;
+    --waiting-font-size-base: 0.75rem;
+    --waiting-font-size-lg: 0.875rem;
+    --waiting-font-size-xl: 1rem;
+    --waiting-font-size-xxl: 1.125rem;
   }
   
+  /* Ultra-compact header */
+  .waiting-room-header {
+    padding: var(--waiting-spacing-xs) 0;
+    height: var(--waiting-header-height);
+  }
+  
+  .header-content {
+    padding: 0 var(--waiting-spacing-md);
+    gap: var(--waiting-spacing-md);
+    min-height: var(--waiting-header-height);
+  }
+  
+  .room-title {
+    font-size: var(--waiting-font-size-lg);
+    margin: 0 0 var(--waiting-spacing-xs) 0;
+  }
+  
+  .room-code {
+    font-size: var(--waiting-font-size-base);
+    padding: var(--waiting-spacing-xs) var(--waiting-spacing-sm);
+    min-width: 60px;
+  }
+  
+  .room-code-label {
+    font-size: var(--waiting-font-size-xs);
+  }
+  
+  /* Compact main layout */
+  .waiting-room-main {
+    min-height: calc(100vh - var(--waiting-header-height));
+    padding: var(--waiting-spacing-md) 0;
+  }
+  
+  .waiting-room-container {
+    padding: 0 var(--waiting-spacing-md);
+    max-width: 900px;
+  }
+  
+  /* Horizontal player layout for landscape */
   .players-grid {
-    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--waiting-spacing-sm);
+    margin-bottom: var(--waiting-spacing-lg);
   }
   
   .player-slot {
-    padding: 3px;
+    padding: var(--waiting-spacing-sm);
+    gap: var(--waiting-spacing-sm);
+    min-height: var(--waiting-player-slot-height);
+    flex-direction: column;
+    text-align: center;
+    justify-content: center;
   }
   
-  .waiting-room-main {
-    padding: 6px 0;
+  .player-avatar {
+    width: var(--waiting-player-avatar-size);
+    height: var(--waiting-player-avatar-size);
+    margin: 0 auto var(--waiting-spacing-xs);
+  }
+  
+  .avatar-placeholder {
+    font-size: var(--waiting-font-size-sm);
+  }
+  
+  .player-name {
+    font-size: var(--waiting-font-size-xs);
+    margin-bottom: var(--waiting-spacing-xs);
+    line-height: 1.2;
+  }
+  
+  .player-status {
+    justify-content: center;
+    gap: var(--waiting-spacing-xs);
+  }
+  
+  .ready-text {
+    font-size: var(--waiting-font-size-xs);
+  }
+  
+  .host-badge {
+    font-size: 0.5rem;
+    padding: 1px var(--waiting-spacing-xs);
+    margin-top: var(--waiting-spacing-xs);
+  }
+  
+  /* Compact controls */
+  .btn-lg {
+    padding: var(--waiting-spacing-md) var(--waiting-spacing-xl);
+    font-size: var(--waiting-font-size-base);
+    min-width: 140px;
+    min-height: 36px;
+  }
+  
+  .ready-section,
+  .host-controls-section {
+    margin-bottom: var(--waiting-spacing-lg);
+  }
+  
+  /* Compact messages */
+  .game-messages {
+    max-height: 80px;
+    padding: var(--waiting-spacing-md);
+    min-height: 60px;
+  }
+  
+  .message {
+    padding: var(--waiting-spacing-xs) 0;
+    font-size: var(--waiting-font-size-xs);
+  }
+  
+  /* Compact connection status */
+  .connection-status {
+    min-width: 80px;
+    padding: var(--waiting-spacing-xs) var(--waiting-spacing-sm);
+    gap: var(--waiting-spacing-xs);
+  }
+  
+  .status-text {
+    font-size: var(--waiting-font-size-xs);
+  }
+  
+  .status-indicator {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .btn-sm {
+    padding: var(--waiting-spacing-xs) var(--waiting-spacing-sm);
+    font-size: var(--waiting-font-size-xs);
+  }
+  
+  .copy-btn {
+    padding: var(--waiting-spacing-xs);
+    font-size: var(--waiting-font-size-sm);
   }
 }
 
-/* 430x932 Portrait Mode Optimizations */
-@media screen and (width: 430px) and (height: 932px) {
+/* Portrait Mode - 430x932 */
+@media (max-width: 430px) and (min-height: 932px) and (orientation: portrait) {
   :root {
-    --waiting-spacing-xs: 0.25rem;     /* 4px */
-    --waiting-spacing-sm: 0.375rem;    /* 6px */
-    --waiting-spacing-md: 0.5rem;      /* 8px */
-    --waiting-spacing-lg: 0.75rem;     /* 12px */
-    --waiting-spacing-xl: 1rem;        /* 16px */
-    --waiting-spacing-xxl: 1.25rem;    /* 20px */
+    --waiting-spacing-xs: 0.25rem;
+    --waiting-spacing-sm: 0.375rem;
+    --waiting-spacing-md: 0.5rem;
+    --waiting-spacing-lg: 0.75rem;
+    --waiting-spacing-xl: 1rem;
+    --waiting-spacing-xxl: 1.25rem;
     --waiting-header-height: 50px;
     --waiting-player-slot-height: 65px;
     --waiting-player-avatar-size: 36px;
-    --waiting-font-size-xs: 0.6875rem; /* 11px */
-    --waiting-font-size-sm: 0.75rem;   /* 12px */
-    --waiting-font-size-base: 0.875rem; /* 14px */
-    --waiting-font-size-lg: 1rem;      /* 16px */
-    --waiting-font-size-xl: 1.125rem;  /* 18px */
-    --waiting-font-size-xxl: 1.25rem;  /* 20px */
+    --waiting-font-size-xs: 0.6875rem;
+    --waiting-font-size-sm: 0.75rem;
+    --waiting-font-size-base: 0.875rem;
+    --waiting-font-size-lg: 1rem;
+    --waiting-font-size-xl: 1.125rem;
+    --waiting-font-size-xxl: 1.25rem;
   }
   
   .waiting-room-header {
@@ -153,430 +291,5 @@
   
   .status-text {
     font-size: var(--waiting-font-size-sm);
-  }
-}
-
-/* 430x932 Portrait Range Optimizations */
-@media screen and (max-width: 430px) and (min-height: 932px) {
-  .waiting-room-container {
-    max-width: 410px;
-    padding: 0 var(--waiting-spacing-sm);
-  }
-  
-  .players-grid {
-    gap: var(--waiting-spacing-sm);
-  }
-  
-  .player-slot {
-    padding: var(--waiting-spacing-sm);
-  }
-  
-  .waiting-room-main {
-    padding: var(--waiting-spacing-md) 0;
-  }
-}
-
-/* 932x430 Resolution Optimizations - Compact landscape layout */
-@media screen and (max-width: 932px) and (max-height: 430px) {
-  :root {
-    --waiting-spacing-xs: 0.125rem;    /* 2px */
-    --waiting-spacing-sm: 0.25rem;     /* 4px */
-    --waiting-spacing-md: 0.375rem;    /* 6px */
-    --waiting-spacing-lg: 0.5rem;      /* 8px */
-    --waiting-spacing-xl: 0.75rem;     /* 12px */
-    --waiting-spacing-xxl: 1rem;       /* 16px */
-    --waiting-header-height: 35px;
-    --waiting-player-slot-height: 40px;
-    --waiting-player-avatar-size: 28px;
-    --waiting-font-size-xs: 0.625rem;  /* 10px */
-    --waiting-font-size-sm: 0.6875rem; /* 11px */
-    --waiting-font-size-base: 0.75rem; /* 12px */
-    --waiting-font-size-lg: 0.875rem;  /* 14px */
-    --waiting-font-size-xl: 1rem;      /* 16px */
-    --waiting-font-size-xxl: 1.125rem; /* 18px */
-  }
-  
-  /* Ultra-compact header */
-  .waiting-room-header {
-    padding: var(--waiting-spacing-xs) 0;
-    height: var(--waiting-header-height);
-  }
-  
-  .header-content {
-    padding: 0 var(--waiting-spacing-md);
-    gap: var(--waiting-spacing-md);
-    min-height: var(--waiting-header-height);
-  }
-  
-  .room-title {
-    font-size: var(--waiting-font-size-lg);
-    margin: 0 0 var(--waiting-spacing-xs) 0;
-  }
-  
-  .room-code {
-    font-size: var(--waiting-font-size-base);
-    padding: var(--waiting-spacing-xs) var(--waiting-spacing-sm);
-    min-width: 60px;
-  }
-  
-  .room-code-label {
-    font-size: var(--waiting-font-size-xs);
-  }
-  
-  /* Compact main layout */
-  .waiting-room-main {
-    min-height: calc(100vh - var(--waiting-header-height));
-    padding: var(--waiting-spacing-md) 0;
-  }
-  
-  .waiting-room-container {
-    padding: 0 var(--waiting-spacing-md);
-    max-width: 900px;
-  }
-  
-  /* Horizontal player layout for landscape */
-  .players-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--waiting-spacing-sm);
-    margin-bottom: var(--waiting-spacing-lg);
-  }
-  
-  .player-slot {
-    padding: var(--waiting-spacing-sm);
-    gap: var(--waiting-spacing-sm);
-    min-height: var(--waiting-player-slot-height);
-    flex-direction: column;
-    text-align: center;
-    justify-content: center;
-  }
-  
-  .player-avatar {
-    width: var(--waiting-player-avatar-size);
-    height: var(--waiting-player-avatar-size);
-    margin: 0 auto var(--waiting-spacing-xs);
-  }
-  
-  .avatar-placeholder {
-    font-size: var(--waiting-font-size-sm);
-  }
-  
-  .player-name {
-    font-size: var(--waiting-font-size-xs);
-    margin-bottom: var(--waiting-spacing-xs);
-    line-height: 1.2;
-  }
-  
-  .player-status {
-    justify-content: center;
-    gap: var(--waiting-spacing-xs);
-  }
-  
-  .ready-text {
-    font-size: var(--waiting-font-size-xs);
-  }
-  
-  .host-badge {
-    font-size: 0.5rem;
-    padding: 1px var(--waiting-spacing-xs);
-    margin-top: var(--waiting-spacing-xs);
-  }
-  
-  /* Compact sections */
-  .section-header {
-    margin-bottom: var(--waiting-spacing-md);
-  }
-  
-  .section-header h2 {
-    font-size: var(--waiting-font-size-xl);
-  }
-  
-  .players-count {
-    font-size: var(--waiting-font-size-base);
-  }
-  
-  /* Compact controls */
-  .ready-section,
-  .host-controls-section {
-    margin-bottom: var(--waiting-spacing-lg);
-  }
-  
-  .ready-controls,
-  .host-controls {
-    gap: var(--waiting-spacing-sm);
-  }
-  
-  .btn-lg {
-    padding: var(--waiting-spacing-md) var(--waiting-spacing-xl);
-    font-size: var(--waiting-font-size-base);
-    min-width: 140px;
-    min-height: 36px;
-  }
-  
-  .ready-status,
-  .host-info {
-    font-size: var(--waiting-font-size-sm);
-  }
-  
-  /* Compact messages */
-  .game-messages {
-    max-height: 80px;
-    padding: var(--waiting-spacing-md);
-    min-height: 60px;
-  }
-  
-  .message {
-    padding: var(--waiting-spacing-xs) 0;
-    font-size: var(--waiting-font-size-xs);
-  }
-  
-  /* Compact connection status */
-  .connection-status {
-    min-width: 80px;
-    padding: var(--waiting-spacing-xs) var(--waiting-spacing-sm);
-    gap: var(--waiting-spacing-xs);
-  }
-  
-  .status-text {
-    font-size: var(--waiting-font-size-xs);
-  }
-  
-  .status-indicator {
-    width: 8px;
-    height: 8px;
-  }
-  
-  /* Compact leave button */
-  .btn-sm {
-    padding: var(--waiting-spacing-xs) var(--waiting-spacing-sm);
-    font-size: var(--waiting-font-size-xs);
-  }
-  
-  .copy-btn {
-    padding: var(--waiting-spacing-xs);
-    font-size: var(--waiting-font-size-sm);
-  }
-}
-
-/* Mobile Portrait */
-@media (max-width: 768px) {
-  .header-content {
-    padding: 0 var(--waiting-spacing-sm);
-    flex-wrap: wrap;
-    gap: var(--waiting-spacing-sm);
-  }
-  
-  .header-center {
-    order: -1;
-    flex: 1 1 100%;
-    margin-bottom: var(--waiting-spacing-sm);
-  }
-  
-  .header-left,
-  .header-right {
-    flex: 1;
-  }
-  
-  .header-right {
-    display: flex;
-    justify-content: flex-end;
-  }
-  
-  .room-title {
-    font-size: var(--waiting-font-size-lg);
-  }
-  
-  .room-code-display {
-    flex-wrap: wrap;
-    gap: var(--waiting-spacing-xs);
-  }
-  
-  .room-code {
-    font-size: var(--waiting-font-size-base);
-    min-width: 70px;
-  }
-  
-  .waiting-room-container {
-    padding: 0 var(--waiting-spacing-sm);
-  }
-  
-  .section-header {
-    flex-direction: column;
-    gap: var(--waiting-spacing-sm);
-    align-items: center;
-    text-align: center;
-  }
-  
-  .players-grid {
-    grid-template-columns: 1fr;
-    gap: var(--waiting-spacing-md);
-  }
-  
-  .player-slot {
-    padding: var(--waiting-spacing-md);
-    min-height: 70px;
-  }
-  
-  .player-avatar {
-    width: 40px;
-    height: 40px;
-  }
-  
-  .avatar-placeholder {
-    font-size: var(--waiting-font-size-base);
-  }
-  
-  .connection-status {
-    min-width: 100px;
-    padding: var(--waiting-spacing-xs) var(--waiting-spacing-sm);
-  }
-  
-  .status-text {
-    font-size: var(--waiting-font-size-xs);
-  }
-
-  .connection-warning {
-    margin: var(--waiting-spacing-xs) var(--waiting-spacing-sm);
-    padding: var(--waiting-spacing-xs) var(--waiting-spacing-sm);
-    font-size: var(--waiting-font-size-xs);
-  }
-
-  .recovery-options {
-    gap: var(--waiting-spacing-xs);
-  }
-
-  .recovery-options .btn {
-    padding: var(--waiting-spacing-sm) var(--waiting-spacing-md);
-    font-size: var(--waiting-font-size-sm);
-  }
-  
-  .ready-controls,
-  .host-controls {
-    gap: var(--waiting-spacing-sm);
-  }
-  
-  .btn-lg {
-    padding: var(--waiting-spacing-md) var(--waiting-spacing-lg);
-    font-size: var(--waiting-font-size-base);
-  }
-}
-
-/* Extra small screens */
-@media (max-width: 480px) {
-  .header-content {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--waiting-spacing-sm);
-  }
-  
-  .header-left,
-  .header-right {
-    display: flex;
-    justify-content: center;
-  }
-  
-  .room-code-display {
-    justify-content: center;
-  }
-  
-  .players-grid {
-    gap: var(--waiting-spacing-sm);
-  }
-  
-  .player-slot {
-    flex-direction: column;
-    text-align: center;
-    gap: var(--waiting-spacing-sm);
-    padding: var(--waiting-spacing-sm);
-  }
-  
-  .player-info {
-    order: -1;
-  }
-  
-  .player-badges {
-    align-items: center;
-  }
-  
-  .connection-status {
-    justify-content: center;
-  }
-}
-
-/* Tablet Portrait */
-@media screen and (min-width: 768px) and (max-width: 1023px) {
-  .players-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* Desktop */
-@media (min-width: 1024px) {
-  .players-grid {
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  }
-}
-
-/* Touch-friendly enhancements */
-@media (hover: none) and (pointer: coarse) {
-  .btn {
-    min-height: 44px;
-    min-width: 44px;
-    padding: 12px 16px;
-    font-size: 16px;
-  }
-  
-  .copy-btn {
-    min-height: 44px;
-    min-width: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 12px;
-  }
-  
-  .player-slot {
-    min-height: 80px;
-    padding: 16px;
-  }
-  
-  .modal-close {
-    min-width: 44px;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  .player-slot {
-    border-width: 2px;
-  }
-  
-  .ready-indicator {
-    border: 1px solid var(--text-primary);
-  }
-  
-  .status-indicator {
-    border: 1px solid var(--text-primary);
-  }
-}
-
-/* Reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-  .status-indicator {
-    animation: none !important;
-  }
-  
-  .copy-btn:active,
-  .btn:active {
-    transform: none !important;
-  }
-  
-  * {
-    transition: none !important;
-    animation: none !important;
   }
 }
