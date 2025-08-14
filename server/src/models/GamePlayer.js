@@ -15,6 +15,7 @@ class GamePlayer extends BaseLokiModel {
         this.is_ready = gamePlayerData.is_ready || false;
         this.is_host = gamePlayerData.is_host || false;
         this.current_hand = gamePlayerData.current_hand;
+        this.remaining_cards = gamePlayerData.remaining_cards;
         this.tricks_won_current_round = gamePlayerData.tricks_won_current_round || 0;
         this.joined_at = gamePlayerData.joined_at;
     }
