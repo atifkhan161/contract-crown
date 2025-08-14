@@ -39,8 +39,53 @@
   background: var(--bg-input);
   border-radius: var(--radius-md);
   padding: 4px;
-  border: 1px solid var(--border-color);
+  border: 2px solid var(--border-color);
   backdrop-filter: blur(2px);
+  transition: all 0.3s ease;
+}
+
+/* Player Row Layout */
+.player-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  justify-content: space-between;
+}
+
+/* Current Player Highlighting */
+.player-area.current-turn {
+  border: 4px solid var(--primary-color);
+  background: linear-gradient(135deg, var(--primary-color), var(--bg-input));
+  box-shadow: 
+    0 0 20px rgba(74, 222, 128, 0.6),
+    0 0 40px rgba(74, 222, 128, 0.3),
+    inset 0 1px 3px rgba(255, 255, 255, 0.2);
+  animation: currentPlayerPulse 2s ease-in-out infinite;
+  position: relative;
+  z-index: 10;
+}
+
+.player-area.current-turn::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  right: -6px;
+  bottom: -6px;
+  border: 2px solid var(--primary-hover);
+  border-radius: calc(var(--radius-md) + 4px);
+  background: transparent;
+  animation: currentPlayerBorder 2s ease-in-out infinite;
+  z-index: -1;
+}
+
+.player-area.current-turn .player-info {
+  background: linear-gradient(135deg, var(--primary-hover), var(--secondary-light));
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(74, 222, 128, 0.4);
+  color: var(--text-primary);
+  font-weight: 700;
 }
 
 .player-top {
@@ -50,16 +95,22 @@
 
 .player-left {
   grid-area: left;
+  margin-right: 8px;
+}
+
+.player-left .player-row {
   transform: rotate(90deg);
   transform-origin: center;
-  margin-right: 8px;
 }
 
 .player-right {
   grid-area: right;
+  margin-left: 8px;
+}
+
+.player-right .player-row {
   transform: rotate(-90deg);
   transform-origin: center;
-  margin-left: 8px;
 }
 
 .player-bottom {
@@ -69,6 +120,10 @@
   border-color: var(--primary-color);
 }
 
+.player-bottom .player-row {
+  flex-direction: row-reverse;
+}
+
 .player-info {
   text-align: center;
   min-width: 80px;
@@ -76,6 +131,8 @@
   border-radius: var(--radius-sm);
   padding: 3px 6px;
   border: 1px solid var(--border-color);
+  flex-shrink: 0;
+  transition: all 0.3s ease;
 }
 
 .player-name {
@@ -131,7 +188,8 @@
   background: radial-gradient(circle, var(--primary-hover), var(--primary-color));
   border-color: var(--primary-hover);
   transform: scale(1.5);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.6);
+  animation: turnIndicatorGlow 1.5s ease-in-out infinite alternate;
 }
 
 /* Center Table Area - Proper Size for 932x430 */
@@ -352,6 +410,49 @@
   text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
+/* Current Turn Animations */
+@keyframes currentPlayerPulse {
+  0%, 100% {
+    box-shadow: 
+      0 0 20px rgba(74, 222, 128, 0.6),
+      0 0 40px rgba(74, 222, 128, 0.3),
+      inset 0 1px 3px rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 30px rgba(74, 222, 128, 0.8),
+      0 0 60px rgba(74, 222, 128, 0.5),
+      inset 0 1px 3px rgba(255, 255, 255, 0.3);
+  }
+}
+
+@keyframes currentPlayerBorder {
+  0%, 100% {
+    border-color: var(--primary-hover);
+    opacity: 0.7;
+  }
+  50% {
+    border-color: var(--primary-color);
+    opacity: 1;
+  }
+}
+
+/* Current Turn Indicator Enhancement */
+.player-area.current-turn .player-name::after {
+  content: ' 🎯';
+  font-size: 12px;
+  animation: bounce 1s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
 /* Portrait Mode */
 @media (orientation: portrait) {
   .game-table {
@@ -450,4 +551,31 @@
   .player-info {
     min-width: 120px;
   }
+}
+
+/* Hand Layout Styles */
+.opponent-hand,
+.player-hand {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  flex: 1;
+}
+
+.opponent-hand {
+  justify-content: flex-end;
+}
+
+.player-hand {
+  justify-content: flex-start;
+}
+
+.card-back-stack {
+  display: flex;
+  gap: -2px;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }

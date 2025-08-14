@@ -224,7 +224,20 @@ export class UIManager {
     updateTurnIndicators() {
         const state = this.gameState.getState();
         
-        // Clear all turn indicators
+        // Clear all turn indicators and player area highlighting
+        const playerAreas = [
+            document.getElementById('player-top'),
+            document.getElementById('player-left'),
+            document.getElementById('player-right'),
+            document.getElementById('player-bottom')
+        ];
+        
+        playerAreas.forEach(area => {
+            if (area) {
+                area.classList.remove('current-turn');
+            }
+        });
+        
         [this.elements.playerTopTurn, this.elements.playerLeftTurn,
          this.elements.playerRightTurn, this.elements.playerBottomTurn].forEach(indicator => {
             if (indicator) {
@@ -239,24 +252,34 @@ export class UIManager {
             const playerName = this.getPlayerNameById(state.currentTurnPlayer);
             const isMyTurn = state.currentTurnPlayer === (this.authManager?.getUserId() || 'human_player');
             
-            // Map position to correct element property name
-            let turnIndicator;
+            // Map position to correct elements
+            let turnIndicator, playerArea;
             switch (position) {
                 case 'Top':
                     turnIndicator = this.elements.playerTopTurn;
+                    playerArea = document.getElementById('player-top');
                     break;
                 case 'Left':
                     turnIndicator = this.elements.playerLeftTurn;
+                    playerArea = document.getElementById('player-left');
                     break;
                 case 'Right':
                     turnIndicator = this.elements.playerRightTurn;
+                    playerArea = document.getElementById('player-right');
                     break;
                 case 'Bottom':
                     turnIndicator = this.elements.playerBottomTurn;
+                    playerArea = document.getElementById('player-bottom');
                     break;
                 default:
                     console.warn(`[UIManager] Unknown position: ${position}`);
                     return;
+            }
+            
+            // Apply current turn highlighting
+            if (playerArea) {
+                playerArea.classList.add('current-turn');
+                console.log(`[UIManager] Applied current-turn class to ${position} player area`);
             }
             
             if (turnIndicator) {

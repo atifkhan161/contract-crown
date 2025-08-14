@@ -70,32 +70,30 @@
                 <section class="game-table">
                     <!-- Top Player (Opponent) -->
                     <div class="player-area player-top" id="player-top" data-position="top" style="grid-area: top;">
-                        <div class="player-info">
-                            <div class="player-name" id="player-top-name">Player 3</div>
-                            <div class="player-status">
-                                <span class="card-count" id="player-top-cards">8 cards</span>
-                                <span class="turn-indicator" id="player-top-turn"></span>
+                        <div class="player-status-indicator" id="player-top-status"></div>
+                        <div class="player-row">
+                            <div class="player-info">
+                                <div class="player-name" id="player-top-name">Player 3</div>
                             </div>
-                        </div>
-                        <div class="opponent-hand">
-                            <div class="card-back-stack" id="player-top-hand">
-                                <!-- Opponent cards (back view) will be rendered here -->
+                            <div class="opponent-hand">
+                                <div class="card-back-stack" id="player-top-hand">
+                                    <!-- Opponent cards (back view) will be rendered here -->
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Left Player (Opponent) -->
                     <div class="player-area player-left" id="player-left" data-position="left" style="grid-area: left;">
-                        <div class="player-info">
-                            <div class="player-name" id="player-left-name">Player 2</div>
-                            <div class="player-status">
-                                <span class="card-count" id="player-left-cards">8 cards</span>
-                                <span class="turn-indicator" id="player-left-turn"></span>
+                        <div class="player-status-indicator" id="player-left-status"></div>
+                        <div class="player-row">
+                            <div class="player-info">
+                                <div class="player-name" id="player-left-name">Player 2</div>
                             </div>
-                        </div>
-                        <div class="opponent-hand">
-                            <div class="card-back-stack" id="player-left-hand">
-                                <!-- Opponent cards (back view) will be rendered here -->
+                            <div class="opponent-hand">
+                                <div class="card-back-stack" id="player-left-hand">
+                                    <!-- Opponent cards (back view) will be rendered here -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -103,16 +101,15 @@
                     <!-- Right Player (Opponent) -->
                     <div class="player-area player-right" id="player-right" data-position="right"
                         style="grid-area: right;">
-                        <div class="player-info">
-                            <div class="player-name" id="player-right-name">Player 4</div>
-                            <div class="player-status">
-                                <span class="card-count" id="player-right-cards">8 cards</span>
-                                <span class="turn-indicator" id="player-right-turn"></span>
+                        <div class="player-status-indicator" id="player-right-status"></div>
+                        <div class="player-row">
+                            <div class="player-info">
+                                <div class="player-name" id="player-right-name">Player 4</div>
                             </div>
-                        </div>
-                        <div class="opponent-hand">
-                            <div class="card-back-stack" id="player-right-hand">
-                                <!-- Opponent cards (back view) will be rendered here -->
+                            <div class="opponent-hand">
+                                <div class="card-back-stack" id="player-right-hand">
+                                    <!-- Opponent cards (back view) will be rendered here -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -182,15 +179,14 @@
                     <!-- Bottom Player (Current User) -->
                     <div class="player-area player-bottom" id="player-bottom" data-position="bottom"
                         style="grid-area: bottom;">
-                        <div class="player-info">
-                            <div class="player-name" id="player-bottom-name">You</div>
-                            <div class="player-status">
-                                <span class="card-count" id="player-bottom-cards">8 cards</span>
-                                <span class="turn-indicator" id="player-bottom-turn"></span>
+                        <div class="player-status-indicator" id="player-bottom-status"></div>
+                        <div class="player-row">
+                            <div class="player-info">
+                                <div class="player-name" id="player-bottom-name">You</div>
                             </div>
-                        </div>
-                        <div class="player-hand" id="player-hand">
-                            <!-- Player's cards will be rendered here -->
+                            <div class="player-hand" id="player-hand">
+                                <!-- Player's cards will be rendered here -->
+                            </div>
                         </div>
                     </div>
                 </section>
