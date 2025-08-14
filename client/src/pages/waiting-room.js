@@ -22,6 +22,8 @@ class WaitingRoomManager {
         this.isHost = false;
         this.isReady = false;
         this.players = [];
+        this.teams = { A: [], B: [] };
+        this.bots = [];
 
         // Connection monitoring
         this.connectionHealthTimer = null;
@@ -53,8 +55,7 @@ class WaitingRoomManager {
             4: document.getElementById('player-slot-4')
         };
 
-        // Ready controls
-        this.elements.readyToggleBtn = document.getElementById('ready-toggle-btn');
+        // Ready controls (now in host section)
         this.elements.readyCount = document.getElementById('ready-count');
 
         // Host controls
@@ -87,8 +88,10 @@ class WaitingRoomManager {
         // Copy room code button
         this.elements.copyCodeBtn.addEventListener('click', () => this.handleCopyRoomCode());
 
-        // Ready toggle button
-        this.elements.readyToggleBtn.addEventListener('click', () => this.handleReadyToggle());
+        // Set up UI callbacks for new functionality
+        this.uiManager.setReadyToggleCallback((slotNumber) => this.handleReadyToggle(slotNumber));
+        this.uiManager.setTeamAssignmentCallback((playerId, team, slotId) => this.handleTeamAssignment(playerId, team, slotId));
+        this.uiManager.setAddBotsCallback(() => this.handleAddBots());
 
         // Start game button (host only)
         this.elements.startGameBtn.addEventListener('click', () => this.handleStartGame());
@@ -410,7 +413,25 @@ class WaitingRoomManager {
 
         this.socketManager.on('room-updated', (data) => {
             console.log('[WaitingRoom] Room updated:', data);
-            if (data.room) {
+
+            // Handle different types of room updates
+            if (data.type === 'bots-added' || data.type === 'bots-removed') {
+                console.log(`[WaitingRoom] Handling ${data.type} update`);
+
+                // Update players from the broadcast
+                if (data.players) {
+                    this.players = data.players;
+                    this.updatePlayersDisplay();
+                }
+
+                // Show message
+                if (data.message) {
+                    this.uiManager.showToast(data.message, 'info', { compact: true });
+                }
+
+                this.markSuccessfulUpdate();
+            } else if (data.room) {
+                // Handle regular room updates
                 this.roomData = data.room;
                 this.updateRoomDisplay();
                 this.markSuccessfulUpdate();
@@ -487,6 +508,8 @@ class WaitingRoomManager {
             this.handleBotsAdded(data);
         });
 
+        // Bot broadcasts are now handled through room-updated events
+
         this.socketManager.on('navigate-to-game', (data) => {
             this.handleNavigateToGame(data);
         });
@@ -501,15 +524,13 @@ class WaitingRoomManager {
             console.error('[WaitingRoom] Ready toggle error:', error);
             this.showError(error.message || 'Failed to update ready status');
 
-            // Re-enable ready button on error
-            this.updateReadyButton(true);
+            // Ready button error handling is now handled per-slot
         });
 
         this.socketManager.on('ready-status-confirmed', (data) => {
             console.log('[WaitingRoom] Ready status confirmed:', data);
 
-            // Re-enable ready button after successful update
-            this.updateReadyButton(true);
+            // Ready button success handling is now handled per-slot
 
             // Show success message if database sync failed but WebSocket succeeded
             if (!data.dbSynced) {
@@ -636,17 +657,18 @@ class WaitingRoomManager {
 
     setInteractiveElementsEnabled(enabled) {
         // Disable/enable buttons that require real-time connection
-        const readyButton = this.elements.readyToggleBtn;
         const startButton = this.elements.startGameBtn;
 
-        if (readyButton) {
-            readyButton.disabled = !enabled;
+        // Disable ready buttons in player slots
+        const readyButtons = document.querySelectorAll('.ready-btn');
+        readyButtons.forEach(btn => {
+            btn.disabled = !enabled;
             if (!enabled) {
-                readyButton.title = 'Connection required for ready status';
+                btn.title = 'Connection required for ready status';
             } else {
-                readyButton.title = '';
+                btn.title = '';
             }
-        }
+        });
 
         if (startButton && this.isHost) {
             startButton.disabled = !enabled;
@@ -677,18 +699,27 @@ class WaitingRoomManager {
         }));
 
         // Update UI with player data
-        this.uiManager.updatePlayerSlots(playersWithHostInfo);
+        const currentUserId = this.currentUser?.user_id || this.currentUser?.id;
+        this.uiManager.updatePlayerSlots(playersWithHostInfo, currentUserId);
 
         // Calculate ready count based on connected players
         const connectedPlayers = this.players.filter(player => player.isConnected !== false);
         const readyPlayers = connectedPlayers.filter(player => player.isReady);
+        const humanPlayers = connectedPlayers.filter(player => !player.isBot);
         const readyCount = readyPlayers.length;
 
         // Update ready status display with more detailed information
-        this.uiManager.updateReadyStatus(readyCount, connectedPlayers.length);
+        this.uiManager.updateReadyStatus(readyCount, connectedPlayers.length, humanPlayers.length);
+
+        // Update team display
+        this.updateTeamAssignments();
+
+        // Update bot count
+        const botCount = this.players.filter(player => player.isBot).length;
+        this.uiManager.updateBotCount(botCount);
 
         // Check if current user is in the players list and update ready button
-        const currentUserId = this.currentUser.user_id || this.currentUser.id;
+        // currentUserId already declared above
         const currentPlayer = this.players.find(player =>
             player.id === currentUserId || player.user_id === currentUserId
         );
@@ -704,20 +735,13 @@ class WaitingRoomManager {
         if (currentPlayer) {
             this.isReady = currentPlayer.isReady || false;
 
-            // Enable ready button only if player is connected and room is waiting
-            const canToggleReady = currentPlayer.isConnected !== false &&
-                (!this.roomData || this.roomData.status === 'waiting');
-
-            console.log('[WaitingRoom] Ready button state:', {
+            console.log('[WaitingRoom] Current player found:', {
+                isReady: this.isReady,
                 isConnected: currentPlayer.isConnected,
-                roomStatus: this.roomData?.status,
-                canToggleReady
+                roomStatus: this.roomData?.status
             });
-
-            this.updateReadyButton(canToggleReady);
         } else {
-            console.warn('[WaitingRoom] Current player not found in players list - ready button will be disabled');
-            this.updateReadyButton(false);
+            console.warn('[WaitingRoom] Current player not found in players list');
         }
 
         // Update start game button state for host with enhanced logic
@@ -744,77 +768,20 @@ class WaitingRoomManager {
         if (this.isHost) {
             console.log('[WaitingRoom] Showing host controls');
             const canStartGame = this.calculateGameStartEligibility();
-            this.uiManager.showHostControls(true, canStartGame.canStart, this.roomData?.status || 'waiting');
+            this.uiManager.showHostControls(true, canStartGame, this.roomData?.status || 'waiting');
 
-            // Update host info text with more detailed status
-            this.updateHostInfoText(canStartGame);
+            // Host info is now handled in the UI components
         } else {
             console.log('[WaitingRoom] Not host, hiding host controls');
             this.uiManager.showHostControls(false, false, this.roomData?.status || 'waiting');
         }
     }
 
-    /**
-     * Calculate if the game can be started based on current room state
-     */
-    calculateGameStartEligibility() {
-        const connectedPlayers = this.players.filter(player => player.isConnected !== false);
-        const readyPlayers = connectedPlayers.filter(player => player.isReady);
 
-        let canStart = false;
-        let reason = '';
 
-        // Check room status
-        if (this.roomData && this.roomData.status !== 'waiting') {
-            reason = 'Room is not in waiting status';
-        }
-        // Check minimum players
-        else if (connectedPlayers.length < 2) {
-            reason = 'Need at least 2 connected players';
-        }
-        // Check if all connected players are ready
-        else if (readyPlayers.length !== connectedPlayers.length) {
-            reason = `${readyPlayers.length}/${connectedPlayers.length} players ready`;
-        }
-        // All conditions met
-        else {
-            canStart = true;
-            const botsNeeded = 4 - connectedPlayers.length;
-            if (botsNeeded > 0) {
-                reason = `Ready to start with ${connectedPlayers.length} players + ${botsNeeded} bots!`;
-            } else {
-                reason = `Ready to start with ${connectedPlayers.length} players!`;
-            }
-        }
 
-        return {
-            canStart,
-            reason,
-            connectedCount: connectedPlayers.length,
-            readyCount: readyPlayers.length,
-            totalCount: this.players.length
-        };
-    }
 
-    /**
-     * Update host info text with current game start status
-     */
-    updateHostInfoText(gameStartInfo) {
-        const hostInfoElement = document.querySelector('.host-info .host-text');
-        if (hostInfoElement) {
-            if (gameStartInfo.canStart) {
-                hostInfoElement.textContent = `${gameStartInfo.reason} Click "Start Game" to begin.`;
-                hostInfoElement.className = 'host-text ready';
-            } else {
-                hostInfoElement.textContent = `Waiting: ${gameStartInfo.reason}`;
-                hostInfoElement.className = 'host-text waiting';
-            }
-        }
-    }
 
-    updateReadyButton(enabled = true) {
-        this.uiManager.updateReadyButton(this.isReady, enabled);
-    }
 
     // Event Handlers
     async handleLeaveRoom() {
@@ -964,8 +931,10 @@ class WaitingRoomManager {
         await this.uiManager.copyRoomCode();
     }
 
-    async handleReadyToggle() {
+    async handleReadyToggle(slotNumber) {
         try {
+            console.log('[WaitingRoom] Ready toggle requested for slot:', slotNumber);
+
             // Validate that user can change ready status
             const currentUserId = this.currentUser.user_id || this.currentUser.id;
             const currentPlayer = this.players.find(player =>
@@ -992,28 +961,49 @@ class WaitingRoomManager {
 
             const newReadyStatus = !this.isReady;
 
-            // Disable ready button temporarily to prevent double-clicks
-            this.uiManager.updateReadyButton(this.isReady, false);
+            // Update the ready button state immediately for better UX
+            const readyBtn = document.querySelector(`[data-slot="${slotNumber}"] .ready-btn`);
+            if (readyBtn) {
+                readyBtn.disabled = true; // Disable during request
+                readyBtn.classList.toggle('ready', newReadyStatus);
+                const btnText = readyBtn.querySelector('.ready-btn-text');
+                if (btnText) {
+                    btnText.textContent = newReadyStatus ? 'Ready' : 'Ready';
+                }
+            }
 
             // Use socket manager if available
             if (this.socketManager && this.socketManager.isReady()) {
                 this.socketManager.toggleReady(newReadyStatus);
                 console.log('[WaitingRoom] Ready status toggle sent via socket:', newReadyStatus);
 
-                // User feedback will be shown when the socket event is received
-                // this.uiManager.showPlayerReadyToast(this.currentUser.username, newReadyStatus);
+                // Re-enable button after a short delay
+                setTimeout(() => {
+                    if (readyBtn) readyBtn.disabled = false;
+                }, 500);
             } else {
                 // Fallback to HTTP API if socket not available
                 console.warn('[WaitingRoom] Socket not available, using HTTP fallback');
                 await this.toggleReadyStatusViaAPI(newReadyStatus);
+
+                // Re-enable button
+                if (readyBtn) readyBtn.disabled = false;
             }
 
         } catch (error) {
             console.error('[WaitingRoom] Error toggling ready status:', error);
             this.showError('Failed to update ready status. Please try again.');
 
-            // Re-enable ready button on error
-            this.uiManager.updateReadyButton(this.isReady, true);
+            // Re-enable button and revert state on error
+            const readyBtn = document.querySelector(`[data-slot="${slotNumber}"] .ready-btn`);
+            if (readyBtn) {
+                readyBtn.disabled = false;
+                readyBtn.classList.toggle('ready', this.isReady); // Revert to original state
+                const btnText = readyBtn.querySelector('.ready-btn-text');
+                if (btnText) {
+                    btnText.textContent = this.isReady ? 'Ready' : 'Ready';
+                }
+            }
         }
     }
 
@@ -1041,7 +1031,6 @@ class WaitingRoomManager {
 
             // Update local state
             this.isReady = newReadyStatus;
-            this.updateReadyButton();
 
             // Update the current user's ready status in the players array
             const currentUserId = this.currentUser.user_id || this.currentUser.id;
@@ -1316,7 +1305,7 @@ class WaitingRoomManager {
 
             // Show/hide host controls based on new status
             const gameStartInfo = this.calculateGameStartEligibility();
-            this.uiManager.showHostControls(this.isHost, gameStartInfo.canStart, this.roomData?.status || 'waiting');
+            this.uiManager.showHostControls(this.isHost, gameStartInfo, this.roomData?.status || 'waiting');
 
             // Add appropriate message
             if (data.wasHost) {
@@ -1345,7 +1334,7 @@ class WaitingRoomManager {
         // Update host info if current user is host
         if (this.isHost) {
             const gameStartInfo = this.calculateGameStartEligibility();
-            this.updateHostInfoText(gameStartInfo);
+            // Host info text is now handled in the UI
         }
     }
 
@@ -1365,7 +1354,7 @@ class WaitingRoomManager {
 
         // Show/hide host controls
         const gameStartInfo = this.calculateGameStartEligibility();
-        this.uiManager.showHostControls(this.isHost, gameStartInfo.canStart, this.roomData?.status || 'waiting');
+        this.uiManager.showHostControls(this.isHost, gameStartInfo, this.roomData?.status || 'waiting');
 
         // Add appropriate message
         if (this.isHost && !wasHost) {
@@ -1393,7 +1382,6 @@ class WaitingRoomManager {
             const currentUserId = this.currentUser.user_id || this.currentUser.id;
             if (playerId === currentUserId) {
                 this.isReady = isReady;
-                this.updateReadyButton();
             }
 
             this.updatePlayersDisplay();
@@ -1476,6 +1464,8 @@ class WaitingRoomManager {
             }
         }
     }
+
+
 
     handleNavigateToGame(data) {
         console.log('[WaitingRoom] Navigation command received:', data);
@@ -1654,6 +1644,258 @@ class WaitingRoomManager {
 
     showMessage(message) {
         this.uiManager.showToast(message, 'system', { compact: true });
+    }
+
+    // Team Management Methods
+
+    /**
+     * Handle team assignment for a player
+     * @param {string} playerId - Player ID
+     * @param {string} team - Team (A or B)
+     * @param {string} slotId - Team slot ID
+     */
+    handleTeamAssignment(playerId, team, slotId) {
+        console.log('[WaitingRoom] Team assignment:', { playerId, team, slotId });
+
+        // Find the player
+        const player = this.players.find(p => (p.id === playerId || p.user_id === playerId));
+        if (!player) {
+            console.warn('[WaitingRoom] Player not found for team assignment:', playerId);
+            return;
+        }
+
+        // Update player's team assignment
+        player.teamAssignment = team;
+
+        // Update local teams data
+        this.updateTeamAssignments();
+
+        // Send team assignment to server if socket is available
+        if (this.socketManager) {
+            this.socketManager.emit('assign-team', {
+                playerId: playerId,
+                team: team,
+                slotId: slotId
+            });
+        }
+
+        this.uiManager.showToast(`${player.username} assigned to Team ${team}`, 'success', { compact: true });
+    }
+
+    /**
+     * Handle adding/removing bots
+     */
+    handleAddBots() {
+        const currentBots = this.players.filter(player => player.isBot);
+        const humanPlayers = this.players.filter(player => !player.isBot);
+        const emptySlots = 4 - this.players.length;
+
+        if (currentBots.length > 0) {
+            // Remove bots
+            this.removeBots();
+        } else {
+            // Add bots to fill empty slots
+            this.addBots(emptySlots);
+        }
+    }
+
+    /**
+     * Add bots to fill empty slots
+     * @param {number} count - Number of bots to add
+     */
+    addBots(count) {
+        if (count <= 0) return;
+
+        console.log('[WaitingRoom] Adding', count, 'bots');
+
+        // Show immediate feedback
+        this.uiManager.showToast(`Adding ${count} bot${count > 1 ? 's' : ''}...`, 'system', { compact: true });
+
+        // Only the host should add bots and broadcast
+        if (this.isHost) {
+            // Add bots locally for immediate feedback
+            this.addBotsLocally(count);
+
+            // Broadcast to other clients in the room
+            if (this.socketManager && this.socketManager.isReady()) {
+                console.log('[WaitingRoom] Socket manager ready, broadcasting bot addition to other clients');
+                console.log('[WaitingRoom] Socket manager state:', {
+                    isReady: this.socketManager.isReady(),
+                    isConnected: this.socketManager.isConnected,
+                    isJoined: this.socketManager.isJoined
+                });
+
+                // Create bot data to send to other clients (server will create proper bots)
+                const botData = [];
+                const botNames = ['Bot Alpha', 'Bot Beta', 'Bot Gamma', 'Bot Delta'];
+                
+                for (let i = 0; i < count; i++) {
+                    const botId = `bot_${Date.now()}_${i}`;
+                    botData.push({
+                        userId: botId,
+                        username: botNames[i] || `Bot ${i + 1}`,
+                        isReady: true,
+                        isConnected: true,
+                        teamAssignment: null,
+                        isBot: true
+                    });
+                }
+
+                const eventData = {
+                    roomId: this.roomId,
+                    type: 'bots-added',
+                    bots: botData,
+                    players: this.players, // Send updated player list
+                    message: `Host added ${count} bot${count > 1 ? 's' : ''}`
+                };
+                
+                console.log('[WaitingRoom] Emitting room-update event:', eventData);
+
+                // Send room update to broadcast bot addition
+                this.socketManager.emit('room-update', eventData);
+                
+                console.log('[WaitingRoom] room-update event emitted successfully');
+            }
+        } else {
+            // Non-host users shouldn't be able to add bots
+            this.uiManager.showToast('Only the host can add bots', 'warning', { compact: true });
+        }
+    }
+
+    /**
+     * Add bots locally (fallback method)
+     * @param {number} count - Number of bots to add
+     */
+    addBotsLocally(count) {
+        console.log('[WaitingRoom] Adding bots locally:', count);
+
+        const botNames = ['Bot Alpha', 'Bot Beta', 'Bot Gamma', 'Bot Delta'];
+        
+        for (let i = 0; i < count; i++) {
+            const botId = `bot_${Date.now()}_${i}`;
+            const bot = {
+                id: botId,
+                user_id: botId,
+                username: botNames[i] || `Bot ${i + 1}`,
+                isBot: true,
+                isReady: true,
+                isConnected: true,
+                teamAssignment: null
+            };
+            this.players.push(bot);
+        }
+
+        this.updatePlayersDisplay();
+        this.uiManager.showToast(`Added ${count} bot${count > 1 ? 's' : ''} locally`, 'success', { compact: true });
+    }
+
+    /**
+     * Remove all bots
+     */
+    removeBots() {
+        const botCount = this.players.filter(player => player.isBot).length;
+
+        if (botCount === 0) {
+            this.uiManager.showToast('No bots to remove', 'info', { compact: true });
+            return;
+        }
+
+        console.log('[WaitingRoom] Removing', botCount, 'bots');
+
+        // Show immediate feedback for bot removal
+        this.uiManager.showToast(`Removing ${botCount} bot${botCount > 1 ? 's' : ''}...`, 'system', { compact: true });
+
+        // Only the host should remove bots and broadcast
+        if (this.isHost) {
+            // Remove bots locally for immediate feedback
+            this.removeBotsLocally();
+
+            // Broadcast to other clients in the room
+            if (this.socketManager && this.socketManager.isReady()) {
+                console.log('[WaitingRoom] Broadcasting bot removal to other clients');
+
+                // Send room update to broadcast bot removal
+                this.socketManager.emit('room-update', {
+                    roomId: this.roomId,
+                    type: 'bots-removed',
+                    players: this.players, // Send updated player list
+                    message: `Host removed ${botCount} bot${botCount > 1 ? 's' : ''}`
+                });
+            }
+        } else {
+            // Non-host users shouldn't be able to remove bots
+            this.uiManager.showToast('Only the host can remove bots', 'warning', { compact: true });
+        }
+    }
+
+    /**
+     * Remove bots locally (fallback method)
+     */
+    removeBotsLocally() {
+        const botCount = this.players.filter(player => player.isBot).length;
+        console.log('[WaitingRoom] Removing bots locally:', botCount);
+
+        this.players = this.players.filter(player => !player.isBot);
+        this.updatePlayersDisplay();
+        this.uiManager.showToast(`Removed ${botCount} bot${botCount > 1 ? 's' : ''} locally`, 'success', { compact: true });
+    }
+
+    /**
+     * Update team assignments based on current players
+     */
+    updateTeamAssignments() {
+        const teams = { A: [], B: [] };
+
+        // Separate humans and bots for better team assignment
+        const humanPlayers = this.players.filter(player => !player.isBot);
+        const botPlayers = this.players.filter(player => player.isBot);
+
+        // Auto-assign players to teams if not already assigned
+        this.players.forEach((player, index) => {
+            if (!player.teamAssignment) {
+                if (player.isBot) {
+                    // Assign bots to fill empty slots, balancing teams
+                    player.teamAssignment = teams.A.length <= teams.B.length ? 'A' : 'B';
+                } else {
+                    // For humans: alternate between teams to ensure they're on different teams
+                    const humanIndex = humanPlayers.indexOf(player);
+                    player.teamAssignment = humanIndex % 2 === 0 ? 'A' : 'B';
+                }
+            }
+
+            // Add player to appropriate team if there's space
+            if (player.teamAssignment === 'A' && teams.A.length < 2) {
+                teams.A.push(player);
+            } else if (player.teamAssignment === 'B' && teams.B.length < 2) {
+                teams.B.push(player);
+            } else if (teams.A.length < 2) {
+                // If preferred team is full, try the other team
+                player.teamAssignment = 'A';
+                teams.A.push(player);
+            } else if (teams.B.length < 2) {
+                player.teamAssignment = 'B';
+                teams.B.push(player);
+            }
+        });
+
+        this.teams = teams;
+        this.uiManager.updateTeamDisplay(teams);
+    }
+
+    /**
+     * Calculate if game can start with current setup
+     */
+    calculateGameStartEligibility() {
+        const humanPlayers = this.players.filter(player => !player.isBot);
+        const readyPlayers = this.players.filter(player => player.isReady);
+        const totalPlayers = this.players.length;
+
+        // Need at least 2 human players and all players ready
+        const hasMinimumHumans = humanPlayers.length >= 2;
+        const allPlayersReady = totalPlayers >= 2 && readyPlayers.length === totalPlayers;
+        const roomIsWaiting = !this.roomData || this.roomData.status === 'waiting';
+
+        return hasMinimumHumans && allPlayersReady && roomIsWaiting;
     }
 }
 

@@ -685,12 +685,50 @@ class SocketManager {
             console.log(`[WebSocket] Removed GamePlayer record for user ${gamePlayerToRemove.user_id} no longer in room`);
           }
           
-          let seatPosition = existingGamePlayers.length + 1;
+          // Fix any duplicate seat positions in existing GamePlayers
+          const seatPositionCounts = {};
+          existingGamePlayers.forEach(gp => {
+            seatPositionCounts[gp.seat_position] = (seatPositionCounts[gp.seat_position] || 0) + 1;
+          });
+          
+          // If there are duplicates, reassign seat positions
+          const hasDuplicates = Object.values(seatPositionCounts).some(count => count > 1);
+          if (hasDuplicates) {
+            console.log(`[WebSocket] Found duplicate seat positions for game ${gameId}, reassigning...`);
+            let reassignSeat = 1;
+            for (const gamePlayer of existingGamePlayers) {
+              await gamePlayerModel.updateOne(
+                { game_player_id: gamePlayer.game_player_id },
+                { seat_position: reassignSeat }
+              );
+              console.log(`[WebSocket] Reassigned seat ${reassignSeat} to player ${gamePlayer.user_id}`);
+              reassignSeat++;
+            }
+            // Refresh the existing game players after reassignment
+            existingGamePlayers = await gamePlayerModel.find({ game_id: gameId });
+          }
+          
+          // Get existing seat positions to avoid duplicates
+          const existingSeatPositions = new Set(existingGamePlayers.map(gp => gp.seat_position));
+          let nextAvailableSeat = 1;
+          
+          // Find the next available seat position
+          const findNextSeat = () => {
+            while (existingSeatPositions.has(nextAvailableSeat)) {
+              nextAvailableSeat++;
+            }
+            return nextAvailableSeat;
+          };
+          
           for (const [userId, player] of room.players.entries()) {
             // Create GamePlayer record for all players (connected or not) if it doesn't exist
             if (!existingUserIds.has(userId)) {
               // Import uuidv4 for generating proper game_player_id
               const { v4: uuidv4 } = await import('uuid');
+              
+              const seatPosition = findNextSeat();
+              existingSeatPositions.add(seatPosition);
+              nextAvailableSeat = seatPosition + 1;
               
               await gamePlayerModel.create({
                 game_player_id: uuidv4(), // Generate proper UUID
@@ -706,7 +744,6 @@ class SocketManager {
               });
               
               console.log(`[WebSocket] Created GamePlayer record for ${player.username} (${userId}) at seat ${seatPosition}`);
-              seatPosition++;
             } else {
               console.log(`[WebSocket] GamePlayer record already exists for ${player.username} (${userId})`);
             }

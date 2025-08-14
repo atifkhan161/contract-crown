@@ -35,10 +35,19 @@ export class WaitingRoomUI {
             4: document.getElementById('player-slot-4')
         };
         
-        // Ready status elements
-        this.elements.readyToggleBtn = document.getElementById('ready-toggle-btn');
+        // Ready status elements (now in host controls)
         this.elements.readyCount = document.getElementById('ready-count');
+        this.elements.totalPlayers = document.getElementById('total-players');
         this.elements.readyStatus = document.querySelector('.ready-status');
+        this.elements.gameRequirements = document.getElementById('game-requirements');
+        
+        // Team management elements
+        this.elements.teamASlots = document.getElementById('team-a-slots');
+        this.elements.teamBSlots = document.getElementById('team-b-slots');
+        this.elements.teamACount = document.getElementById('team-a-count');
+        this.elements.teamBCount = document.getElementById('team-b-count');
+        this.elements.addBotsBtn = document.getElementById('add-bots-btn');
+        this.elements.botCountDisplay = document.getElementById('bot-count-display');
         
         // Host control elements
         this.elements.hostControls = document.getElementById('host-controls');
@@ -120,7 +129,7 @@ export class WaitingRoomUI {
     initializeAccessibility() {
         // Set up ARIA labels and keyboard navigation
         this.elements.copyCodeBtn?.setAttribute('aria-label', 'Copy room code to clipboard');
-        this.elements.readyToggleBtn?.setAttribute('aria-label', 'Toggle ready status');
+
         this.elements.startGameBtn?.setAttribute('aria-label', 'Start game for all players');
         
         // Add screen reader only content
@@ -140,7 +149,6 @@ export class WaitingRoomUI {
         // Handle Enter and Space key for buttons
         const buttons = [
             this.elements.copyCodeBtn, 
-            this.elements.readyToggleBtn, 
             this.elements.startGameBtn,
             document.getElementById('leave-room-btn')
         ];
@@ -211,7 +219,9 @@ export class WaitingRoomUI {
             case 'R':
                 if (!e.ctrlKey && !e.metaKey) {
                     e.preventDefault();
-                    this.elements.readyToggleBtn?.click();
+                    // Focus on current player's ready button if available
+                    const currentPlayerReadyBtn = document.querySelector('.player-slot.occupied .ready-btn:not(.hidden)');
+                    currentPlayerReadyBtn?.click();
                 }
                 break;
             case 's':
@@ -273,8 +283,8 @@ export class WaitingRoomUI {
             return;
         }
 
-        // Focus main ready button as default action
-        this.elements.readyToggleBtn?.focus();
+        // Focus start game button as default action
+        this.elements.startGameBtn?.focus();
     }
 
     /**
@@ -492,13 +502,23 @@ export class WaitingRoomUI {
                 }
             });
         }
+
+        // Set up drag and drop for team management
+        this.setupDragAndDrop();
+
+        // Set up ready button handlers
+        this.setupReadyButtonHandlers();
+
+        // Set up bot management
+        this.setupBotManagement();
     }
 
     /**
      * Update player slots with current room data
      * @param {Array} players - Array of player objects
+     * @param {string} currentUserId - Current user's ID
      */
-    updatePlayerSlots(players) {
+    updatePlayerSlots(players, currentUserId = null) {
         // Reset all slots first
         for (let i = 1; i <= 4; i++) {
             const slot = this.elements.playerSlots[i];
@@ -518,7 +538,7 @@ export class WaitingRoomUI {
             const slot = this.elements.playerSlots[slotNumber];
             
             if (slot && slotNumber <= 4) {
-                this.populatePlayerSlot(slot, player);
+                this.populatePlayerSlot(slot, player, currentUserId);
             }
         });
 
@@ -534,27 +554,42 @@ export class WaitingRoomUI {
      * @param {number} position - Slot position number
      */
     resetPlayerSlot(slot, position) {
-        slot.classList.remove('occupied', 'ready');
+        if (!slot) return;
+        
+        slot.classList.remove('occupied', 'ready', 'bot-player');
+        slot.setAttribute('draggable', 'false');
+        slot.removeAttribute('data-player-id');
         
         const nameElement = slot.querySelector('.player-name');
         const readyText = slot.querySelector('.ready-text');
         const readyIndicator = slot.querySelector('.ready-indicator');
         const hostBadge = slot.querySelector('.host-badge');
         const avatarPlaceholder = slot.querySelector('.avatar-placeholder');
+        const readyBtn = slot.querySelector('.ready-btn');
         
         if (nameElement) nameElement.textContent = 'Waiting for player...';
         if (readyText) readyText.textContent = 'Not Ready';
         if (readyIndicator) readyIndicator.style.background = '';
         if (hostBadge) hostBadge.classList.add('hidden');
-        if (avatarPlaceholder) avatarPlaceholder.textContent = position;
+        if (avatarPlaceholder) {
+            avatarPlaceholder.textContent = position;
+            avatarPlaceholder.style.fontSize = '';
+        }
+        if (readyBtn) {
+            readyBtn.classList.add('hidden');
+            readyBtn.classList.remove('ready');
+        }
     }
 
     /**
      * Populate a player slot with player data
      * @param {HTMLElement} slot - The slot element
      * @param {Object} player - Player data object
+     * @param {string} currentUserId - Current user's ID
      */
-    populatePlayerSlot(slot, player) {
+    populatePlayerSlot(slot, player, currentUserId = null) {
+        if (!slot || !player) return;
+        
         slot.classList.add('occupied');
         
         if (player.isReady) {
@@ -568,10 +603,17 @@ export class WaitingRoomUI {
             slot.classList.remove('bot-player');
         }
 
+        // Make slot draggable for team assignment
+        if (!player.isBot) {
+            slot.setAttribute('draggable', 'true');
+            slot.dataset.playerId = player.id || player.user_id;
+        }
+
         const nameElement = slot.querySelector('.player-name');
         const readyText = slot.querySelector('.ready-text');
         const hostBadge = slot.querySelector('.host-badge');
         const avatarPlaceholder = slot.querySelector('.avatar-placeholder');
+        const readyBtn = slot.querySelector('.ready-btn');
         
         // Display bot name with bot indicator
         const displayName = player.isBot ? `🤖 ${player.username}` : (player.username || 'Unknown Player');
@@ -594,27 +636,46 @@ export class WaitingRoomUI {
         if (player.isHost && hostBadge) {
             hostBadge.classList.remove('hidden');
         }
+
+        // Handle ready button - only show for current user
+        if (readyBtn && !player.isBot) {
+            const isCurrentUser = currentUserId && (player.id === currentUserId || player.user_id === currentUserId);
+            
+            if (isCurrentUser) {
+                readyBtn.classList.remove('hidden');
+                readyBtn.classList.toggle('ready', player.isReady);
+                const btnText = readyBtn.querySelector('.ready-btn-text');
+                if (btnText) {
+                    btnText.textContent = player.isReady ? 'Ready' : 'Ready';
+                }
+            } else {
+                readyBtn.classList.add('hidden');
+            }
+        }
     }
 
     /**
      * Update ready status display
      * @param {number} readyCount - Number of ready players
      * @param {number} totalCount - Total number of connected players
+     * @param {number} humanCount - Number of human players
      */
-    updateReadyStatus(readyCount, totalCount) {
+    updateReadyStatus(readyCount, totalCount, humanCount = 0) {
         if (this.elements.readyCount) {
             this.elements.readyCount.textContent = readyCount;
+        }
+
+        if (this.elements.totalPlayers) {
+            this.elements.totalPlayers.textContent = totalCount;
         }
 
         // Update ready status text with enhanced information
         const readyStatusElement = this.elements.readyStatus;
         if (readyStatusElement) {
-            let statusText = `${readyCount} of ${totalCount} players ready`;
             let statusClass = 'ready-status';
 
             // Add visual feedback based on ready state
             if (readyCount === totalCount && totalCount >= 2) {
-                statusText += ' ✓';
                 statusClass += ' all-ready';
             } else if (readyCount > 0) {
                 statusClass += ' some-ready';
@@ -622,8 +683,22 @@ export class WaitingRoomUI {
                 statusClass += ' none-ready';
             }
 
-            readyStatusElement.textContent = statusText;
             readyStatusElement.className = statusClass;
+        }
+
+        // Update game requirements
+        const requirementsElement = this.elements.gameRequirements;
+        if (requirementsElement) {
+            const requirementText = requirementsElement.querySelector('.requirement-text');
+            if (requirementText) {
+                if (humanCount >= 2) {
+                    requirementText.textContent = `✓ ${humanCount} human players ready to start`;
+                    requirementText.className = 'requirement-text met';
+                } else {
+                    requirementText.textContent = `Need at least 2 human players to start (${humanCount}/2)`;
+                    requirementText.className = 'requirement-text not-met';
+                }
+            }
         }
     }
 
@@ -795,6 +870,203 @@ export class WaitingRoomUI {
     }
 
     /**
+     * Set up drag and drop functionality for team management
+     */
+    setupDragAndDrop() {
+        // Set up drag events for player slots
+        Object.values(this.elements.playerSlots).forEach(slot => {
+            slot.addEventListener('dragstart', (e) => {
+                if (slot.classList.contains('occupied') && slot.getAttribute('draggable') === 'true') {
+                    e.dataTransfer.setData('text/plain', slot.dataset.playerId);
+                    e.dataTransfer.effectAllowed = 'move';
+                    slot.classList.add('dragging');
+                }
+            });
+
+            slot.addEventListener('dragend', (e) => {
+                slot.classList.remove('dragging');
+            });
+        });
+
+        // Set up drop events for team slots
+        const teamSlots = document.querySelectorAll('.team-slot');
+        teamSlots.forEach(slot => {
+            slot.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                slot.classList.add('drag-over');
+            });
+
+            slot.addEventListener('dragleave', (e) => {
+                slot.classList.remove('drag-over');
+            });
+
+            slot.addEventListener('drop', (e) => {
+                e.preventDefault();
+                slot.classList.remove('drag-over');
+                
+                const playerId = e.dataTransfer.getData('text/plain');
+                const team = slot.closest('.team-slots').dataset.team;
+                const slotId = slot.dataset.slot;
+                
+                if (playerId && team) {
+                    this.assignPlayerToTeam(playerId, team, slotId);
+                }
+            });
+        });
+    }
+
+    /**
+     * Set up ready button handlers for player slots
+     */
+    setupReadyButtonHandlers() {
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('ready-btn') || e.target.closest('.ready-btn')) {
+                const readyBtn = e.target.classList.contains('ready-btn') ? e.target : e.target.closest('.ready-btn');
+                const slotNumber = readyBtn.dataset.slot;
+                
+                if (slotNumber && this.onReadyToggle) {
+                    this.onReadyToggle(slotNumber);
+                }
+            }
+        });
+    }
+
+    /**
+     * Set up bot management functionality
+     */
+    setupBotManagement() {
+        if (this.elements.addBotsBtn) {
+            this.elements.addBotsBtn.addEventListener('click', () => {
+                if (this.onAddBots) {
+                    this.onAddBots();
+                }
+            });
+        }
+    }
+
+    /**
+     * Assign player to team
+     * @param {string} playerId - Player ID
+     * @param {string} team - Team (A or B)
+     * @param {string} slotId - Team slot ID
+     */
+    assignPlayerToTeam(playerId, team, slotId) {
+        if (this.onTeamAssignment) {
+            this.onTeamAssignment(playerId, team, slotId);
+        }
+    }
+
+    /**
+     * Update team displays
+     * @param {Object} teams - Team assignments
+     */
+    updateTeamDisplay(teams) {
+        // Clear team slots
+        const teamASlots = document.querySelectorAll('#team-a-slots .team-slot');
+        const teamBSlots = document.querySelectorAll('#team-b-slots .team-slot');
+        
+        [...teamASlots, ...teamBSlots].forEach(slot => {
+            slot.classList.remove('occupied');
+            slot.innerHTML = '<div class="slot-placeholder">Drop player here</div>';
+        });
+
+        // Populate team A
+        let teamACount = 0;
+        if (teams.A) {
+            teams.A.forEach((player, index) => {
+                const slot = teamASlots[index];
+                if (slot && player) {
+                    this.populateTeamSlot(slot, player);
+                    teamACount++;
+                }
+            });
+        }
+
+        // Populate team B
+        let teamBCount = 0;
+        if (teams.B) {
+            teams.B.forEach((player, index) => {
+                const slot = teamBSlots[index];
+                if (slot && player) {
+                    this.populateTeamSlot(slot, player);
+                    teamBCount++;
+                }
+            });
+        }
+
+        // Update team counts
+        if (this.elements.teamACount) {
+            this.elements.teamACount.textContent = `${teamACount}/2`;
+        }
+        if (this.elements.teamBCount) {
+            this.elements.teamBCount.textContent = `${teamBCount}/2`;
+        }
+    }
+
+    /**
+     * Populate a team slot with player data
+     * @param {HTMLElement} slot - Team slot element
+     * @param {Object} player - Player data
+     */
+    populateTeamSlot(slot, player) {
+        if (!slot || !player) return;
+        
+        slot.classList.add('occupied');
+        
+        const displayName = player.isBot ? `🤖 ${player.username}` : player.username;
+        const readyStatus = player.isReady ? '✓' : '○';
+        
+        slot.innerHTML = `
+            <div class="team-player-info">
+                <div class="team-player-name">${displayName}</div>
+                <div class="team-player-status">${readyStatus}</div>
+            </div>
+        `;
+    }
+
+    /**
+     * Update bot count display
+     * @param {number} botCount - Number of bots
+     */
+    updateBotCount(botCount) {
+        if (this.elements.botCountDisplay) {
+            this.elements.botCountDisplay.textContent = `(${botCount})`;
+        }
+        
+        if (this.elements.addBotsBtn) {
+            const btnText = this.elements.addBotsBtn.querySelector('.btn-text');
+            if (btnText) {
+                btnText.textContent = botCount > 0 ? 'Remove Bots' : 'Add Bots';
+            }
+        }
+    }
+
+    /**
+     * Set callback for ready toggle
+     * @param {Function} callback - Ready toggle callback
+     */
+    setReadyToggleCallback(callback) {
+        this.onReadyToggle = callback;
+    }
+
+    /**
+     * Set callback for team assignment
+     * @param {Function} callback - Team assignment callback
+     */
+    setTeamAssignmentCallback(callback) {
+        this.onTeamAssignment = callback;
+    }
+
+    /**
+     * Set callback for adding bots
+     * @param {Function} callback - Add bots callback
+     */
+    setAddBotsCallback(callback) {
+        this.onAddBots = callback;
+    }
+
+    /**
      * Show or hide host controls
      * @param {boolean} isHost - Whether current user is host
      * @param {boolean} canStart - Whether game can be started
@@ -821,6 +1093,16 @@ export class WaitingRoomUI {
             console.log('[WaitingRoomUI] Host controls classes after update:', hostControls.classList.toString());
         } else {
             console.error('[WaitingRoomUI] Host controls element not found!');
+        }
+
+        // Show/hide bot management based on host status
+        const botManagement = document.getElementById('bot-management');
+        if (botManagement) {
+            if (isHost) {
+                botManagement.classList.remove('hidden');
+            } else {
+                botManagement.classList.add('hidden');
+            }
         }
 
         // Handle start game button
@@ -862,44 +1144,7 @@ export class WaitingRoomUI {
         }
     }
 
-    /**
-     * Update ready button state
-     * @param {boolean} isReady - Current user's ready status
-     * @param {boolean} enabled - Whether button should be enabled
-     */
-    updateReadyButton(isReady, enabled = true) {
-        const button = this.elements.readyToggleBtn;
-        
-        if (button) {
-            const buttonText = button.querySelector('.btn-text');
-            
-            if (buttonText) {
-                if (enabled) {
-                    buttonText.textContent = isReady ? 'Not Ready' : 'Ready Up';
-                } else {
-                    buttonText.textContent = isReady ? 'Ready...' : 'Getting Ready...';
-                }
-            }
-            
-            button.disabled = !enabled;
-            
-            // Enhanced visual states
-            if (!enabled) {
-                button.classList.add('btn-disabled');
-                button.classList.remove('btn-success', 'btn-primary');
-            } else if (isReady) {
-                button.classList.add('btn-success');
-                button.classList.remove('btn-primary', 'btn-disabled');
-            } else {
-                button.classList.add('btn-primary');
-                button.classList.remove('btn-success', 'btn-disabled');
-            }
 
-            // Add accessibility attributes
-            button.setAttribute('aria-pressed', isReady.toString());
-            button.setAttribute('aria-disabled', (!enabled).toString());
-        }
-    }
 
     /**
      * Show loading overlay
@@ -1113,7 +1358,6 @@ export class WaitingRoomUI {
     updateTouchTargets() {
         const touchElements = [
             this.elements.copyCodeBtn,
-            this.elements.readyToggleBtn,
             this.elements.startGameBtn,
             document.getElementById('leave-room-btn'),
             document.getElementById('close-error-btn'),
@@ -1218,7 +1462,9 @@ export class WaitingRoomUI {
      * Handle touch start for visual feedback
      */
     handleTouchStart(e) {
-        e.currentTarget.classList.add('touch-active');
+        if (e.currentTarget && e.currentTarget.classList) {
+            e.currentTarget.classList.add('touch-active');
+        }
     }
 
     /**
@@ -1226,7 +1472,9 @@ export class WaitingRoomUI {
      */
     handleTouchEnd(e) {
         setTimeout(() => {
-            e.currentTarget.classList.remove('touch-active');
+            if (e.currentTarget && e.currentTarget.classList) {
+                e.currentTarget.classList.remove('touch-active');
+            }
         }, 150);
     }
 

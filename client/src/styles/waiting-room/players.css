@@ -211,11 +211,50 @@
   color: var(--status-connected);
 }
 
+.player-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--waiting-spacing-xs);
+  align-items: flex-end;
+}
+
 .player-badges {
   display: flex;
   flex-direction: column;
   gap: var(--waiting-spacing-xs);
   align-items: flex-end;
+}
+
+/* Ready Button in Player Slot */
+.ready-btn {
+  background: var(--primary-color);
+  color: var(--text-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--waiting-spacing-xs) var(--waiting-spacing-sm);
+  font-size: var(--waiting-font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--waiting-transition-fast);
+  min-width: 60px;
+}
+
+.ready-btn:hover:not(:disabled) {
+  background: var(--primary-light);
+  transform: translateY(-1px);
+}
+
+.ready-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ready-btn.ready {
+  background: var(--status-connected);
+}
+
+.ready-btn.ready:hover:not(:disabled) {
+  background: var(--status-success);
 }
 
 .host-badge {

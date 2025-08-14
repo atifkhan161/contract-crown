@@ -65,3 +65,47 @@
 .hidden {
   display: none !important;
 }
+
+/* Checkbox Styles */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--login-spacing-sm);
+  cursor: pointer;
+  font-size: var(--login-font-size-sm);
+  line-height: 1.5;
+}
+
+.checkbox-label::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--login-transition-fast);
+  flex-shrink: 0;
+}
+
+.checkbox-input:checked + .checkbox-label::before,
+.checkbox-label:has(.checkbox-input:checked)::before {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  content: '✓';
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.checkbox-input:focus + .checkbox-label::before,
+.checkbox-label:has(.checkbox-input:focus)::before {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.checkbox-text {
+  color: var(--text-secondary);
+}

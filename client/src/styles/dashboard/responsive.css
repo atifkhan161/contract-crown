@@ -19,10 +19,6 @@
     --dashboard-font-size-title: 1.4rem;
   }
   
-  .dashboard-main {
-    padding: var(--dashboard-spacing-xs) 0;
-  }
-  
   .dashboard-header {
     padding: var(--dashboard-spacing-xs) 0;
   }

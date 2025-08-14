@@ -48,6 +48,12 @@ class WaitingRoomSocketHandler {
             this.handlePlayerDisconnected(socket, data);
         });
 
+        // Bot management events
+        socket.on('room-update', (data) => {
+            console.log(`[WaitingRoom] Received room-update event from ${username}:`, data);
+            this.handleRoomUpdate(socket, data);
+        });
+
         console.log(`[WaitingRoom] Event handlers set up for ${username} (${userId})`);
     }
 
@@ -500,7 +506,7 @@ class WaitingRoomSocketHandler {
 
                     // Initialize WebSocket room for the new game
                     await this.initializeGameWebSocketRoom(game.game_id, room, game);
-                    
+
                     dbUpdateSuccess = true;
                     console.log(`[WaitingRoom] Game ${game.game_code} created successfully from room ${roomId}`);
                 }
@@ -797,7 +803,7 @@ class WaitingRoomSocketHandler {
                     const botData = bot.toDatabaseFormat();
                     const uniqueUsername = `${botData.username}_${botData.user_id.slice(-8)}`;
                     const uniqueEmail = `${botData.user_id}@bot.local`;
-                    
+
                     await dbConnection.query(`
                         INSERT INTO users (user_id, username, email, password_hash, created_at)
                         VALUES (?, ?, ?, ?, NOW())
@@ -810,10 +816,10 @@ class WaitingRoomSocketHandler {
                         uniqueEmail,
                         'BOT_NO_PASSWORD'
                     ]);
-                    
+
                     console.log(`[WaitingRoom] Created bot user ${uniqueUsername} (${botData.user_id})`);
                 }
-                
+
                 // Step 2: Add bots to room_players
                 const dbRoom = await Room.findById(roomId);
                 if (dbRoom) {
@@ -822,9 +828,9 @@ class WaitingRoomSocketHandler {
                     }
                     console.log(`[WaitingRoom] Added ${bots.length} bots to database room ${roomId}`);
                 }
-                
+
                 botsStoredInDatabase = true;
-                
+
             } catch (dbError) {
                 console.error('[WaitingRoom] Failed to store bots in database:', dbError);
                 console.warn('[WaitingRoom] Bots will work in WebSocket-only mode');
@@ -1113,7 +1119,7 @@ class WaitingRoomSocketHandler {
                     ...playerData,
                     gameId: gameId
                 });
-                
+
                 // Add to appropriate team
                 if (playerData.teamAssignment === 1) {
                     gameRoomData.teams.team1.push(playerId);
@@ -1182,6 +1188,91 @@ class WaitingRoomSocketHandler {
                 return { userId: playerId, username: player ? player.username : 'Unknown' };
             })
         };
+    }
+
+    /**
+     * Handle room update events (including bot management)
+     */
+    async handleRoomUpdate(socket, data) {
+        const { roomId, type, players } = data;
+        const { userId, username } = socket;
+
+        console.log(`[WaitingRoom] Room update request - roomId: ${roomId}, type: ${type}, userId: ${userId}`);
+
+        if (!roomId) {
+            socket.emit('waiting-room-error', { message: 'Room ID is required' });
+            return;
+        }
+
+        try {
+            const room = this.socketManager.gameRooms.get(roomId);
+            if (!room) {
+                socket.emit('waiting-room-error', { message: 'Room not found' });
+                return;
+            }
+
+            // Check if user is the host (only host can manage bots)
+            if (String(room.hostId) !== String(userId)) {
+                socket.emit('waiting-room-error', { message: 'Only the host can manage bots' });
+                return;
+            }
+
+            if (type === 'bots-added') {
+                // Calculate how many bots to add
+                const currentPlayers = Array.from(room.players.values()).filter(p => !p.isBot);
+                const emptySlots = 4 - currentPlayers.length;
+
+                if (emptySlots > 0) {
+                    console.log(`[WaitingRoom] Adding ${emptySlots} bots to room ${roomId}`);
+                    await this.addBotsToRoom(room, roomId, emptySlots);
+
+                    // Broadcast the updated room state to all clients
+                    this.broadcastRoomUpdate(roomId, room, {
+                        type: 'bots-added',
+                        message: `Host added ${emptySlots} bot${emptySlots > 1 ? 's' : ''}`,
+                        players: this.getPlayersForBroadcast(room)
+                    });
+                }
+            } else if (type === 'bots-removed') {
+                // Remove all bots from the room
+                const botCount = Array.from(room.players.values()).filter(p => p.isBot).length;
+
+                if (botCount > 0) {
+                    console.log(`[WaitingRoom] Removing ${botCount} bots from room ${roomId}`);
+
+                    // Remove bots from room
+                    for (const [playerId, player] of room.players.entries()) {
+                        if (player.isBot) {
+                            room.players.delete(playerId);
+                        }
+                    }
+
+                    // Broadcast the updated room state to all clients
+                    this.broadcastRoomUpdate(roomId, room, {
+                        type: 'bots-removed',
+                        message: `Host removed ${botCount} bot${botCount > 1 ? 's' : ''}`,
+                        players: this.getPlayersForBroadcast(room)
+                    });
+                }
+            }
+
+        } catch (error) {
+            console.error('[WaitingRoom] Error handling room update:', error);
+            socket.emit('waiting-room-error', { message: 'Failed to update room' });
+        }
+    }
+
+    /**
+     * Broadcast room update to all clients in the room
+     */
+    broadcastRoomUpdate(roomId, room, updateData) {
+        this.io.to(roomId).emit('room-updated', {
+            roomId,
+            ...updateData,
+            timestamp: new Date().toISOString()
+        });
+
+        console.log(`[WaitingRoom] Broadcasted room update to room ${roomId}:`, updateData.type);
     }
 }
 

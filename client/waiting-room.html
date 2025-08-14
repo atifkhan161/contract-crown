@@ -74,7 +74,8 @@
                         <div class="player-slot" id="player-slot-1" data-position="1" 
                              role="listitem" 
                              aria-label="Player slot 1"
-                             tabindex="0">
+                             tabindex="0"
+                             draggable="false">
                             <div class="player-avatar" aria-hidden="true">
                                 <div class="avatar-placeholder">1</div>
                             </div>
@@ -85,8 +86,13 @@
                                     <span class="ready-text" aria-live="polite">Not Ready</span>
                                 </div>
                             </div>
-                            <div class="player-badges">
-                                <span class="host-badge hidden" aria-label="Host player">Host</span>
+                            <div class="player-actions">
+                                <button class="ready-btn hidden" data-slot="1" aria-label="Toggle ready status">
+                                    <span class="ready-btn-text">Ready</span>
+                                </button>
+                                <div class="player-badges">
+                                    <span class="host-badge hidden" aria-label="Host player">Host</span>
+                                </div>
                             </div>
                         </div>
 
@@ -94,7 +100,8 @@
                         <div class="player-slot" id="player-slot-2" data-position="2" 
                              role="listitem" 
                              aria-label="Player slot 2"
-                             tabindex="0">
+                             tabindex="0"
+                             draggable="false">
                             <div class="player-avatar" aria-hidden="true">
                                 <div class="avatar-placeholder">2</div>
                             </div>
@@ -105,8 +112,13 @@
                                     <span class="ready-text" aria-live="polite">Not Ready</span>
                                 </div>
                             </div>
-                            <div class="player-badges">
-                                <span class="host-badge hidden" aria-label="Host player">Host</span>
+                            <div class="player-actions">
+                                <button class="ready-btn hidden" data-slot="2" aria-label="Toggle ready status">
+                                    <span class="ready-btn-text">Ready</span>
+                                </button>
+                                <div class="player-badges">
+                                    <span class="host-badge hidden" aria-label="Host player">Host</span>
+                                </div>
                             </div>
                         </div>
 
@@ -114,7 +126,8 @@
                         <div class="player-slot" id="player-slot-3" data-position="3" 
                              role="listitem" 
                              aria-label="Player slot 3"
-                             tabindex="0">
+                             tabindex="0"
+                             draggable="false">
                             <div class="player-avatar" aria-hidden="true">
                                 <div class="avatar-placeholder">3</div>
                             </div>
@@ -125,8 +138,13 @@
                                     <span class="ready-text" aria-live="polite">Not Ready</span>
                                 </div>
                             </div>
-                            <div class="player-badges">
-                                <span class="host-badge hidden" aria-label="Host player">Host</span>
+                            <div class="player-actions">
+                                <button class="ready-btn hidden" data-slot="3" aria-label="Toggle ready status">
+                                    <span class="ready-btn-text">Ready</span>
+                                </button>
+                                <div class="player-badges">
+                                    <span class="host-badge hidden" aria-label="Host player">Host</span>
+                                </div>
                             </div>
                         </div>
 
@@ -134,7 +152,8 @@
                         <div class="player-slot" id="player-slot-4" data-position="4" 
                              role="listitem" 
                              aria-label="Player slot 4"
-                             tabindex="0">
+                             tabindex="0"
+                             draggable="false">
                             <div class="player-avatar" aria-hidden="true">
                                 <div class="avatar-placeholder">4</div>
                             </div>
@@ -145,25 +164,73 @@
                                     <span class="ready-text" aria-live="polite">Not Ready</span>
                                 </div>
                             </div>
-                            <div class="player-badges">
-                                <span class="host-badge hidden" aria-label="Host player">Host</span>
+                            <div class="player-actions">
+                                <button class="ready-btn hidden" data-slot="4" aria-label="Toggle ready status">
+                                    <span class="ready-btn-text">Ready</span>
+                                </button>
+                                <div class="player-badges">
+                                    <span class="host-badge hidden" aria-label="Host player">Host</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <!-- Ready Status Section -->
-                <section class="ready-section" aria-labelledby="ready-heading">
-                    <div class="ready-controls">
-                        <button id="ready-toggle-btn" class="btn btn-primary btn-lg" 
-                                disabled
-                                aria-label="Toggle your ready status"
-                                aria-pressed="false"
-                                tabindex="0">
-                            <span class="btn-text">Ready Up</span>
-                        </button>
-                        <div class="ready-status" aria-live="polite" aria-atomic="true">
-                            <span id="ready-count">0</span> of 4 players ready
+                <!-- Team Management Section -->
+                <section class="team-management-section" aria-labelledby="team-heading">
+                    <div class="section-header">
+                        <h2 id="team-heading">Team Management</h2>
+                        <div class="team-info">
+                            <span class="team-info-text">Drag players to assign teams</span>
+                        </div>
+                    </div>
+                    
+                    <div class="teams-container">
+                        <!-- Team A -->
+                        <div class="team-section" id="team-a-section">
+                            <div class="team-header">
+                                <h3 class="team-title">Team A</h3>
+                                <span class="team-count" id="team-a-count">0/2</span>
+                            </div>
+                            <div class="team-slots" id="team-a-slots" data-team="A">
+                                <div class="team-slot empty" data-slot="a1">
+                                    <div class="slot-placeholder">Drop player here</div>
+                                </div>
+                                <div class="team-slot empty" data-slot="a2">
+                                    <div class="slot-placeholder">Drop player here</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Team B -->
+                        <div class="team-section" id="team-b-section">
+                            <div class="team-header">
+                                <h3 class="team-title">Team B</h3>
+                                <span class="team-count" id="team-b-count">0/2</span>
+                            </div>
+                            <div class="team-slots" id="team-b-slots" data-team="B">
+                                <div class="team-slot empty" data-slot="b1">
+                                    <div class="slot-placeholder">Drop player here</div>
+                                </div>
+                                <div class="team-slot empty" data-slot="b2">
+                                    <div class="slot-placeholder">Drop player here</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bot Management -->
+                    <div class="bot-management hidden" id="bot-management">
+                        <div class="bot-controls">
+                            <button id="add-bots-btn" class="btn btn-secondary" 
+                                    aria-label="Add bots to fill empty slots">
+                                <span class="btn-icon">🤖</span>
+                                <span class="btn-text">Add Bots</span>
+                                <span class="bot-count" id="bot-count-display">(0)</span>
+                            </button>
+                            <div class="bot-info">
+                                <span class="bot-info-text">Bots will fill remaining slots automatically</span>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -172,21 +239,37 @@
                 <section class="host-controls-section hidden" id="host-controls" 
                          aria-labelledby="host-heading">
                     <div class="host-controls">
-                        <button id="start-game-btn" class="btn btn-primary btn-lg" 
-                                disabled
-                                aria-label="Start game for all players"
-                                tabindex="0">
-                            <span class="btn-text">Start Game</span>
-                            <span id="start-spinner" class="spinner hidden" aria-hidden="true"></span>
-                        </button>
-                        <button id="reset-to-waiting-btn" class="btn btn-secondary btn-lg hidden" 
-                                aria-label="Return to waiting room after game"
-                                tabindex="0">
-                            <span class="btn-text">Return to Waiting Room</span>
-                            <span id="reset-spinner" class="spinner hidden" aria-hidden="true"></span>
-                        </button>
+                        <!-- Ready Status Info -->
+                        <div class="ready-status-info" aria-live="polite" aria-atomic="true">
+                            <div class="ready-status">
+                                <span class="ready-count-display">
+                                    <span id="ready-count">0</span> of <span id="total-players">0</span> players ready
+                                </span>
+                            </div>
+                            <div class="game-requirements" id="game-requirements">
+                                <span class="requirement-text">Need at least 2 human players to start</span>
+                            </div>
+                        </div>
+
+                        <!-- Game Controls -->
+                        <div class="game-controls">
+                            <button id="start-game-btn" class="btn btn-primary btn-lg" 
+                                    disabled
+                                    aria-label="Start game for all players"
+                                    tabindex="0">
+                                <span class="btn-text">Start Game</span>
+                                <span id="start-spinner" class="spinner hidden" aria-hidden="true"></span>
+                            </button>
+                            <button id="reset-to-waiting-btn" class="btn btn-secondary btn-lg hidden" 
+                                    aria-label="Return to waiting room after game"
+                                    tabindex="0">
+                                <span class="btn-text">Return to Waiting Room</span>
+                                <span id="reset-spinner" class="spinner hidden" aria-hidden="true"></span>
+                            </button>
+                        </div>
+
                         <div class="host-info" aria-live="polite">
-                            <span class="host-text">You are the host - start the game when ready (bots will fill empty slots)</span>
+                            <span class="host-text">You are the host - manage teams and start when ready</span>
                         </div>
                     </div>
                 </section>
