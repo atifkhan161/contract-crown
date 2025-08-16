@@ -178,7 +178,7 @@ export class UIManager {
                 }
                 
                 // Show team from current player's perspective
-                const teamLabel = playerTeam === currentUserTeam ? 'My Team' : 'Opponent Team';
+                const teamLabel = playerTeam === currentUserTeam ? 'Team A' : 'Team B';
                 const botIndicator = player.isBot ? '🤖 ' : '';
                 
                 // Debug logging for team assignments
@@ -661,17 +661,17 @@ export class UIManager {
      * @param {boolean} animated - Whether to show animation
      */
     updateTeamLabelsAndScores(currentUserTeam, scores, animated = false) {
-        // Determine which team is "My Team" and which is "Opponent Team"
+        // Determine which team is "Team A" and which is "Team B"
         const myTeamScore = scores[`team${currentUserTeam}`] || 0;
         const opponentTeamScore = scores[`team${currentUserTeam === 1 ? 2 : 1}`] || 0;
         
-        // Update first score display (always show as "My Team")
+        // Update first score display (always show as "Team A")
         if (this.elements.team1Score) {
             const labelElement = this.elements.team1Score.querySelector('.team-label');
             const scoreElement = this.elements.team1Score.querySelector('.score-value');
             
             if (labelElement) {
-                labelElement.textContent = 'My Team';
+                labelElement.textContent = 'Team A';
             }
             
             if (scoreElement) {
@@ -685,13 +685,13 @@ export class UIManager {
             }
         }
 
-        // Update second score display (always show as "Opponent Team")
+        // Update second score display (always show as "Team B")
         if (this.elements.team2Score) {
             const labelElement = this.elements.team2Score.querySelector('.team-label');
             const scoreElement = this.elements.team2Score.querySelector('.score-value');
             
             if (labelElement) {
-                labelElement.textContent = 'Opponent Team';
+                labelElement.textContent = 'Team B';
             }
             
             if (scoreElement) {
@@ -713,18 +713,18 @@ export class UIManager {
      * @param {boolean} animated - Whether to show animation
      */
     updateRoundScoreLabelsAndValues(currentUserTeam, roundScores, animated = false) {
-        // Determine which team is "My Team" and which is "Opponent Team"
+        // Determine which team is "Team A" and which is "Team B"
         const myTeamScore = roundScores[`team${currentUserTeam}`] || 0;
         const opponentTeamScore = roundScores[`team${currentUserTeam === 1 ? 2 : 1}`] || 0;
         
-        // Update first round score display (always show as "My Team")
+        // Update first round score display (always show as "Team A")
         const team1RoundScore = document.getElementById('team-1-round-score');
         if (team1RoundScore) {
             const labelElement = team1RoundScore.querySelector('.team-label');
             const scoreElement = team1RoundScore.querySelector('.score-value');
             
             if (labelElement) {
-                labelElement.textContent = 'My Team';
+                labelElement.textContent = 'Team A';
             }
             
             if (scoreElement) {
@@ -738,14 +738,14 @@ export class UIManager {
             }
         }
 
-        // Update second round score display (always show as "Opponent Team")
+        // Update second round score display (always show as "Team B")
         const team2RoundScore = document.getElementById('team-2-round-score');
         if (team2RoundScore) {
             const labelElement = team2RoundScore.querySelector('.team-label');
             const scoreElement = team2RoundScore.querySelector('.score-value');
             
             if (labelElement) {
-                labelElement.textContent = 'Opponent Team';
+                labelElement.textContent = 'Team B';
             }
             
             if (scoreElement) {
@@ -1220,7 +1220,7 @@ export class UIManager {
 
         // Update winner information from player's perspective
         if (winnerTeam) {
-            const teamLabel = isMyTeamWinner ? 'My Team' : 'Opponent Team';
+            const teamLabel = isMyTeamWinner ? 'Team A' : 'Team B';
             winnerTeam.textContent = `${teamLabel} Wins!`;
         }
         if (winnerReason) {
@@ -1264,10 +1264,10 @@ export class UIManager {
         const scoreTeam1Label = modal.querySelector('.total-scores .score-display:first-child .score-team');
         const scoreTeam2Label = modal.querySelector('.total-scores .score-display:last-child .score-team');
 
-        if (team1Label) team1Label.textContent = 'My Team';
-        if (team2Label) team2Label.textContent = 'Opponent Team';
-        if (scoreTeam1Label) scoreTeam1Label.textContent = 'My Team';
-        if (scoreTeam2Label) scoreTeam2Label.textContent = 'Opponent Team';
+        if (team1Label) team1Label.textContent = 'Team A';
+        if (team2Label) team2Label.textContent = 'Team B';
+        if (scoreTeam1Label) scoreTeam1Label.textContent = 'Team A';
+        if (scoreTeam2Label) scoreTeam2Label.textContent = 'Team B';
 
         // Hide continue button
         if (continueBtn) {

@@ -14,7 +14,7 @@
   margin: 8px;
   display: grid;
   grid-template-areas:
-      "trump-corner top score-corner"
+      ". top ."
       "left center right"
       "trick-info bottom .";
   grid-template-columns: 120px 1fr 120px;
@@ -29,28 +29,30 @@
   background-size: 4px 4px, 8px 8px;
 }
 
-/* Player Areas */
+/* Player Areas - Mobile optimized */
 .player-area {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   
   background: var(--bg-input);
   border-radius: var(--radius-md);
-  padding: 4px;
+  padding: 2px;
   border: 2px solid var(--border-color);
   backdrop-filter: blur(2px);
   transition: all 0.3s ease;
+  overflow: hidden;
 }
 
-/* Player Row Layout */
+/* Player Row Layout - Mobile optimized */
 .player-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   width: 100%;
   justify-content: space-between;
+  min-height: 0;
 }
 
 /* Current Player Highlighting */
@@ -90,27 +92,80 @@
 
 .player-top {
   grid-area: top;
-  transform: translateY(-4px);
+  transform: translateY(-2px);
+  flex-direction: column-reverse;
 }
 
 .player-left {
   grid-area: left;
-  margin-right: 8px;
+  margin-right: 4px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
 .player-left .player-row {
-  transform: rotate(90deg);
-  transform-origin: center;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.player-left .player-info {
+  writing-mode: horizontal-tb;
+  text-orientation: upright;
+  width: 100%;
+  height: auto;
+  min-width: 40px;
+  white-space: nowrap;
+  order: 2;
+}
+
+.player-left .opponent-hand {
+  order: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .player-right {
   grid-area: right;
-  margin-left: 8px;
+  margin-left: 4px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
 .player-right .player-row {
-  transform: rotate(-90deg);
-  transform-origin: center;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.player-right .player-info {
+  writing-mode: horizontal-tb;
+  text-orientation: upright;
+  width: 100%;
+  height: auto;
+  min-width: 40px;
+  white-space: nowrap;
+  order: 2;
+}
+
+.player-right .opponent-hand {
+  order: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .player-bottom {
@@ -126,13 +181,17 @@
 
 .player-info {
   text-align: center;
-  min-width: 80px;
+  min-width: 60px;
   background: var(--bg-secondary);
   border-radius: var(--radius-sm);
-  padding: 3px 6px;
+  padding: 2px 4px;
   border: 1px solid var(--border-color);
   flex-shrink: 0;
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .player-name {
@@ -248,23 +307,7 @@
   z-index: 1;
 }
 
-/* Trump Display - Compact */
-.trump-display-corner {
-  grid-area: trump-corner;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
-  padding: 4px 8px;
-  border-radius: var(--radius-md);
-  border: 2px solid var(--primary-hover);
-  align-self: start;
-  justify-self: start;
-  font-size: 10px;
-  box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
-  width: 110px;
-  height: 32px;
-}
+/* Trump Display - Now in trick area */
 
 .trump-label {
   font-size: 10px;
@@ -302,23 +345,7 @@
   text-shadow: 1px 1px 2px var(--bg-secondary);
 }
 
-/* Score Display - Compact */
-.score-display-corner {
-  grid-area: score-corner;
-  background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
-  padding: 4px 8px;
-  border-radius: var(--radius-md);
-  border: 2px solid var(--text-success);
-  align-self: start;
-  justify-self: end;
-  font-size: 10px;
-  box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
-  width: 110px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+/* Score Display - Now in trick area */
 
 .team-scores {
   display: flex;
@@ -358,24 +385,24 @@
   line-height: 1;
 }
 
-/* Trick Info Display - Left Side */
+/* Trick Info Display - Mobile responsive */
 .trick-info-display {
   grid-area: trick-info;
   background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
-  padding: 4px 8px;
+  padding: 2px 4px;
   border-radius: var(--radius-md);
   border: 2px solid var(--primary-hover);
   align-self: start;
   justify-self: start;
-  font-size: 10px;
+  font-size: 8px;
   box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
-  width: 110px;
-  height: 90px;
+  width: 75px;
+  height: 75px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .trick-counter {
@@ -520,6 +547,125 @@
   }
 }
 
+/* Mobile specific adjustments */
+@media (max-width: 767px) {
+  .game-table {
+    grid-template-columns: 75px 1fr 75px;
+    grid-template-rows: 28px 1fr 75px;
+  }
+
+  /* Player area mobile optimizations */
+  .player-area {
+    padding: 1px;
+    gap: 1px;
+  }
+
+  .player-row {
+    gap: 2px;
+  }
+
+  .player-info {
+    min-width: 45px;
+    padding: 1px 2px;
+    font-size: 8px;
+  }
+
+  .player-name {
+    font-size: 8px;
+    margin-bottom: 0;
+  }
+
+  .player-display {
+    font-size: 8px;
+  }
+
+  .card-count {
+    font-size: 7px;
+    padding: 0px 2px;
+  }
+
+  .turn-indicator {
+    width: 5px;
+    height: 5px;
+  }
+
+  /* Optimize left/right player layouts for mobile */
+  .player-left,
+  .player-right {
+    margin: 0;
+  }
+
+  .player-left .player-info,
+  .player-right .player-info {
+    min-width: 35px;
+    font-size: 7px;
+    padding: 1px;
+  }
+
+  .player-left .player-name,
+  .player-right .player-name,
+  .player-left .player-display,
+  .player-right .player-display {
+    font-size: 7px;
+  }
+
+  /* Top player optimization */
+  .player-top {
+    transform: translateY(-1px);
+  }
+
+  .player-top .player-info {
+    min-width: 50px;
+  }
+
+  .trump-display-corner,
+  .score-display-corner {
+    width: 75px;
+    height: 28px;
+    font-size: 8px;
+    padding: 2px 4px;
+    gap: 2px;
+  }
+  
+  .trick-info-display {
+    width: 75px;
+    height: 75px;
+    font-size: 8px;
+    padding: 2px 4px;
+    gap: 2px;
+  }
+
+  .trump-label,
+  .trump-name {
+    font-size: 8px;
+  }
+
+  .trump-symbol {
+    font-size: 12px;
+  }
+
+  .team-label {
+    font-size: 7px;
+  }
+
+  .score-value {
+    font-size: 9px;
+  }
+
+  .score-separator {
+    font-size: 9px;
+  }
+
+  .trick-counter {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+
+  .score-title {
+    font-size: 8px;
+  }
+}
+
 /* Desktop */
 @media (min-width: 768px) {
   .game-table {
@@ -535,12 +681,16 @@
     width: 180px;
     height: 50px;
     font-size: 12px;
+    padding: 4px 8px;
+    gap: 4px;
   }
   
   .trick-info-display {
     width: 180px;
     height: 100px;
     font-size: 12px;
+    padding: 4px 8px;
+    gap: 4px;
   }
   
   .table-center {
@@ -578,4 +728,6 @@
   align-items: center;
   flex-wrap: nowrap;
   overflow: hidden;
+  max-width: 40px;
+  justify-content: center;
 }

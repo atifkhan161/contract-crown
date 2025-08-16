@@ -114,15 +114,6 @@
                         </div>
                     </div>
 
-                    <!-- Trump Display - Top Left -->
-                    <div class="trump-display-corner" id="trump-display">
-                        <div class="trump-label">Trump:</div>
-                        <div class="trump-suit" id="trump-suit">
-                            <span class="trump-symbol">?</span>
-                            <span class="trump-name">Not Declared</span>
-                        </div>
-                    </div>
-
                     <!-- Trick Info Display - Left Side -->
                     <div class="trick-info-display" id="trick-info-display">
                         <div class="trick-counter" id="trick-counter">
@@ -132,30 +123,12 @@
                             <div class="score-title">Game Score</div>
                             <div class="team-scores">
                                 <div class="team-score" id="team-1-round-score">
-                                    <div class="team-label">Team 1</div>
+                                    <div class="team-label">Team A</div>
                                     <div class="score-value">0</div>
                                 </div>
                                 <div class="score-separator">-</div>
                                 <div class="team-score" id="team-2-round-score">
-                                    <div class="team-label">Team 2</div>
-                                    <div class="score-value">0</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Score Display - Top Right -->
-                    <div class="score-display-corner" id="score-display">
-                        <div class="score-section">
-                            <div class="score-title">Current Round Tricks</div>
-                            <div class="team-scores">
-                                <div class="team-score" id="team-1-score">
-                                    <div class="team-label">Team 1</div>
-                                    <div class="score-value">0</div>
-                                </div>
-                                <div class="score-separator">-</div>
-                                <div class="team-score" id="team-2-score">
-                                    <div class="team-label">Team 2</div>
+                                    <div class="team-label">Team B</div>
                                     <div class="score-value">0</div>
                                 </div>
                             </div>
@@ -166,13 +139,40 @@
                     <div class="table-center" style="grid-area: center;">
                         <!-- Trick Area -->
                         <div class="trick-area" id="trick-area">
-                            <div class="trick-cards">
-                                <div class="played-card-slot" id="played-card-top" data-position="top"></div>
-                                <div class="played-card-slot" id="played-card-left" data-position="left"></div>
-                                <div class="played-card-slot" id="played-card-right" data-position="right"></div>
-                                <div class="played-card-slot" id="played-card-bottom" data-position="bottom"></div>
-                            </div>
+                            <div class="trick-area-container">
+                                <!-- Trump Display - Left side of trick cards -->
+                                <div class="trump-display-corner" id="trump-display">
+                                    <div class="trump-label">Trump</div>
+                                    <div class="trump-suit" id="trump-suit">
+                                        <span class="trump-symbol">?</span>
+                                        <span class="trump-name">Not Set</span>
+                                    </div>
+                                </div>
 
+                                <!-- Trick Cards - Center -->
+                                <div class="trick-cards">
+                                    <div class="played-card-slot" id="played-card-top" data-position="top"></div>
+                                    <div class="played-card-slot" id="played-card-left" data-position="left"></div>
+                                    <div class="played-card-slot" id="played-card-right" data-position="right"></div>
+                                    <div class="played-card-slot" id="played-card-bottom" data-position="bottom"></div>
+                                </div>
+
+                                <!-- Score Display - Right side of trick cards -->
+                                <div class="score-display-corner" id="score-display">
+                                    <div class="score-title">Round Tricks</div>
+                                    <div class="team-scores">
+                                        <div class="team-score" id="team-1-score">
+                                            <div class="team-label">Team A</div>
+                                            <div class="score-value">0</div>
+                                        </div>
+                                        <div class="score-separator">-</div>
+                                        <div class="team-score" id="team-2-score">
+                                            <div class="team-label">Team B</div>
+                                            <div class="score-value">0</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -252,7 +252,7 @@
                 <div class="modal-body">
                     <div class="congratulations-content">
                         <div class="winner-announcement">
-                            <h2 id="winner-team">Team 1 Wins!</h2>
+                            <h2 id="winner-team">Team A Wins!</h2>
                             <p id="winner-reason">Won the round with 5 tricks</p>
                         </div>
                         
@@ -261,12 +261,12 @@
                             <div class="score-breakdown">
                                 <div class="team-breakdown">
                                     <div class="team-info">
-                                        <span class="team-name">Team 1</span>
+                                        <span class="team-name">Team A</span>
                                         <span class="team-tricks" id="team1-tricks">5 tricks</span>
                                         <span class="team-points" id="team1-points">+5 points</span>
                                     </div>
                                     <div class="team-info">
-                                        <span class="team-name">Team 2</span>
+                                        <span class="team-name">Team B</span>
                                         <span class="team-tricks" id="team2-tricks">3 tricks</span>
                                         <span class="team-points" id="team2-points">+0 points</span>
                                     </div>
@@ -278,12 +278,12 @@
                             <h4>Game Score</h4>
                             <div class="total-scores">
                                 <div class="score-display">
-                                    <span class="score-team">Team 1</span>
+                                    <span class="score-team">Team A</span>
                                     <span class="score-value" id="total-team1-score">15</span>
                                 </div>
                                 <div class="score-separator">-</div>
                                 <div class="score-display">
-                                    <span class="score-team">Team 2</span>
+                                    <span class="score-team">Team B</span>
                                     <span class="score-value" id="total-team2-score">8</span>
                                 </div>
                             </div>
