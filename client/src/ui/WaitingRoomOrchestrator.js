@@ -122,6 +122,10 @@ export class WaitingRoomOrchestrator {
             botManagement.classList.toggle('hidden', !isHost);
         }
 
+        // Show/hide shuffle button for host
+        const hasPlayers = parseInt(this.elements.currentPlayers?.textContent || '0') > 0;
+        this.teamManager.showShuffleButton(isHost, hasPlayers);
+
         if (startButton) {
             const shouldShowStartButton = roomStatus === 'waiting';
             const shouldEnableStartButton = shouldShowStartButton && canStart;
@@ -237,6 +241,11 @@ export class WaitingRoomOrchestrator {
     setTeamAssignmentCallback(callback) {
         this.onTeamAssignment = callback;
         this.teamManager.setTeamAssignmentCallback(callback);
+    }
+
+    setShuffleTeamsCallback(callback) {
+        this.onShuffleTeams = callback;
+        this.teamManager.setShuffleTeamsCallback(callback);
     }
 
     setAddBotsCallback(callback) {

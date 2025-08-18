@@ -43,6 +43,12 @@ class WaitingRoomSocketHandler {
             this.handlePlayerDisconnected(socket, data);
         });
 
+        // Team assignment events
+        socket.on('assign-team', (data) => {
+            console.log(`[WaitingRoom] Received assign-team event from ${username}:`, data);
+            this.handleAssignTeam(socket, data);
+        });
+
         // Bot management events
         socket.on('room-update', (data) => {
             console.log(`[WaitingRoom] Received room-update event from ${username}:`, data);
@@ -553,6 +559,132 @@ class WaitingRoomSocketHandler {
     }
 
     /**
+     * Handle team assignment
+     */
+    async handleAssignTeam(socket, data) {
+        const { roomId, playerId, team, userId: requestUserId } = data;
+        const { userId, username } = socket;
+
+        const effectiveUserId = String(requestUserId || userId || '');
+
+        console.log(`[WaitingRoom] Team assignment request - roomId: ${roomId}, playerId: ${playerId}, team: ${team}, requestedBy: ${effectiveUserId}`);
+
+        // Validation
+        if (!roomId || !playerId || !team) {
+            socket.emit('team-assignment-error', { message: 'Room ID, player ID, and team are required' });
+            return;
+        }
+
+        if (team !== 'A' && team !== 'B') {
+            socket.emit('team-assignment-error', { message: 'Team must be A or B' });
+            return;
+        }
+
+        try {
+            const room = this.socketManager.gameRooms.get(roomId);
+            if (!room) {
+                socket.emit('team-assignment-error', { message: 'Room not found' });
+                return;
+            }
+
+            // Check if requesting user is the host
+            if (String(room.hostId) !== String(effectiveUserId)) {
+                socket.emit('team-assignment-error', { message: 'Only the host can assign teams' });
+                return;
+            }
+
+            // Check if player exists in room
+            if (!room.players.has(playerId)) {
+                socket.emit('team-assignment-error', { message: 'Player not found in room' });
+                return;
+            }
+
+            const player = room.players.get(playerId);
+            const teamNumber = team === 'A' ? 1 : 2;
+            const otherTeamNumber = teamNumber === 1 ? 2 : 1;
+
+            // Update player's team assignment
+            player.teamAssignment = teamNumber;
+
+            // Update room teams structure
+            room.teams.team1 = room.teams.team1.filter(id => id !== playerId);
+            room.teams.team2 = room.teams.team2.filter(id => id !== playerId);
+
+            if (teamNumber === 1) {
+                room.teams.team1.push(playerId);
+            } else {
+                room.teams.team2.push(playerId);
+            }
+
+            // Update database
+            let dbUpdateSuccess = false;
+            try {
+                const RoomPlayer = (await import('../models/RoomPlayer.js')).default;
+                const roomPlayerModel = new RoomPlayer();
+                const roomPlayer = await roomPlayerModel.findOne({
+                    room_id: roomId,
+                    user_id: playerId
+                });
+
+                if (roomPlayer) {
+                    await roomPlayerModel.updateById(roomPlayer.room_player_id, {
+                        team_assignment: teamNumber
+                    });
+                    dbUpdateSuccess = true;
+                    console.log(`[WaitingRoom] Updated team assignment in database: ${player.username} -> Team ${team}`);
+                } else {
+                    console.warn(`[WaitingRoom] RoomPlayer not found for ${playerId} in room ${roomId}`);
+                }
+            } catch (dbError) {
+                console.error('[WaitingRoom] Database update failed for team assignment:', dbError);
+            }
+
+            console.log(`[WaitingRoom] ${player.username} assigned to Team ${team} by ${username} (DB: ${dbUpdateSuccess})`);
+
+            // Broadcast team assignment to all players in the room
+            this.io.to(roomId).emit('team-assignment-updated', {
+                roomId,
+                playerId,
+                playerName: player.username,
+                team,
+                teamNumber,
+                assignedBy: username,
+                dbSynced: dbUpdateSuccess,
+                teams: {
+                    team1: room.teams.team1.map(id => {
+                        const p = room.players.get(id);
+                        return { id, username: p ? p.username : 'Unknown' };
+                    }),
+                    team2: room.teams.team2.map(id => {
+                        const p = room.players.get(id);
+                        return { id, username: p ? p.username : 'Unknown' };
+                    })
+                },
+                timestamp: new Date().toISOString()
+            });
+
+            // Send confirmation to requesting player
+            socket.emit('team-assigned', {
+                roomId,
+                playerId,
+                playerName: player.username,
+                team,
+                teamNumber,
+                success: true,
+                dbSynced: dbUpdateSuccess,
+                timestamp: new Date().toISOString()
+            });
+
+        } catch (error) {
+            console.error('[WaitingRoom] Error assigning team:', error);
+            socket.emit('team-assignment-error', {
+                message: error.message || 'Failed to assign team',
+                code: 'TEAM_ASSIGNMENT_ERROR'
+            });
+        }
+    }
+
+    /**
      * Handle player disconnection
      */
     handlePlayerDisconnected(socket, data) {
@@ -810,7 +942,7 @@ class WaitingRoomSocketHandler {
                 // Step 1: Create bot users using User model
                 const User = (await import('../models/User.js')).default;
                 const userModel = new User();
-                
+
                 for (const bot of bots) {
                     const botData = bot.toDatabaseFormat();
                     const uniqueUsername = `${botData.username}_${botData.user_id.slice(-8)}`;
@@ -824,9 +956,26 @@ class WaitingRoomSocketHandler {
                             username: uniqueUsername,
                             email: uniqueEmail,
                             password_hash: 'BOT_NO_PASSWORD',
+                            is_bot: true, // CRITICAL: Mark as bot
+                            bot_personality: botData.bot_personality,
+                            bot_difficulty: botData.bot_difficulty,
+                            bot_aggressiveness: botData.bot_aggressiveness,
+                            bot_risk_tolerance: botData.bot_risk_tolerance,
                             created_at: new Date().toISOString()
                         });
-                        console.log(`[WaitingRoom] Created bot user ${uniqueUsername} (${botData.user_id})`);
+                        console.log(`[WaitingRoom] Created bot user ${uniqueUsername} (${botData.user_id}) with is_bot=true`);
+                    } else {
+                        // Update existing user to ensure is_bot is set correctly
+                        if (existingUser.is_bot !== true) {
+                            await userModel.updateById(existingUser.user_id, {
+                                is_bot: true,
+                                bot_personality: botData.bot_personality,
+                                bot_difficulty: botData.bot_difficulty,
+                                bot_aggressiveness: botData.bot_aggressiveness,
+                                bot_risk_tolerance: botData.bot_risk_tolerance
+                            });
+                            console.log(`[WaitingRoom] Updated existing user ${uniqueUsername} to set is_bot=true`);
+                        }
                     }
                 }
 

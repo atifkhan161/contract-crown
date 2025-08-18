@@ -6,8 +6,6 @@
 }
 
 .teams-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: var(--waiting-spacing-xl);
   margin-bottom: var(--waiting-spacing-lg);
 }
@@ -304,7 +302,6 @@
   }
   
   .teams-container {
-    grid-template-columns: 1fr;
     gap: var(--waiting-spacing-lg);
   }
   

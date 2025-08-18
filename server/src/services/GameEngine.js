@@ -172,7 +172,32 @@ class GameEngine {
             const user = await userModel.findOne({ user_id: playerId });
 
             console.log(`[GameEngine] Bot check for ${playerId}: user found=${!!user}, is_bot=${user?.is_bot}, username=${user?.username}`);
-            return user && Boolean(user.is_bot);
+            
+            // Primary check: is_bot field
+            if (user && user.is_bot === true) {
+                return true;
+            }
+            
+            // Fallback check: look for bot-like characteristics
+            if (user) {
+                const isBotLike = (
+                    user.username.includes('Bot ') || 
+                    user.username.includes('_bot_') ||
+                    user.email?.includes('@bot.local') ||
+                    user.user_id.startsWith('bot_') ||
+                    user.password_hash === 'BOT_NO_PASSWORD'
+                );
+                
+                if (isBotLike && user.is_bot !== true) {
+                    console.warn(`[GameEngine] Found bot-like user without is_bot=true: ${user.username} (${user.user_id})`);
+                    console.warn(`[GameEngine] Consider running the fix-bot-users script to update the database`);
+                    return true; // Treat as bot for game logic
+                }
+                
+                return isBotLike;
+            }
+            
+            return false;
         } catch (error) {
             console.error('[GameEngine] Error checking if player is bot:', error.message);
             return false;

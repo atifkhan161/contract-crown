@@ -289,3 +289,218 @@
   color: var(--secondary-color);
   border: 1px solid var(--secondary-color);
 }
+
+/* Touch Dragging Styles */
+.player-slot.touch-dragging {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+.player-slot.dragging {
+  opacity: 0.6;
+  transform: scale(0.95);
+  z-index: 1000;
+}
+
+.drag-ghost {
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.8;
+  transform: scale(0.9);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--primary-color);
+}
+
+/* Team Management Styles */
+.teams-container {
+  display: flex;
+  gap: var(--waiting-spacing-xl);
+  align-items: flex-start;
+  justify-content: center;
+  margin-bottom: var(--waiting-spacing-xl);
+}
+
+.team-section {
+  flex: 1;
+  max-width: 300px;
+}
+
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--waiting-spacing-md);
+}
+
+.team-title {
+  color: var(--text-primary);
+  font-size: var(--waiting-font-size-lg);
+  font-weight: 600;
+  margin: 0;
+}
+
+.team-count {
+  color: var(--text-secondary);
+  font-size: var(--waiting-font-size-sm);
+  font-weight: 500;
+}
+
+.team-slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--waiting-spacing-md);
+}
+
+.team-slot {
+  background: var(--bg-card);
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--waiting-spacing-lg);
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--waiting-transition-fast);
+  cursor: pointer;
+}
+
+.team-slot.empty {
+  border-style: dashed;
+}
+
+.team-slot.occupied {
+  border-style: solid;
+  border-color: var(--primary-color);
+  background: var(--bg-input);
+}
+
+.team-slot.drag-over {
+  border-color: var(--primary-light);
+  background: var(--primary-color);
+  opacity: 0.8;
+  transform: scale(1.02);
+}
+
+.slot-placeholder {
+  color: var(--text-muted);
+  font-size: var(--waiting-font-size-sm);
+  font-style: italic;
+  text-align: center;
+}
+
+.team-player-info {
+  text-align: center;
+}
+
+.team-player-name {
+  color: var(--text-primary);
+  font-size: var(--waiting-font-size-base);
+  font-weight: 500;
+  margin-bottom: var(--waiting-spacing-xs);
+}
+
+.team-player-status {
+  color: var(--text-secondary);
+  font-size: var(--waiting-font-size-sm);
+}
+
+/* Shuffle Button Styles */
+.team-shuffle-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 var(--waiting-spacing-sm);
+}
+
+.shuffle-btn {
+  background: var(--secondary-color);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 50%;
+  padding: var(--waiting-spacing-sm);
+  font-size: var(--waiting-font-size-lg);
+  cursor: pointer;
+  transition: all var(--waiting-transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  line-height: 1;
+}
+
+.shuffle-btn:hover:not(:disabled) {
+  background: var(--secondary-light);
+  transform: translateY(-2px) scale(1.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.shuffle-btn:active:not(:disabled) {
+  transform: translateY(0) scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.shuffle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Team Management */
+@media screen and (max-width: 768px) and (orientation: portrait) {
+  .teams-container {
+    flex-direction: column;
+    gap: var(--waiting-spacing-lg);
+  }
+
+  .team-shuffle-container {
+    order: -1;
+    margin: 0 0 var(--waiting-spacing-lg) 0;
+  }
+
+  .team-section {
+    max-width: none;
+  }
+}
+
+/* Landscape mode - keep teams and shuffle in same row */
+@media screen and (max-width: 768px) and (orientation: landscape) {
+  .teams-container {
+    flex-direction: row;
+    gap: var(--waiting-spacing-md);
+    align-items: flex-start;
+  }
+
+  .team-shuffle-container {
+    margin: var(--waiting-spacing-lg) var(--waiting-spacing-sm) 0;
+    align-self: flex-start;
+  }
+
+  .team-section {
+    flex: 1;
+    max-width: none;
+  }
+
+  .shuffle-btn {
+    width: 36px;
+    height: 36px;
+    font-size: var(--waiting-font-size-base);
+  }
+}
+
+@media screen and (max-width: 430px) {
+  .team-slot {
+    min-height: 60px;
+    padding: var(--waiting-spacing-md);
+  }
+
+  .shuffle-btn {
+    width: 32px;
+    height: 32px;
+    font-size: var(--waiting-font-size-sm);
+  }
+}

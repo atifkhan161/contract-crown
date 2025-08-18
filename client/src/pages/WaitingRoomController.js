@@ -39,6 +39,10 @@ export class WaitingRoomController {
             this.handleReadyToggle(slotNumber);
         });
         this.uiManager.setTeamAssignmentCallback((playerId, team, slotId) => this.gameLogic.handleTeamAssignment(playerId, team, slotId));
+        this.uiManager.setShuffleTeamsCallback(() => {
+            console.log('[WaitingRoomController] Shuffle teams callback called');
+            this.handleShuffleTeams();
+        });
         this.uiManager.setAddBotsCallback(() => {
             console.log('[WaitingRoomController] Add bots callback called');
             this.gameLogic.handleAddBots();
@@ -315,6 +319,99 @@ export class WaitingRoomController {
             console.error('[WaitingRoomController] Error toggling ready status:', error);
             this.showError('Failed to update ready status. Please try again.');
         }
+    }
+
+    async handleShuffleTeams() {
+        console.log('[WaitingRoomController] handleShuffleTeams called');
+        try {
+            if (!this.isHost) {
+                this.showError('Only the host can shuffle teams.');
+                return;
+            }
+
+            if (!this.players || this.players.length === 0) {
+                this.showError('No players to shuffle.');
+                return;
+            }
+
+            // Use the team manager to shuffle teams
+            const shuffledTeams = this.uiManager.teamManager.shuffleTeams(this.players);
+            console.log('[WaitingRoomController] Generated shuffled teams:', shuffledTeams);
+            
+            // Update the UI immediately for instant feedback
+            this.teams = shuffledTeams;
+            this.gameLogic.updateTeamAssignments(shuffledTeams);
+            
+            // Send individual team assignments to server for real-time sync
+            await this.syncTeamAssignmentsToServer(shuffledTeams);
+            
+            this.uiManager.showToast('Teams shuffled randomly!', 'success', { compact: true });
+            console.log('[WaitingRoomController] Teams shuffled and synced to server');
+
+        } catch (error) {
+            console.error('[WaitingRoomController] Error shuffling teams:', error);
+            this.showError('Failed to shuffle teams. Please try again.');
+        }
+    }
+
+
+
+    async syncTeamAssignmentsToServer(shuffledTeams) {
+        console.log('[WaitingRoomController] Syncing team assignments to server:', shuffledTeams);
+        
+        try {
+            // Update each player's team assignment on the server
+            const allPlayers = [...(shuffledTeams.A || []), ...(shuffledTeams.B || [])];
+            console.log('[WaitingRoomController] Players to sync:', allPlayers);
+            
+            for (const player of allPlayers) {
+                const team = shuffledTeams.A.includes(player) ? 'A' : 'B';
+                const playerId = player.id || player.user_id;
+                
+                console.log(`[WaitingRoomController] Syncing player ${player.username} (${playerId}) to team ${team}`);
+                
+                if (this.socketManager && this.socketManager.isReady()) {
+                    // Use WebSocket for real-time updates
+                    console.log('[WaitingRoomController] Using WebSocket for team assignment');
+                    this.socketManager.assignPlayerToTeam(playerId, team);
+                } else {
+                    // Fallback to API
+                    console.log('[WaitingRoomController] Using API for team assignment');
+                    await this.assignPlayerToTeamViaAPI(playerId, team);
+                }
+                
+                // Small delay to avoid overwhelming the server
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            console.log('[WaitingRoomController] All team assignments synced successfully');
+            
+        } catch (error) {
+            console.error('[WaitingRoomController] Error syncing team assignments:', error);
+            this.uiManager.showToast('Team assignments may not be synced with other players', 'warning', { compact: true });
+        }
+    }
+
+    async assignPlayerToTeamViaAPI(playerId, team) {
+        const token = this.authManager.getToken();
+        const response = await fetch(`/api/waiting-rooms/${this.roomId}/assign-team`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                playerId: playerId,
+                team: team 
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Failed to assign player to team ${team}`);
+        }
+
+        return response.json();
     }
 
     async handleStartGame() {

@@ -1,33 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waiting Room - Contract Crown</title>
     <meta name="description" content="Contract Crown waiting room - coordinate with players before starting the game">
-    
+
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/webp" href="/favicon.webp">
-    
+
     <!-- Apple PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Contract Crown">
-    
+
     <link rel="stylesheet" href="src/styles/main.css">
     <link rel="stylesheet" href="src/styles/waiting-room.css">
 </head>
+
 <body>
     <div id="app">
         <!-- Header -->
         <header class="waiting-room-header">
             <div class="header-content">
                 <div class="header-left">
-                    <button id="leave-room-btn" class="btn btn-secondary btn-sm" 
-                            aria-label="Leave room and return to dashboard"
-                            tabindex="0">
+                    <button id="leave-room-btn" class="btn btn-secondary btn-sm"
+                        aria-label="Leave room and return to dashboard" tabindex="0">
                         <span class="btn-icon" aria-hidden="true">←</span>
                         Leave Room
                     </button>
@@ -37,19 +38,15 @@
                     <div class="room-code-display">
                         <span class="room-code-label">Room Code:</span>
                         <span id="room-code" class="room-code">------</span>
-                        <button id="copy-code-btn" class="copy-btn" 
-                                title="Copy room code to clipboard"
-                                aria-label="Copy room code to clipboard"
-                                tabindex="0">
+                        <button id="copy-code-btn" class="copy-btn" title="Copy room code to clipboard"
+                            aria-label="Copy room code to clipboard" tabindex="0">
                             <span class="copy-icon" aria-hidden="true">📋</span>
                         </button>
                     </div>
                 </div>
                 <div class="header-right">
-                    <div id="connection-status" class="connection-status" 
-                         role="status" 
-                         aria-live="polite" 
-                         aria-label="Connection status">
+                    <div id="connection-status" class="connection-status" role="status" aria-live="polite"
+                        aria-label="Connection status">
                         <span class="status-indicator" id="status-indicator" aria-hidden="true"></span>
                         <span class="status-text" id="status-text">Connecting...</span>
                     </div>
@@ -68,14 +65,11 @@
                             <span id="current-players" aria-live="polite">0</span>/4
                         </div>
                     </div>
-                    
+
                     <div class="players-grid" role="list" aria-label="Player slots">
                         <!-- Player Slot 1 -->
-                        <div class="player-slot" id="player-slot-1" data-position="1" 
-                             role="listitem" 
-                             aria-label="Player slot 1"
-                             tabindex="0"
-                             draggable="false">
+                        <div class="player-slot" id="player-slot-1" data-position="1" role="listitem"
+                            aria-label="Player slot 1" tabindex="0" draggable="false">
                             <div class="player-avatar" aria-hidden="true">
                                 <div class="avatar-placeholder">1</div>
                             </div>
@@ -97,11 +91,8 @@
                         </div>
 
                         <!-- Player Slot 2 -->
-                        <div class="player-slot" id="player-slot-2" data-position="2" 
-                             role="listitem" 
-                             aria-label="Player slot 2"
-                             tabindex="0"
-                             draggable="false">
+                        <div class="player-slot" id="player-slot-2" data-position="2" role="listitem"
+                            aria-label="Player slot 2" tabindex="0" draggable="false">
                             <div class="player-avatar" aria-hidden="true">
                                 <div class="avatar-placeholder">2</div>
                             </div>
@@ -123,11 +114,8 @@
                         </div>
 
                         <!-- Player Slot 3 -->
-                        <div class="player-slot" id="player-slot-3" data-position="3" 
-                             role="listitem" 
-                             aria-label="Player slot 3"
-                             tabindex="0"
-                             draggable="false">
+                        <div class="player-slot" id="player-slot-3" data-position="3" role="listitem"
+                            aria-label="Player slot 3" tabindex="0" draggable="false">
                             <div class="player-avatar" aria-hidden="true">
                                 <div class="avatar-placeholder">3</div>
                             </div>
@@ -149,11 +137,8 @@
                         </div>
 
                         <!-- Player Slot 4 -->
-                        <div class="player-slot" id="player-slot-4" data-position="4" 
-                             role="listitem" 
-                             aria-label="Player slot 4"
-                             tabindex="0"
-                             draggable="false">
+                        <div class="player-slot" id="player-slot-4" data-position="4" role="listitem"
+                            aria-label="Player slot 4" tabindex="0" draggable="false">
                             <div class="player-avatar" aria-hidden="true">
                                 <div class="avatar-placeholder">4</div>
                             </div>
@@ -184,7 +169,7 @@
                             <span class="team-info-text">Drag players to assign teams</span>
                         </div>
                     </div>
-                    
+
                     <div class="teams-container">
                         <!-- Team A -->
                         <div class="team-section" id="team-a-section">
@@ -201,7 +186,13 @@
                                 </div>
                             </div>
                         </div>
-
+                        <!-- Shuffle Button (Host Only) -->
+                        <div class="team-shuffle-container hidden" id="team-shuffle-container">
+                            <button id="shuffle-teams-btn" class="shuffle-btn"
+                                aria-label="Randomly shuffle team assignments" title="Shuffle teams randomly">
+                                🔀
+                            </button>
+                        </div>
                         <!-- Team B -->
                         <div class="team-section" id="team-b-section">
                             <div class="team-header">
@@ -218,95 +209,91 @@
                             </div>
                         </div>
                     </div>
+            </div>
 
-                    <!-- Bot Management -->
-                    <div class="bot-management hidden" id="bot-management">
-                        <div class="bot-controls">
-                            <button id="add-bots-btn" class="btn btn-secondary" 
-                                    aria-label="Add bots to fill empty slots">
-                                <span class="btn-icon">🤖</span>
-                                <span class="btn-text">Add Bots</span>
-                                <span class="bot-count" id="bot-count-display">(0)</span>
-                            </button>
-                            <div class="bot-info">
-                                <span class="bot-info-text">Bots will fill remaining slots automatically</span>
-                            </div>
+            <!-- Bot Management -->
+            <div class="bot-management hidden" id="bot-management">
+                <div class="bot-controls">
+                    <button id="add-bots-btn" class="btn btn-secondary" aria-label="Add bots to fill empty slots">
+                        <span class="btn-icon">🤖</span>
+                        <span class="btn-text">Add Bots</span>
+                        <span class="bot-count" id="bot-count-display">(0)</span>
+                    </button>
+                    <div class="bot-info">
+                        <span class="bot-info-text">Bots will fill remaining slots automatically</span>
+                    </div>
+                </div>
+            </div>
+            </section>
+
+            <!-- Host Controls Section -->
+            <section class="host-controls-section hidden" id="host-controls" aria-labelledby="host-heading">
+                <div class="host-controls">
+                    <!-- Ready Status Info -->
+                    <div class="ready-status-info" aria-live="polite" aria-atomic="true">
+                        <div class="ready-status">
+                            <span class="ready-count-display">
+                                <span id="ready-count">0</span> of <span id="total-players">0</span> players ready
+                            </span>
+                        </div>
+                        <div class="game-requirements" id="game-requirements">
+                            <span class="requirement-text">Need at least 2 human players to start</span>
                         </div>
                     </div>
-                </section>
 
-                <!-- Host Controls Section -->
-                <section class="host-controls-section hidden" id="host-controls" 
-                         aria-labelledby="host-heading">
-                    <div class="host-controls">
-                        <!-- Ready Status Info -->
-                        <div class="ready-status-info" aria-live="polite" aria-atomic="true">
-                            <div class="ready-status">
-                                <span class="ready-count-display">
-                                    <span id="ready-count">0</span> of <span id="total-players">0</span> players ready
-                                </span>
-                            </div>
-                            <div class="game-requirements" id="game-requirements">
-                                <span class="requirement-text">Need at least 2 human players to start</span>
-                            </div>
-                        </div>
-
-                        <!-- Game Controls -->
-                        <div class="game-controls">
-                            <button id="start-game-btn" class="btn btn-primary btn-lg" 
-                                    disabled
-                                    aria-label="Start game for all players"
-                                    tabindex="0">
-                                <span class="btn-text">Start Game</span>
-                                <span id="start-spinner" class="spinner hidden" aria-hidden="true"></span>
-                            </button>
-                            <button id="reset-to-waiting-btn" class="btn btn-secondary btn-lg hidden" 
-                                    aria-label="Return to waiting room after game"
-                                    tabindex="0">
-                                <span class="btn-text">Return to Waiting Room</span>
-                                <span id="reset-spinner" class="spinner hidden" aria-hidden="true"></span>
-                            </button>
-                        </div>
-
-                        <div class="host-info" aria-live="polite">
-                            <span class="host-text">You are the host - manage teams and start when ready</span>
-                        </div>
+                    <!-- Game Controls -->
+                    <div class="game-controls">
+                        <button id="start-game-btn" class="btn btn-primary btn-lg" disabled
+                            aria-label="Start game for all players" tabindex="0">
+                            <span class="btn-text">Start Game</span>
+                            <span id="start-spinner" class="spinner hidden" aria-hidden="true"></span>
+                        </button>
+                        <button id="reset-to-waiting-btn" class="btn btn-secondary btn-lg hidden"
+                            aria-label="Return to waiting room after game" tabindex="0">
+                            <span class="btn-text">Return to Waiting Room</span>
+                            <span id="reset-spinner" class="spinner hidden" aria-hidden="true"></span>
+                        </button>
                     </div>
-                </section>
+
+                    <div class="host-info" aria-live="polite">
+                        <span class="host-text">You are the host - manage teams and start when ready</span>
+                    </div>
+                </div>
+            </section>
 
 
+    </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p id="loading-text">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Error</h3>
+                <button id="close-error-btn" class="modal-close">&times;</button>
             </div>
-        </main>
-
-        <!-- Loading Overlay -->
-        <div id="loading-overlay" class="loading-overlay hidden">
-            <div class="loading-content">
-                <div class="spinner"></div>
-                <p id="loading-text">Loading...</p>
+            <div class="modal-body">
+                <p id="error-message">An error occurred.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="error-ok-btn" class="btn btn-primary">OK</button>
             </div>
         </div>
+    </div>
 
-        <!-- Error Modal -->
-        <div id="error-modal" class="modal hidden">
-            <div class="modal-overlay"></div>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Error</h3>
-                    <button id="close-error-btn" class="modal-close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p id="error-message">An error occurred.</p>
-                </div>
-                <div class="modal-footer">
-                    <button id="error-ok-btn" class="btn btn-primary">OK</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Toast Messages Container -->
-        <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="false">
-            <!-- Toast messages will be dynamically added here -->
-        </div>
+    <!-- Toast Messages Container -->
+    <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="false">
+        <!-- Toast messages will be dynamically added here -->
+    </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -314,4 +301,5 @@
     <script type="module" src="src/core/auth.js"></script>
     <script type="module" src="src/pages/waiting-room.js"></script>
 </body>
+
 </html>

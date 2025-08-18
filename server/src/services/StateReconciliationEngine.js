@@ -43,8 +43,15 @@ class StateReconciliationEngine {
             // Fetch authoritative database state
             const dbState = await this.fetchDatabaseState(gameId);
             if (!dbState) {
-                console.log(`[StateReconciliation] Room ${gameId} not found in database`);
+                console.log(`[StateReconciliation] Room/Game ${gameId} not found in database`);
                 return null;
+            }
+
+            // Skip detailed reconciliation for active games (they have their own state management)
+            if (dbState.isActiveGame) {
+                console.log(`[StateReconciliation] Skipping detailed reconciliation for active game ${gameId}`);
+                this.recordReconciliation(gameId, [], dbState);
+                return dbState;
             }
 
             // Get current websocket state if not provided
@@ -387,14 +394,39 @@ class StateReconciliationEngine {
     }
 
     /**
-     * Fetch current database state for a room
-     * @param {string} gameId - Game ID
+     * Fetch current database state for a room or game
+     * @param {string} gameId - Game/Room ID
      * @returns {Promise<Object>} Database state
      */
     async fetchDatabaseState(gameId) {
         try {
+            // First try to find as a waiting room
             const room = await Room.findById(gameId);
-            return room;
+            if (room) {
+                console.log(`[StateReconciliation] Found waiting room ${gameId} in database`);
+                return room;
+            }
+
+            // If not found as room, try to find as an active game
+            const { default: Game } = await import('../models/Game.js');
+            const gameModel = new Game();
+            const game = await gameModel.findOne({ game_id: gameId });
+            
+            if (game) {
+                console.log(`[StateReconciliation] Found active game ${gameId} in database`);
+                // Convert game format to room-like format for compatibility
+                return {
+                    room_id: game.game_id,
+                    owner_id: game.host_id,
+                    status: game.status,
+                    created_at: game.created_at,
+                    players: [], // Game players would need to be fetched separately
+                    isActiveGame: true // Flag to indicate this is a game, not a waiting room
+                };
+            }
+
+            console.log(`[StateReconciliation] Neither room nor game found for ID ${gameId}`);
+            return null;
         } catch (error) {
             console.error(`[StateReconciliation] Error fetching database state for ${gameId}:`, error);
             return null;

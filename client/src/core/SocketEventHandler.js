@@ -80,6 +80,24 @@ export class SocketEventHandler {
             this.manager.markSuccessfulUpdate();
         });
 
+        // Team management events
+        socketManager.on('teams-shuffled', (data) => {
+            this.handleTeamsShuffled(data);
+        });
+
+        socketManager.on('team-assignment-updated', (data) => {
+            this.handleTeamAssignmentUpdated(data);
+        });
+
+        socketManager.on('team-assigned', (data) => {
+            this.handleTeamAssigned(data);
+        });
+
+        socketManager.on('team-assignment-error', (error) => {
+            console.error('[SocketEventHandler] Team assignment error:', error);
+            this.manager.uiManager.showToast('Failed to assign team', 'error', { compact: true });
+        });
+
         // Game events
         socketManager.on('game-starting', (data) => {
             this.manager.handleGameStart(data);
@@ -157,6 +175,88 @@ export class SocketEventHandler {
 
             if (data.message) {
                 this.manager.uiManager.showToast(data.message, 'success', { compact: true });
+            }
+        }
+    }
+
+    handleTeamsShuffled(data) {
+        console.log('[SocketEventHandler] Teams shuffled:', data);
+        
+        if (data.teams) {
+            this.manager.teams = data.teams;
+            this.manager.gameLogic.updateTeamAssignments(data.teams);
+            this.manager.markSuccessfulUpdate();
+        }
+
+        if (data.message) {
+            this.manager.uiManager.showToast(data.message, 'success', { compact: true });
+        }
+    }
+
+    handleTeamAssignmentUpdated(data) {
+        console.log('[SocketEventHandler] Team assignment updated:', data);
+        
+        if (data.playerId && data.team !== undefined) {
+            // Update the specific player's team assignment
+            const playerIndex = this.manager.players.findIndex(player =>
+                player.id === data.playerId || player.user_id === data.playerId
+            );
+
+            if (playerIndex !== -1) {
+                // Convert server team format (A/B) to client format if needed
+                const teamAssignment = data.team === 'A' ? 'A' : data.team === 'B' ? 'B' : data.team;
+                this.manager.players[playerIndex].teamAssignment = teamAssignment;
+                this.manager.gameLogic.updateTeamAssignments();
+                this.manager.markSuccessfulUpdate();
+                
+                // Show notification for team assignment
+                const playerName = this.manager.players[playerIndex].username;
+                this.manager.uiManager.showToast(`${playerName} assigned to Team ${teamAssignment}`, 'info', { compact: true });
+            }
+        }
+
+        if (data.teams) {
+            // Convert server team format to client format
+            const clientTeams = {
+                A: (data.teams.team1 || []).map(player => ({
+                    id: player.id,
+                    user_id: player.id,
+                    username: player.username,
+                    teamAssignment: 'A'
+                })),
+                B: (data.teams.team2 || []).map(player => ({
+                    id: player.id,
+                    user_id: player.id,
+                    username: player.username,
+                    teamAssignment: 'B'
+                }))
+            };
+            
+            this.manager.teams = clientTeams;
+            this.manager.gameLogic.updateTeamAssignments(clientTeams);
+            this.manager.markSuccessfulUpdate();
+        }
+    }
+
+    handleTeamAssigned(data) {
+        console.log('[SocketEventHandler] Team assigned:', data);
+        
+        if (data.playerId && data.team !== undefined) {
+            // Update the specific player's team assignment
+            const playerIndex = this.manager.players.findIndex(player =>
+                player.id === data.playerId || player.user_id === data.playerId
+            );
+
+            if (playerIndex !== -1) {
+                // Convert server team format (A/B) to client format if needed
+                const teamAssignment = data.team === 'A' ? 'A' : data.team === 'B' ? 'B' : data.team;
+                this.manager.players[playerIndex].teamAssignment = teamAssignment;
+                this.manager.gameLogic.updateTeamAssignments();
+                this.manager.markSuccessfulUpdate();
+                
+                // Show notification for successful assignment (only for the host who made the assignment)
+                const playerName = this.manager.players[playerIndex].username;
+                console.log(`[SocketEventHandler] Team assignment confirmed: ${playerName} -> Team ${teamAssignment}`);
             }
         }
     }

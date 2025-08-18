@@ -74,10 +74,16 @@ export class GameLogicManager {
     }
 
     /**
-     * Update team assignments based on current players
+     * Update team assignments based on current players or provided teams
      */
-    updateTeamAssignments() {
-        this.manager.teams = this.manager.uiManager.teamManager.autoAssignTeams(this.manager.players);
+    updateTeamAssignments(providedTeams = null) {
+        if (providedTeams) {
+            // Use provided teams (e.g., from shuffle)
+            this.manager.teams = providedTeams;
+        } else {
+            // Auto-assign teams based on current players
+            this.manager.teams = this.manager.uiManager.teamManager.autoAssignTeams(this.manager.players);
+        }
         this.manager.uiManager.updateTeamDisplay(this.manager.teams);
     }
 
@@ -93,15 +99,13 @@ export class GameLogicManager {
             return;
         }
 
+        // Update locally first for immediate feedback
         player.teamAssignment = team;
         this.updateTeamAssignments();
 
-        if (this.manager.socketManager) {
-            this.manager.socketManager.emit('assign-team', {
-                playerId: playerId,
-                team: team,
-                slotId: slotId
-            });
+        // Send to server for real-time sync
+        if (this.manager.socketManager && this.manager.socketManager.isReady()) {
+            this.manager.socketManager.assignPlayerToTeam(playerId, team);
         }
 
         this.manager.uiManager.showToast(`${player.username} assigned to Team ${team}`, 'success', { compact: true });

@@ -300,6 +300,50 @@ export class WaitingRoomSocketManager {
             this.emit('waiting-room-error', data);
         });
 
+        // Team management events
+        this.socket.on('teams-shuffled', (data) => {
+            console.log('[WaitingRoomSocketManager] Teams shuffled:', data);
+            this.emit('teams-shuffled', data);
+        });
+
+        this.socket.on('team-assignment-updated', (data) => {
+            console.log('[WaitingRoomSocketManager] Team assignment updated:', data);
+            this.emit('team-assignment-updated', data);
+        });
+
+        this.socket.on('team-assigned', (data) => {
+            console.log('[WaitingRoomSocketManager] Team assigned response:', data);
+            this.emit('team-assigned', data);
+        });
+
+        this.socket.on('team-assignment-error', (error) => {
+            console.error('[WaitingRoomSocketManager] Team assignment error response:', error);
+            this.emit('team-assignment-error', error);
+        });
+
+        // Also listen for the existing team assignment events that might be used
+        this.socket.on('waiting-room-team-updated', (data) => {
+            console.log('[WaitingRoomSocketManager] Team updated response:', data);
+            this.emit('team-assignment-updated', data);
+        });
+
+        // Listen for any team-related events for debugging
+        this.socket.on('team-update', (data) => {
+            console.log('[WaitingRoomSocketManager] Team update event:', data);
+            this.emit('team-assignment-updated', data);
+        });
+
+        this.socket.on('player-team-changed', (data) => {
+            console.log('[WaitingRoomSocketManager] Player team changed event:', data);
+            this.emit('team-assignment-updated', data);
+        });
+
+        // Listen for room updates that might contain team changes
+        this.socket.on('waiting-room-updated', (data) => {
+            console.log('[WaitingRoomSocketManager] Waiting room updated:', data);
+            this.emit('room-updated', data);
+        });
+
         // Status confirmation events
         this.socket.on('ready-status-confirmed', (data) => {
             console.log('[WaitingRoomSocketManager] Ready status confirmed:', data);
@@ -311,6 +355,17 @@ export class WaitingRoomSocketManager {
             console.log('[WaitingRoomSocketManager] Connection confirmed:', data);
             this.emit('connection-confirmed', data);
         });
+
+        // Debug: Listen for all events to see what the server is sending
+        if (this.socket.onAny) {
+            this.socket.onAny((eventName, ...args) => {
+                if (!eventName.startsWith('ping') && !eventName.startsWith('pong') && !eventName.startsWith('heartbeat')) {
+                    console.log(`[WaitingRoomSocketManager] Received event: ${eventName}`, args);
+                }
+            });
+        }
+
+
     }
 
     /**
@@ -396,6 +451,32 @@ export class WaitingRoomSocketManager {
             userId: this.currentUser.user_id || this.currentUser.id
         });
     }
+
+    /**
+     * Assign a player to a team
+     * @param {string} playerId - Player ID to assign
+     * @param {string} team - Team to assign to ('A' or 'B')
+     */
+    assignPlayerToTeam(playerId, team) {
+        if (!this.isConnected || !this.socket || !this.isJoined) {
+            console.warn('[WaitingRoomSocketManager] Cannot assign team - not connected or joined');
+            return;
+        }
+
+        console.log('[WaitingRoomSocketManager] Assigning player to team:', { playerId, team });
+
+        const eventData = {
+            roomId: this.roomId,
+            playerId: playerId,
+            team: team,
+            userId: this.currentUser.user_id || this.currentUser.id
+        };
+
+        console.log('[WaitingRoomSocketManager] Emitting assign-team event:', eventData);
+        this.socket.emit('assign-team', eventData);
+    }
+
+
 
     /**
      * Leave the waiting room
