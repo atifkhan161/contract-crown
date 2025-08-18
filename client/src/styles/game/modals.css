@@ -38,14 +38,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 3vw;
+  margin-bottom: 1vw;
 }
 
 .modal-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 4vw;
-  min-font-size: 16px;
+  font-size: 2vw;
 }
 
 .modal-close {
@@ -82,7 +81,7 @@
 .trump-modal-content {
   max-width: 75vw;
   width: 100%;
-  max-height: 75vh;
+  max-height: 82vh;
   overflow-y: auto;
 }
 
@@ -96,8 +95,8 @@
 
 /* Initial cards display */
 .trump-cards-display {
-  margin-bottom: 3vw;
-  padding: 2vw;
+  margin-bottom: 0.5vw;
+  padding: 0.5vw;
   background: var(--bg-input);
   border-radius: var(--border-radius);
   border: 1px solid var(--border-color);
@@ -108,7 +107,7 @@
   justify-content: center;
   gap: 1vw;
   flex-wrap: wrap;
-  padding: 2vw 0;
+  padding: 0.5vw 0;
 }
 
 .trump-modal-card {
@@ -204,9 +203,8 @@
 }
 
 .trump-selection {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2vw;
+  display: flex;
+  gap: 0.5vw;
 }
 
 .trump-option {
