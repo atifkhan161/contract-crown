@@ -151,6 +151,28 @@
   --border-color: rgba(0, 168, 225, 0.2);
 }
 
+[data-theme="kiro"] {
+  --primary-color: #f04acc;
+  /* Prime Video Blue */
+  --primary-hover: #f56bd2;
+  /* Deeper Blue Highlight */
+  --primary-light: #c2eeff;
+  /* Pale Blue */
+  --secondary-color: #232f3e;
+  /* 'Squid Ink' gray/blue */
+  --secondary-light: #3a4553;
+  /* Lighter secondary */
+  --bg-primary: linear-gradient(135deg, #232f3e 100%);
+  --bg-secondary: #232f3e;
+  --bg-card: rgba(0, 168, 225, 0.12);
+  /* Faint blue */
+  --bg-input: rgba(0, 168, 225, 0.06);
+  --text-primary: #ffffff;
+  --text-secondary: #f73dbf;
+  --text-muted: #b1c5d8;
+  --border-color: rgba(0, 168, 225, 0.2);
+}
+
 [data-theme="crunchyroll"] {
   --primary-color: #f47521;
   /* Crunchyroll Orange */
@@ -162,7 +184,7 @@
   /* Black for contrast */
   --secondary-light: #a4897b;
   /* Taupe (from rebrand) */
-  --bg-primary: linear-gradient(135deg, #f47521 0%, #ffd7b2 100%);
+  --bg-primary: linear-gradient(135deg, #232f3e 100%);
   --bg-secondary: #fff7e6;
   /* Creamy background */
   --bg-card: rgba(244, 117, 33, 0.08);
@@ -229,12 +251,12 @@
   /* Vermillion Red */
   --secondary-light: #137dc5;
   /* Clean Blue */
-  --bg-primary: linear-gradient(135deg, #edcd44 0%, #81cad6 100%);
-  --bg-secondary: #dc3e26;
+  --bg-primary: linear-gradient(135deg, #384749 100%);
+  --bg-secondary: #302624;
   --bg-card: rgba(129, 202, 214, 0.08);
   --bg-input: rgba(237, 205, 68, 0.06);
-  --text-primary: #222222;
-  --text-secondary: #dc3e26;
+  --text-primary: #daafaf;
+  --text-secondary: #c0857c;
   --text-muted: #81cad6;
   --border-color: rgba(220, 62, 38, 0.15);
 }
@@ -250,7 +272,7 @@
   /* Black/Gunmetal */
   --secondary-light: #a9b0b3;
   /* Pale Accent */
-  --bg-primary: linear-gradient(135deg, #7852a9 0%, #46baba 75%, #bedbbe 100%);
+  --bg-primary: linear-gradient(135deg, #7852a9 0%);
   --bg-secondary: #292929;
   --bg-card: rgba(70, 186, 186, 0.10);
   --bg-input: rgba(190, 219, 190, 0.05);
@@ -266,7 +288,7 @@
   --primary-light: #facf39;    /* Mustard Yellow */
   --secondary-color: #bf1922;  /* Bold Red */
   --secondary-light: #f7e8d3;  /* Cream */
-  --bg-primary: linear-gradient(135deg, #f7e8d3 0%, #b17a50 90%);
+  --bg-primary: linear-gradient(135deg, #232f3e 100%);
   --bg-secondary: #c99383;
   --bg-card: rgba(191, 25, 34, 0.10);
   --bg-input: rgba(186, 122, 80, 0.08);
@@ -282,7 +304,7 @@
   --primary-light: #fff4e6;    /* Pastel Cream */
   --secondary-color: #5f6caf;  /* Muted Blue */
   --secondary-light: #4ce0b3;  /* Aquatic Mint */
-  --bg-primary: linear-gradient(135deg, #fff4e6 0%, #fdc57b 90%);
+  --bg-primary: linear-gradient(135deg, #232f3e 100%);
   --bg-secondary: #4ce0b3;
   --bg-card: rgba(95, 108, 175, 0.08);
   --bg-input: rgba(253, 197, 123, 0.07);
@@ -298,9 +320,9 @@
   --primary-light: #adf4f2;     /* Soft light teal */
   --secondary-color: #e5e1da;   /* Warm light earth (editorial-paper vibe) */
   --secondary-light: #f7ede7;   /* Creamy white */
-  --bg-primary: linear-gradient(135deg, #29b9c1 0%, #32c7e5 50%, #e5e1da 100%);
-  --bg-secondary: #e5e1da;
-  --bg-card: rgba(41,185,193, 0.10);
+  --bg-primary: linear-gradient(135deg, #232f3e 100%);
+  --bg-secondary: #232f3e;
+  --bg-card: rgba(17, 23, 24, 0.1);
   --bg-input: rgba(173,244,242, 0.12);
   --text-primary: #222f36; /* Deep, readable navy */
   --text-secondary: #29b9c1;

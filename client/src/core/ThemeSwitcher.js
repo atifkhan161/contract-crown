@@ -1,7 +1,7 @@
 // Theme Switcher - Contract Crown PWA
 class ThemeSwitcher {
   constructor() {
-    this.currentTheme = localStorage.getItem('theme') || 'prime';
+    this.currentTheme = localStorage.getItem('theme') || 'primevideo';
     this.applyTheme(this.currentTheme);
   }
 
@@ -16,7 +16,7 @@ class ThemeSwitcher {
   }
 
   getAvailableThemes() {
-    return ['netflix', 'primevideo', 'crunchyroll', 'hulu', 'golden', 'citrus', 'deco', 'earthy', 'pastel', 'perplexity', 'kindle'];
+    return ['netflix', 'primevideo', 'crunchyroll', 'hulu', 'golden', 'citrus', 'deco', 'earthy', 'pastel', 'perplexity', 'kindle', 'kiro'];
   }
 
   getCurrentTheme() {
