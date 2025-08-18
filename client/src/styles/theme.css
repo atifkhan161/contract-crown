@@ -8,53 +8,53 @@
   --desert-sand: #ddbea9;
   --sage: #a5a58d;
   --ash-gray: #b7b7a4;
-  
+
   /* Forest Palette */
   --timberwolf: #dad7cd;
   --sage-green: #a3b18a;
   --fern-green: #588157;
   --hunter-green: #3a5a40;
   --brunswick-green: #344e41;
-  
+
   /* Pastel Palette */
   --melon: #ffa69e;
   --eggshell: #faf3dd;
   --celeste: #b8f2e6;
   --light-blue-pastel: #aed9e0;
   --paynes-gray: #5e6472;
-  
+
   /* Dark Palette */
   --rich-black: #0d1b2a;
   --oxford-blue: #1b263b;
   --yinmn-blue: #415a77;
   --silver-lake-blue: #778da9;
   --platinum: #e0e1dd;
-  
+
   /* Primary Color Mapping */
   --primary-color: var(--buff);
   --primary-hover: var(--desert-sand);
   --primary-light: var(--champagne-pink);
   --secondary-color: var(--sage);
   --secondary-light: var(--ash-gray);
-  
+
   /* Background Colors */
   --bg-primary: linear-gradient(135deg, var(--linen), var(--isabelline));
   --bg-secondary: var(--champagne-pink);
   --bg-card: rgba(203, 153, 126, 0.1);
   --bg-input: rgba(203, 153, 126, 0.05);
-  
+
   /* Text Colors */
   --text-primary: var(--sage);
   --text-secondary: var(--ash-gray);
   --text-muted: var(--desert-sand);
   --text-error: #e74c3c;
   --text-success: #27ae60;
-  
+
   /* Border Colors */
   --border-color: rgba(203, 153, 126, 0.2);
   --border-focus: var(--primary-color);
   --border-error: var(--text-error);
-  
+
   /* Spacing */
   --spacing-xs: 0.25rem;
   --spacing-sm: 0.5rem;
@@ -62,7 +62,7 @@
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
   --spacing-xxl: 3rem;
-  
+
   /* Typography */
   --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   --font-size-xs: 0.75rem;
@@ -72,119 +72,257 @@
   --font-size-xl: 1.25rem;
   --font-size-xxl: 1.5rem;
   --font-size-title: 2rem;
-  
+
   /* Border Radius */
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
-  
+
   /* Shadows */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.15);
   --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.2);
-  
+
   /* Transitions */
   --transition-fast: 0.15s ease;
   --transition-normal: 0.3s ease;
   --transition-slow: 0.5s ease;
-  
+
   /* Z-index */
   --z-dropdown: 1000;
   --z-modal: 1050;
   --z-tooltip: 1100;
-  
+
   /* Connection Status Colors */
   --status-connected: #27ae60;
   --status-connecting: #f39c12;
   --status-disconnected: #e74c3c;
-  
+
   /* Theme Switcher */
   --theme-switcher-bg: var(--bg-card);
   --theme-switcher-border: var(--border-color);
 }
 
 /* Theme Variants */
-[data-theme="blue"] {
-  --primary-color: #2c7da0;
-  --primary-hover: #2a6f97;
-  --primary-light: #61a5c2;
-  --secondary-color: #012a4a;
-  --secondary-light: #013a63;
-  --bg-primary: linear-gradient(135deg, #012a4a, #013a63);
-  --bg-secondary: #01497c;
-  --bg-card: rgba(169, 214, 229, 0.1);
-  --bg-input: rgba(169, 214, 229, 0.05);
+[data-theme="netflix"] {
+  --primary-color: #e50914;
+  /* Netflix Red */
+  --primary-hover: #b20710;
+  /* Darker Netflix Red */
+  --primary-light: #ff4747;
+  /* Light Red Accent */
+  --secondary-color: #000000;
+  /* Classic Netflix Black */
+  --secondary-light: #221f1f;
+  /* Charcoal Background */
+  --bg-primary: linear-gradient(135deg, #221f1f 0%, #000000 100%);
+  --bg-secondary: #171717;
+  /* Near-black Card Variant */
+  --bg-card: rgba(229, 9, 20, 0.1);
+  /* Soft red highlight */
+  --bg-input: rgba(229, 9, 20, 0.05);
   --text-primary: #ffffff;
-  --text-secondary: #a9d6e5;
-  --text-muted: #89c2d9;
-  --border-color: rgba(169, 214, 229, 0.2);
+  /* White text */
+  --text-secondary: #e50914;
+  --text-muted: #564d4d;
+  --border-color: rgba(229, 9, 20, 0.2);
 }
 
-[data-theme="tropical"] {
-  --primary-color: #69d1c5;
-  --primary-hover: #3ba99c;
-  --primary-light: #7ebce6;
-  --secondary-color: #21897e;
-  --secondary-light: #8980f5;
-  --bg-primary: linear-gradient(#21897eff, #3ba99cff, #69d1c5ff, #7ebce6ff, #8980f5ff);
-  --bg-secondary: #21897e;
-  --bg-card: rgba(105, 209, 197, 0.1);
-  --bg-input: rgba(105, 209, 197, 0.05);
-  --text-primary: #c4f7f2;
-  --text-secondary: #c8f7f0;
-  --text-muted: #bcdcf1;
-  --border-color: rgba(105, 209, 197, 0.2);
+[data-theme="primevideo"] {
+  --primary-color: #00a8e1;
+  /* Prime Video Blue */
+  --primary-hover: #0779FF;
+  /* Deeper Blue Highlight */
+  --primary-light: #c2eeff;
+  /* Pale Blue */
+  --secondary-color: #232f3e;
+  /* 'Squid Ink' gray/blue */
+  --secondary-light: #3a4553;
+  /* Lighter secondary */
+  --bg-primary: linear-gradient(135deg, #00a8e1 0%, #232f3e 100%);
+  --bg-secondary: #232f3e;
+  --bg-card: rgba(0, 168, 225, 0.12);
+  /* Faint blue */
+  --bg-input: rgba(0, 168, 225, 0.06);
+  --text-primary: #ffffff;
+  --text-secondary: #00a8e1;
+  --text-muted: #b1c5d8;
+  --border-color: rgba(0, 168, 225, 0.2);
 }
 
-[data-theme="forest"] {
-  --primary-color: #588157;
-  --primary-hover: #3a5a40;
-  --primary-light: #a3b18a;
-  --secondary-color: #344e41;
-  --secondary-light: #3a5a40;
-  --bg-primary: linear-gradient(135deg, #dad7cd, #a3b18a);
-  --bg-secondary: #a3b18a;
-  --bg-card: rgba(88, 129, 87, 0.1);
-  --bg-input: rgba(88, 129, 87, 0.05);
-  --text-primary: #c8eedb;
-  --text-secondary: #cdf3d4;
-  --text-muted: #edf5ec;
-  --border-color: rgba(88, 129, 87, 0.2);
+[data-theme="crunchyroll"] {
+  --primary-color: #f47521;
+  /* Crunchyroll Orange */
+  --primary-hover: #db6500;
+  /* Deeper Orange */
+  --primary-light: #ffd7b2;
+  /* Pale/soft orange */
+  --secondary-color: #000000;
+  /* Black for contrast */
+  --secondary-light: #a4897b;
+  /* Taupe (from rebrand) */
+  --bg-primary: linear-gradient(135deg, #f47521 0%, #ffd7b2 100%);
+  --bg-secondary: #fff7e6;
+  /* Creamy background */
+  --bg-card: rgba(244, 117, 33, 0.08);
+  --bg-input: rgba(244, 117, 33, 0.03);
+  --text-primary: #222222;
+  /* Near-black headline */
+  --text-secondary: #f47521;
+  --text-muted: #6b625c;
+  /* Taupe/tan-muted */
+  --border-color: rgba(244, 117, 33, 0.15);
 }
 
-[data-theme="ocean"] {
-  --primary-color: #597d7c;
-  --primary-hover: #386775;
-  --primary-light: #777076;
-  --secondary-color: #20504e;
-  --secondary-light: #193d31;
-  --bg-primary: linear-gradient(35deg, #0d0e14, #252933, #404556, #386775, #20504e, #193d31, #17292b);
-  --bg-secondary: #252933;
-  --bg-card: rgba(89, 125, 124, 0.1);
-  --bg-input: rgba(89, 125, 124, 0.05);
-  --text-primary: #d3cdd2;
-  --text-secondary: #bdf1f1;
-  --text-muted: #b7e1ec;
-  --border-color: rgba(89, 125, 124, 0.2);
+
+[data-theme="hulu"] {
+  --primary-color: #1ce783;
+  /* Hulu Green */
+  --primary-hover: #14ba61;
+  /* Darker Green */
+  --primary-light: #6becc8;
+  /* Light Minty Green */
+  --secondary-color: #222222;
+  /* Dark UI */
+  --secondary-light: #3c3c3c;
+  /* Card bg */
+  --bg-primary: linear-gradient(135deg, #081c24 0%, #222222 100%);
+  --bg-secondary: #181818;
+  --bg-card: rgba(28, 231, 131, 0.07);
+  --bg-input: rgba(28, 231, 131, 0.03);
+  --text-primary: #ffffff;
+  --text-secondary: #1ce783;
+  --text-muted: #aaaaaa;
+  --border-color: rgba(28, 231, 131, 0.16);
 }
 
-[data-theme="deepSea"] {
-  --primary-color: #778da9;
-  --primary-hover: #415a77;
-  --primary-light: #silver-lake-blue;
-  --secondary-color: #0d1b2a;
-  --secondary-light: #1b263b;
-  --bg-primary: linear-gradient(135deg, #0d1b2a, #1b263b);
-  --bg-secondary: #1b263b;
-  --bg-card: rgba(119, 141, 169, 0.1);
-  --bg-input: rgba(119, 141, 169, 0.05);
-  --text-primary: #e0e1dd;
-  --text-secondary: #a5c3eb;
-  --text-muted: #86b8f1;
-  --border-color: rgba(119, 141, 169, 0.2);
+[data-theme="golden"] {
+  --primary-color: #ffc300;
+  /* Golden Yellow */
+  --primary-hover: #ffd60a;
+  /* Lighter Gold */
+  --primary-light: #ffe066;
+  /* Soft Yellow */
+  --secondary-color: #003566;
+  /* Deep Blue */
+  --secondary-light: #001d3d;
+  /* Midnight Blue */
+  --bg-primary: linear-gradient(135deg, #000814 0%, #001d3d 100%);
+  --bg-secondary: #003566;
+  --bg-card: rgba(255, 195, 0, 0.10);
+  --bg-input: rgba(0, 53, 102, 0.08);
+  --text-primary: #ffffff;
+  --text-secondary: #ffc300;
+  --text-muted: #a2abb1;
+  --border-color: rgba(255, 195, 0, 0.18);
 }
 
+[data-theme="citrus"] {
+  --primary-color: #edcd44;
+  /* Citrus Yellow */
+  --primary-hover: #facf39;
+  /* Bright Yellow */
+  --primary-light: #81cad6;
+  /* Light Teal */
+  --secondary-color: #dc3e26;
+  /* Vermillion Red */
+  --secondary-light: #137dc5;
+  /* Clean Blue */
+  --bg-primary: linear-gradient(135deg, #edcd44 0%, #81cad6 100%);
+  --bg-secondary: #dc3e26;
+  --bg-card: rgba(129, 202, 214, 0.08);
+  --bg-input: rgba(237, 205, 68, 0.06);
+  --text-primary: #222222;
+  --text-secondary: #dc3e26;
+  --text-muted: #81cad6;
+  --border-color: rgba(220, 62, 38, 0.15);
+}
+
+[data-theme="deco"] {
+  --primary-color: #7852a9;
+  /* Deco Purple */
+  --primary-hover: #46baba;
+  /* Teal */
+  --primary-light: #bedbbe;
+  /* Sage */
+  --secondary-color: #292929;
+  /* Black/Gunmetal */
+  --secondary-light: #a9b0b3;
+  /* Pale Accent */
+  --bg-primary: linear-gradient(135deg, #7852a9 0%, #46baba 75%, #bedbbe 100%);
+  --bg-secondary: #292929;
+  --bg-card: rgba(70, 186, 186, 0.10);
+  --bg-input: rgba(190, 219, 190, 0.05);
+  --text-primary: #f7f7fa;
+  --text-secondary: #7852a9;
+  --text-muted: #46baba;
+  --border-color: rgba(70, 186, 186, 0.16);
+}
+
+[data-theme="earthy"] {
+  --primary-color: #b17a50;    /* Wood */
+  --primary-hover: #c99383;    /* Clay */
+  --primary-light: #facf39;    /* Mustard Yellow */
+  --secondary-color: #bf1922;  /* Bold Red */
+  --secondary-light: #f7e8d3;  /* Cream */
+  --bg-primary: linear-gradient(135deg, #f7e8d3 0%, #b17a50 90%);
+  --bg-secondary: #c99383;
+  --bg-card: rgba(191, 25, 34, 0.10);
+  --bg-input: rgba(186, 122, 80, 0.08);
+  --text-primary: #3e211b;
+  --text-secondary: #facf39;
+  --text-muted: #c99383;
+  --border-color: rgba(191, 25, 34, 0.20);
+}
+
+[data-theme="pastel"] {
+  --primary-color: #fdc57b;    /* Peachy Orange */
+  --primary-hover: #fa7268;    /* Coral */
+  --primary-light: #fff4e6;    /* Pastel Cream */
+  --secondary-color: #5f6caf;  /* Muted Blue */
+  --secondary-light: #4ce0b3;  /* Aquatic Mint */
+  --bg-primary: linear-gradient(135deg, #fff4e6 0%, #fdc57b 90%);
+  --bg-secondary: #4ce0b3;
+  --bg-card: rgba(95, 108, 175, 0.08);
+  --bg-input: rgba(253, 197, 123, 0.07);
+  --text-primary: #232946;
+  --text-secondary: #fa7268;
+  --text-muted: #5f6caf;
+  --border-color: rgba(76, 224, 179, 0.18);
+}
+
+[data-theme="perplexity"] {
+  --primary-color: #29b9c1;     /* Teal, Perplexity core */
+  --primary-hover: #32c7e5;     /* Sky Blue */
+  --primary-light: #adf4f2;     /* Soft light teal */
+  --secondary-color: #e5e1da;   /* Warm light earth (editorial-paper vibe) */
+  --secondary-light: #f7ede7;   /* Creamy white */
+  --bg-primary: linear-gradient(135deg, #29b9c1 0%, #32c7e5 50%, #e5e1da 100%);
+  --bg-secondary: #e5e1da;
+  --bg-card: rgba(41,185,193, 0.10);
+  --bg-input: rgba(173,244,242, 0.12);
+  --text-primary: #222f36; /* Deep, readable navy */
+  --text-secondary: #29b9c1;
+  --text-muted: #7aa7a5;   /* Muted earth teal */
+  --border-color: rgba(41,185,193, 0.18);
+}
+
+[data-theme="kindle"] {
+  --primary-color: #ff940b;      /* Kindle bright orange */
+  --primary-hover: #ffb15c;      /* Kindle highlight gold */
+  --primary-light: #44c4f4;      /* Picton Blue */
+  --secondary-color: #3c445c;    /* Charcoal (Kindle Paperwhite, Kiro) */
+  --secondary-light: #c5b7af;    /* Silver Pink (paper-like) */
+  --bg-primary: linear-gradient(135deg, #ff940b 0%, #44c4f4 50%, #c5b7af 100%);
+  --bg-secondary: #3c445c;
+  --bg-card: rgba(68,196,244,0.10);
+  --bg-input: rgba(197,183,175,0.07);
+  --text-primary: #222222;       /* Standard high-contrast text */
+  --text-secondary: #ff940b;     /* Orange for accents/calls to action */
+  --text-muted: #44c4f4;         /* Muted blue highlight */
+  --border-color: rgba(68,196,244, 0.16);
+}
 /* Mobile-first responsive breakpoints */
 @media (min-width: 768px) {
   :root {

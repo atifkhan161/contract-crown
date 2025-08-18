@@ -263,7 +263,7 @@
 .played-card {
   width: 32px;
   height: 48px;
-  background: var(--text-primary);
+  background: white;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   display: flex;
@@ -554,7 +554,7 @@
   }
 
   .card-back-stack {
-    max-width: 50px;
+    max-width: 150px;
   }
 
   /* Column layout for left/right players */

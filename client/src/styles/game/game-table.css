@@ -263,9 +263,8 @@
   min-height: 200px;
   
   /* Casino table styling - Green felt */
-  background-color: var(--primary-color) !important;
-  background: linear-gradient(135deg, var(--primary-hover), var(--primary-color), var(--primary-hover)) !important;
-  border: 2px solid var(--secondary-color) !important;
+  background-color: white !important;
+  border: 2px solid var(--bg-secondary) !important;
   border-radius: 60px !important;
   box-shadow: var(--shadow-lg), 0 0 0 1px var(--border-color) !important;
 }
@@ -388,7 +387,6 @@
 /* Trick Info Display - Mobile responsive */
 .trick-info-display {
   grid-area: trick-info;
-  background: linear-gradient(135deg, var(--secondary-color), var(--secondary-light));
   padding: 2px 4px;
   border-radius: var(--radius-md);
   border: 2px solid var(--primary-hover);

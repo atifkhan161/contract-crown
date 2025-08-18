@@ -160,7 +160,7 @@
 }
 
 .card-back-stack {
-  max-width: 50px;
+  max-width: 150px;
   justify-content: center;
 }
 
@@ -360,7 +360,7 @@
   }
 
   .card-back-stack {
-    max-width: 50px;
+    max-width: 150px;
   }
 
   .card-back {
