@@ -396,8 +396,7 @@
   justify-self: start;
   font-size: 8px;
   box-shadow: var(--shadow-md), inset 0 1px 2px var(--bg-card);
-  width: 75px;
-  height: 75px;
+  height: 24vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -502,14 +501,10 @@
   
   .trump-display-corner,
   .score-display-corner {
-    width: 22vw;
-    height: 8vw;
     font-size: 2.5vw;
   }
   
   .trick-info-display {
-    width: 22vw;
-    height: 18vw;
     font-size: 2.5vw;
   }
 }
@@ -525,13 +520,11 @@
   
   .trump-display-corner,
   .score-display-corner {
-    height: 28px;
     font-size: 9px;
     padding: 3px 6px;
   }
   
   .trick-info-display {
-    height: 75px;
     font-size: 9px;
     padding: 3px 6px;
   }
@@ -620,16 +613,12 @@
 
   .trump-display-corner,
   .score-display-corner {
-    width: 75px;
-    height: 28px;
     font-size: 8px;
     padding: 2px 4px;
     gap: 2px;
   }
   
   .trick-info-display {
-    width: 75px;
-    height: 75px;
     font-size: 8px;
     padding: 2px 4px;
     gap: 2px;
@@ -678,16 +667,13 @@
   
   .trump-display-corner,
   .score-display-corner {
-    width: 180px;
-    height: 50px;
     font-size: 12px;
     padding: 4px 8px;
     gap: 4px;
   }
   
   .trick-info-display {
-    width: 180px;
-    height: 100px;
+    width: 12vw;
     font-size: 12px;
     padding: 4px 8px;
     gap: 4px;

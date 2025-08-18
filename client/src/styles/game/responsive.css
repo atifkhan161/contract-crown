@@ -38,8 +38,6 @@
 .round-score-display {
   padding: 2px 4px;
   font-size: 8px;
-  width: 75px;
-  height: 28px;
 }
 
 /* User Cards - Larger for better mobile interaction */
@@ -162,7 +160,7 @@
 }
 
 .card-back-stack {
-  max-width: 35px;
+  max-width: 50px;
   justify-content: center;
 }
 
@@ -174,8 +172,8 @@
 
 /* Trick Area - Mobile optimized */
 .trick-cards {
-  width: 140px;
-  height: 140px;
+  width: 40vw;
+  height: 55vh;
 }
 
 .player-hand {
@@ -215,12 +213,6 @@
   grid-template-rows: 32px 1fr 80px;
 }
 
-.trump-display-corner,
-.score-display-corner {
-  width: 75px;
-  height: 28px;
-}
-
 .round-score-display {
   width: 75px;
   height: 75px;
@@ -257,8 +249,8 @@
   }
 
   .trick-cards {
-    width: 30vw;
-    height: 30vw;
+    width: 40vw;
+    height: 55vh;
     max-width: 160px;
     max-height: 160px;
     min-width: 120px;
@@ -268,7 +260,6 @@
   /* Trump and score displays now in trick area */
   .trump-display-corner,
   .score-display-corner {
-    min-width: 50px;
     padding: 4px 6px;
     font-size: 9px;
   }
@@ -310,13 +301,12 @@
   }
 
   .trick-cards {
-    width: 120px;
-    height: 120px;
+    width: 40vw;
+    height: 55vh;
   }
 
   .trump-display-corner,
   .score-display-corner {
-    min-width: 45px;
     padding: 3px 5px;
     font-size: 8px;
   }
@@ -357,7 +347,6 @@
 
   .trump-display-corner,
   .score-display-corner {
-    min-width: 40px;
     padding: 2px 4px;
     font-size: 7px;
   }
@@ -371,7 +360,7 @@
   }
 
   .card-back-stack {
-    max-width: 30px;
+    max-width: 50px;
   }
 
   .card-back {
@@ -394,8 +383,8 @@
   }
 
   .trick-cards {
-    width: 90px;
-    height: 90px;
+    width: 40vw;
+    height: 55vh;
   }
 
   /* Ultra compact player areas for small screens */
@@ -504,13 +493,12 @@
   }
 
   .trick-cards {
-    width: 180px;
-    height: 180px;
+    width: 40vw;
+    height: 55vh;
   }
 
   .trump-display-corner,
   .score-display-corner {
-    min-width: 70px;
     padding: 8px 10px;
     font-size: 12px;
   }

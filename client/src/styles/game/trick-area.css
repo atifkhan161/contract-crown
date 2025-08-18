@@ -103,7 +103,6 @@
   border: 3px solid var(--primary-hover);
   font-size: 10px;
   box-shadow: var(--shadow-lg), inset 0 1px 2px var(--bg-card);
-  min-width: 60px;
   height: auto;
   position: relative;
   flex-shrink: 0;
@@ -119,6 +118,7 @@
 
 .trump-suit {
   display: flex;
+  background-color: white;
   flex-direction: column;
   align-items: center;
   gap: 2px;
@@ -143,7 +143,7 @@
 .trump-name {
   font-size: 10px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: black;
   text-shadow: 1px 1px 2px var(--bg-secondary);
   text-align: center;
 }
@@ -168,7 +168,7 @@
 
 .team-scores {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 4px;
   width: 100%;
@@ -395,7 +395,6 @@
 
   .trump-display-corner,
   .score-display-corner {
-    min-width: 45px;
     padding: 3px 5px;
     font-size: 8px;
     border-width: 2px;
@@ -423,7 +422,6 @@
 
   .trump-display-corner,
   .score-display-corner {
-    min-width: 35px;
     padding: 2px 3px;
     font-size: 7px;
     border-width: 2px;
@@ -470,7 +468,6 @@
 
   .trump-display-corner,
   .score-display-corner {
-    min-width: 70px;
     padding: 8px 10px;
     font-size: 12px;
     border-width: 3px;
